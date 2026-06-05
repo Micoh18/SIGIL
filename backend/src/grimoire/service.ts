@@ -66,6 +66,9 @@ export class GrimoireService {
   }
 
   async setPolicy(input: PolicySetInput): Promise<PolicyRecord> {
+    assertDecimalAmount("max_amount_per_call", input.max_amount_per_call);
+    assertDecimalAmount("max_amount_per_period", input.max_amount_per_period);
+
     const now = new Date().toISOString();
     const existing = await this.store.getPolicy(input.agent_id, input.policy_id);
     const policyBody = {
@@ -146,4 +149,10 @@ function toSecretMetadata(secret: SecretRecord): SecretMetadata {
 
 function createId(prefix: string): string {
   return `${prefix}_${randomUUID().replaceAll("-", "")}`;
+}
+
+function assertDecimalAmount(name: string, value: string): void {
+  if (!/^\d+(\.\d+)?$/.test(value)) {
+    throw new Error(`${name} must be a non-negative decimal amount`);
+  }
 }

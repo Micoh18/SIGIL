@@ -11,6 +11,12 @@ const secretTypeSchema = z.enum([
 ]);
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
+const nonEmptyStringSchema = z.string().trim().min(1);
+const urlSchema = z.string().trim().url();
+const decimalAmountSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+(\.\d+)?$/, "Expected a non-negative decimal amount");
 
 export function registerGrimoireTools(
   server: McpServer,
@@ -22,11 +28,11 @@ export function registerGrimoireTools(
       title: "Store Secret",
       description: "Encrypt and store a scoped SIGIL secret. The plaintext is never returned.",
       inputSchema: {
-        agent_id: z.string().min(1),
-        name: z.string().min(1),
+        agent_id: nonEmptyStringSchema,
+        name: nonEmptyStringSchema,
         type: secretTypeSchema,
-        value: z.string().min(1),
-        scopes: z.array(z.string().min(1)).min(1)
+        value: nonEmptyStringSchema,
+        scopes: z.array(nonEmptyStringSchema).min(1)
       }
     },
     async (input) => {
@@ -45,7 +51,7 @@ export function registerGrimoireTools(
       title: "List Secrets",
       description: "List SIGIL secret metadata for an agent without exposing secret values.",
       inputSchema: {
-        agent_id: z.string().min(1)
+        agent_id: nonEmptyStringSchema
       }
     },
     async ({ agent_id }) => {
@@ -65,16 +71,16 @@ export function registerGrimoireTools(
       title: "Set Policy",
       description: "Create or update a SIGIL spending/access policy commitment.",
       inputSchema: {
-        agent_id: z.string().min(1),
-        policy_id: z.string().min(1),
+        agent_id: nonEmptyStringSchema,
+        policy_id: nonEmptyStringSchema,
         enabled: z.boolean().optional(),
-        allowed_urls: z.array(z.string().url()).min(1),
-        allowed_methods: z.array(z.string().min(1)).min(1),
+        allowed_urls: z.array(urlSchema).min(1),
+        allowed_methods: z.array(nonEmptyStringSchema).min(1),
         allowed_asset: jsonObjectSchema,
-        max_amount_per_call: z.string().min(1),
-        max_amount_per_period: z.string().min(1),
+        max_amount_per_call: decimalAmountSchema,
+        max_amount_per_period: decimalAmountSchema,
         period_seconds: z.number().int().positive(),
-        secret_scopes: z.array(z.string().min(1)).default([])
+        secret_scopes: z.array(nonEmptyStringSchema).default([])
       }
     },
     async (input) => {
@@ -93,8 +99,8 @@ export function registerGrimoireTools(
       title: "Get Policy",
       description: "Read one SIGIL policy and current local spend metadata.",
       inputSchema: {
-        agent_id: z.string().min(1),
-        policy_id: z.string().min(1)
+        agent_id: nonEmptyStringSchema,
+        policy_id: nonEmptyStringSchema
       }
     },
     async ({ agent_id, policy_id }) => {
@@ -115,4 +121,3 @@ export function registerGrimoireTools(
     }
   );
 }
-
