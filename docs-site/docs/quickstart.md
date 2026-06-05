@@ -65,8 +65,8 @@ Important local defaults:
 | --- | --- |
 | `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
 | `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
-| `SUPABASE_URL` | Supabase project URL for optional remote persistence. |
-| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` | Supabase REST key. Prefer service role only in private backend env, never in committed files. |
+| `PROJECT_URL` | Supabase project URL for optional remote persistence. |
+| `SECRET_KEY` / `PUBLISHABLE_KEY` | Supabase REST key. Prefer `SECRET_KEY` only in private backend env, never in committed files. |
 | `SUPABASE_DB_SCHEMA` | Supabase schema, defaulting to `public`. |
 | `SUPABASE_TABLE_PREFIX` | Table prefix, defaulting to `sigil_`. |
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
@@ -90,8 +90,8 @@ Local JSON files remain the fastest path for evaluator demos. To persist records
 
 ```bash
 SIGIL_STORAGE_BACKEND=supabase
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<server-side-key>
+PROJECT_URL=https://<project-ref>.supabase.co
+SECRET_KEY=<server-side-key>
 SUPABASE_DB_SCHEMA=public
 SUPABASE_TABLE_PREFIX=sigil_
 ```

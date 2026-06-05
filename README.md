@@ -59,8 +59,8 @@ Important values:
 - `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`.
 - `SIGIL_MCP_NAME` and `SIGIL_MCP_VERSION`: stable MCP server identifier values.
 - `SIGIL_STORAGE_BACKEND`: `file` by default. Set `supabase` after applying `backend/supabase/schema.sql`.
-- `SUPABASE_URL`: Supabase project URL for optional remote persistence.
-- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`: key used for Supabase REST calls. Prefer a server-side service role key only in local env/secret manager.
+- `PROJECT_URL`: Supabase project URL for optional remote persistence.
+- `SECRET_KEY` or `PUBLISHABLE_KEY`: key used for Supabase REST calls. Prefer `SECRET_KEY` only in local env/secret manager.
 - `SUPABASE_DB_SCHEMA`: defaults to `public`.
 - `SUPABASE_TABLE_PREFIX`: defaults to `sigil_`.
 - `GRIMOIRE_MASTER_KEY`: base64-encoded 32-byte AES-GCM key. If omitted, the backend uses a deterministic local development key only.

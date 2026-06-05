@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadConfig } from "../src/config.js";
 import { createBackendStores } from "../src/storage/store-factory.js";
 import { SupabaseRestClient } from "../src/storage/supabase-rest.js";
 import type { SigilConfig } from "../src/config.js";
@@ -12,6 +13,26 @@ afterEach(() => {
 });
 
 describe("Supabase storage", () => {
+  it("loads Supabase config from the project env names", () => {
+    const loaded = loadConfig({
+      SIGIL_STORAGE_BACKEND: "supabase",
+      PROJECT_URL: "https://example.supabase.co",
+      SECRET_KEY: "secret-key",
+      SUPABASE_DB_SCHEMA: "public",
+      SUPABASE_TABLE_PREFIX: "mainspring_"
+    });
+
+    expect(loaded.storage).toEqual({
+      backend: "supabase",
+      supabase: {
+        url: "https://example.supabase.co",
+        key: "secret-key",
+        schema: "public",
+        tablePrefix: "mainspring_"
+      }
+    });
+  });
+
   it("uses Supabase stores when Supabase storage is configured", () => {
     const stores = createBackendStores(config());
 

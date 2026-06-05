@@ -73,9 +73,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
 
 function loadStorageConfig(env: NodeJS.ProcessEnv): StorageConfig {
   const backend = optionalEnv(env.SIGIL_STORAGE_BACKEND);
-  const supabaseUrl = optionalEnv(env.SUPABASE_URL);
+  const supabaseUrl = optionalEnv(env.PROJECT_URL) ?? optionalEnv(env.SUPABASE_URL);
   const supabaseKey =
-    optionalEnv(env.SUPABASE_SERVICE_ROLE_KEY) ?? optionalEnv(env.SUPABASE_ANON_KEY);
+    optionalEnv(env.SECRET_KEY) ??
+    optionalEnv(env.PUBLISHABLE_KEY) ??
+    optionalEnv(env.SUPABASE_SERVICE_ROLE_KEY) ??
+    optionalEnv(env.SUPABASE_ANON_KEY);
 
   if (!backend && !supabaseUrl && !supabaseKey) {
     return { backend: "file" };
@@ -90,16 +93,16 @@ function loadStorageConfig(env: NodeJS.ProcessEnv): StorageConfig {
   }
 
   if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL is required when Supabase storage is enabled");
+    throw new Error("PROJECT_URL is required when Supabase storage is enabled");
   }
 
   if (!supabaseKey) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY is required when Supabase storage is enabled"
+      "SECRET_KEY or PUBLISHABLE_KEY is required when Supabase storage is enabled"
     );
   }
 
-  assertHttpUrl("SUPABASE_URL", supabaseUrl);
+  assertHttpUrl("PROJECT_URL", supabaseUrl);
 
   return {
     backend: "supabase",

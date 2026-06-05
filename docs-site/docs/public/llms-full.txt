@@ -112,8 +112,8 @@ Important local defaults:
 | --- | --- |
 | `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
 | `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
-| `SUPABASE_URL` | Supabase project URL for optional remote persistence. |
-| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` | Supabase REST key. Prefer service role only in private backend env, never in committed files. |
+| `PROJECT_URL` | Supabase project URL for optional remote persistence. |
+| `SECRET_KEY` / `PUBLISHABLE_KEY` | Supabase REST key. Prefer `SECRET_KEY` only in private backend env, never in committed files. |
 | `SUPABASE_DB_SCHEMA` | Supabase schema, defaulting to `public`. |
 | `SUPABASE_TABLE_PREFIX` | Table prefix, defaulting to `sigil_`. |
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
@@ -137,8 +137,8 @@ Local JSON files remain the fastest path for evaluator demos. To persist records
 
 ```bash
 SIGIL_STORAGE_BACKEND=supabase
-SUPABASE_URL=https://<project-ref>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<server-side-key>
+PROJECT_URL=https://<project-ref>.supabase.co
+SECRET_KEY=<server-side-key>
 SUPABASE_DB_SCHEMA=public
 SUPABASE_TABLE_PREFIX=sigil_
 ```
@@ -272,7 +272,7 @@ The backend defaults to JSON files under `SIGIL_DATA_DIR`:
 | Payments | `payments.json` | Payment intents and receipts. |
 | Audit | `audit.json` | Redacted audit events. |
 
-Supabase is available as an optional persistence backend. Run `backend/supabase/schema.sql`, then set `SIGIL_STORAGE_BACKEND=supabase`, `SUPABASE_URL`, and either `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`. The Supabase adapter uses one table per store and keeps the current domain record in a `record jsonb` column with scalar lookup columns for the queries the services need.
+Supabase is available as an optional persistence backend. Run `backend/supabase/schema.sql`, then set `SIGIL_STORAGE_BACKEND=supabase`, `PROJECT_URL`, and either `SECRET_KEY` or `PUBLISHABLE_KEY`. The Supabase adapter uses one table per store and keeps the current domain record in a `record jsonb` column with scalar lookup columns for the queries the services need.
 
 | Store | Supabase Table |
 | --- | --- |

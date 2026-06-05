@@ -73,7 +73,7 @@ The backend defaults to JSON files under `SIGIL_DATA_DIR`:
 | Payments | `payments.json` | Payment intents and receipts. |
 | Audit | `audit.json` | Redacted audit events. |
 
-Supabase is available as an optional persistence backend. Run `backend/supabase/schema.sql`, then set `SIGIL_STORAGE_BACKEND=supabase`, `SUPABASE_URL`, and either `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`. The Supabase adapter uses one table per store and keeps the current domain record in a `record jsonb` column with scalar lookup columns for the queries the services need.
+Supabase is available as an optional persistence backend. Run `backend/supabase/schema.sql`, then set `SIGIL_STORAGE_BACKEND=supabase`, `PROJECT_URL`, and either `SECRET_KEY` or `PUBLISHABLE_KEY`. The Supabase adapter uses one table per store and keeps the current domain record in a `record jsonb` column with scalar lookup columns for the queries the services need.
 
 | Store | Supabase Table |
 | --- | --- |

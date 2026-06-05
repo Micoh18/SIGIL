@@ -133,7 +133,7 @@ function renderLlmsTxt(pages) {
     `- Implemented MCP tools: ${implementedTools}.`,
     `- Pre-settlement MCP tools: ${preSettlementTools}.`,
     "- Local JSON-file stores are used under SIGIL_DATA_DIR for memory, Grimoire, payments, and audit.",
-    "- Optional Supabase persistence is available after applying backend/supabase/schema.sql and setting SIGIL_STORAGE_BACKEND=supabase.",
+    "- Optional Supabase persistence is available after applying backend/supabase/schema.sql and setting SIGIL_STORAGE_BACKEND=supabase with PROJECT_URL plus SECRET_KEY or PUBLISHABLE_KEY.",
     "- Memory records are canonicalized and verified with SHA-256 hashes.",
     "- Grimoire secrets are encrypted locally and returned as metadata only.",
     "- payment.fetch can policy-check, persist an intent, and optionally capture the first HTTP 402 challenge.",
