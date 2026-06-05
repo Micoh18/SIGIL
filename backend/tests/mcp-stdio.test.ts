@@ -12,7 +12,7 @@ const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const requestOptions = { timeout: 10_000 };
 
 describe("MCP stdio server", () => {
-  it("lists and executes core SIGIL tools end to end", async () => {
+  it("lists and executes core Mr Mainspring tools end to end", async () => {
     const dataDir = await mkdtemp(join(tmpdir(), "sigil-mcp-stdio-"));
     const stderrChunks: Buffer[] = [];
     const transport = new StdioClientTransport({
@@ -45,9 +45,15 @@ describe("MCP stdio server", () => {
       expect(toolNames).toEqual(
         expect.arrayContaining([
           "memory.write",
+          "memory.read",
+          "memory.search",
           "memory.verify",
+          "grimoire.secret.put",
+          "grimoire.secret.list",
           "grimoire.policy.set",
+          "grimoire.policy.get",
           "payment.fetch",
+          "payment.receipt",
           "audit.tail"
         ])
       );
@@ -72,6 +78,30 @@ describe("MCP stdio server", () => {
       expect(writeResult.content_hash).toMatch(/^[a-f0-9]{64}$/);
       expect(writeResult.anchor_status).toBe("pending");
 
+      const readResult = await callJsonTool<{
+        found: boolean;
+        memory: { memory_id: string; body: { note: string } };
+      }>(client, "memory.read", {
+        agent_id: agentId,
+        memory_id: writeResult.memory_id
+      });
+
+      expect(readResult.found).toBe(true);
+      expect(readResult.memory.memory_id).toBe(writeResult.memory_id);
+      expect(readResult.memory.body.note).toBe("MCP stdio smoke test");
+
+      const searchResult = await callJsonTool<{
+        count: number;
+        results: Array<{ memory_id: string }>;
+      }>(client, "memory.search", {
+        agent_id: agentId,
+        query: "stdio smoke",
+        limit: 5
+      });
+
+      expect(searchResult.count).toBe(1);
+      expect(searchResult.results[0]?.memory_id).toBe(writeResult.memory_id);
+
       const verifyResult = await callJsonTool<{
         valid: boolean;
         memory_id: string;
@@ -84,6 +114,33 @@ describe("MCP stdio server", () => {
       expect(verifyResult.valid).toBe(true);
       expect(verifyResult.memory_id).toBe(writeResult.memory_id);
       expect(verifyResult.anchor_status).toBe("pending");
+
+      const secretValue = "mcp-stdio-secret-value";
+      const secretPutResult = await callJsonTool<{
+        status: string;
+        secret: { name: string; scopes: string[] };
+      }>(client, "grimoire.secret.put", {
+        agent_id: agentId,
+        name: "demo_x402_key",
+        type: "x402_client_key_ref",
+        value: secretValue,
+        scopes: ["x402:sign"]
+      });
+
+      expect(secretPutResult.status).toBe("stored");
+      expect(secretPutResult.secret.name).toBe("demo_x402_key");
+      expect(JSON.stringify(secretPutResult)).not.toContain(secretValue);
+
+      const secretListResult = await callJsonTool<{
+        count: number;
+        secrets: Array<{ name: string; scopes: string[] }>;
+      }>(client, "grimoire.secret.list", {
+        agent_id: agentId
+      });
+
+      expect(secretListResult.count).toBe(1);
+      expect(secretListResult.secrets[0]?.name).toBe("demo_x402_key");
+      expect(JSON.stringify(secretListResult)).not.toContain(secretValue);
 
       const policyResult = await callJsonTool<{
         status: string;
@@ -111,6 +168,18 @@ describe("MCP stdio server", () => {
       expect(policyResult.policy.allowed_methods).toEqual(["GET"]);
       expect(policyResult.policy.policy_hash).toMatch(/^[a-f0-9]{64}$/);
 
+      const policyGetResult = await callJsonTool<{
+        found: boolean;
+        policy: { policy_id: string; current_period_spend: string };
+      }>(client, "grimoire.policy.get", {
+        agent_id: agentId,
+        policy_id: policyId
+      });
+
+      expect(policyGetResult.found).toBe(true);
+      expect(policyGetResult.policy.policy_id).toBe(policyId);
+      expect(policyGetResult.policy.current_period_spend).toBe("0");
+
       const paymentResult = await callJsonTool<{
         allowed: boolean;
         payment_id: string;
@@ -134,6 +203,21 @@ describe("MCP stdio server", () => {
       expect(paymentResult.method).toBe("GET");
       expect(paymentResult.persisted).toBe(true);
 
+      const receiptResult = await callJsonTool<{
+        found: boolean;
+        payment_id: string;
+        intent: { status: string; signed_payload_hash: string | null };
+        receipt: unknown;
+      }>(client, "payment.receipt", {
+        payment_id: paymentResult.payment_id
+      });
+
+      expect(receiptResult.found).toBe(true);
+      expect(receiptResult.payment_id).toBe(paymentResult.payment_id);
+      expect(receiptResult.intent.status).toBe("policy_checked");
+      expect(receiptResult.intent.signed_payload_hash).toBeNull();
+      expect(receiptResult.receipt).toBeNull();
+
       const auditResult = await callJsonTool<{
         count: number;
         events: Array<{ event_type: string; agent_id: string | null }>;
@@ -148,6 +232,8 @@ describe("MCP stdio server", () => {
         expect.arrayContaining([
           "memory.created",
           "memory.verify_succeeded",
+          "secret.stored",
+          "secret.listed",
           "policy.set",
           "policy.get",
           "payment.policy_approved"

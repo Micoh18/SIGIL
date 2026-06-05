@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "demo:stdio": "npm run build && tsx scripts/demo-stdio.ts",
     "dev": "tsx src/index.ts",
     "mcp:stdio": "node dist/index.js",
     "test": "vitest run"

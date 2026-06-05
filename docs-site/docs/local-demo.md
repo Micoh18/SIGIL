@@ -1,6 +1,6 @@
 ---
 title: Local Demo
-description: Suggested local MCP demo sequence for memory, Grimoire, x402 pre-settlement, and audit.
+description: Scripted local MCP stdio demo for memory, Grimoire, x402 pre-settlement, receipts, and audit.
 section: Start
 status: current
 last_verified: 2026-06-05
@@ -8,144 +8,57 @@ last_verified: 2026-06-05
 
 # Local Demo
 
-This demo mirrors `docs/demo-runbook.md` and updates the current x402 state names used by the backend service.
-
-## 1. Verify Backend
+Use the scripted evaluator path when you want the backend to feel presentable without claiming unfinished settlement work.
 
 ```bash
 cd backend
-npm install
-npm test
-npm run build
+npm run demo:stdio
 ```
 
-## 2. Start MCP Backend
+The command builds the backend, starts `dist/index.js` through MCP stdio, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to `.sigil/`.
 
-```bash
-cd backend
-npm run mcp:stdio
+NPM prints normal script headers first. The stable transcript begins with:
+
+```text
+Mr Mainspring evaluator stdio demo
+data_dir=<os-temp>/mr-mainspring-evaluator-stdio-demo
+server=node dist/index.js
+scope=local-only casper_transaction_hash=null x402_settlement=not_started
+PASS tools/list: 11 required tools available
+PASS memory.write: memory_id=mem_evaluator_stdio_demo anchor_status=pending content_hash=<64-hex>
+PASS memory.read: found=true memory_id=mem_evaluator_stdio_demo
+PASS memory.search: query="Evaluator demo memory" count=1
+PASS memory.verify: valid=true anchor_status=pending casper_transaction_hash=null onchain_content_hash=null
+PASS grimoire.secret.put: status=stored name=demo_x402_key value=<not returned>
+PASS grimoire.secret.list: count=1 value=<not returned>
+PASS grimoire.policy.set: status=stored policy_id=pol_evaluator_weather allowed_methods=GET policy_hash=<64-hex>
+PASS grimoire.policy.get: found=true current_period_spend=0
+PASS payment.fetch: allowed=true status=policy_checked next_state=challenge_received settlement=not_started payment_id=<pay_...>
+PASS payment.receipt: found=true intent_status=policy_checked signed_payload_hash=null receipt=null
+PASS audit.tail: count=8 events=memory.created,memory.verify_succeeded,payment.policy_approved,policy.get,policy.set,secret.listed,secret.stored
+RESULT PASS
 ```
 
-For live TypeScript development:
+## Tool Coverage
 
-```bash
-cd backend
-npm run dev
+The runner exercises the real MCP stdio transport and calls:
+
+```text
+memory.write
+memory.read
+memory.search
+memory.verify
+grimoire.secret.put
+grimoire.secret.list
+grimoire.policy.set
+grimoire.policy.get
+payment.fetch
+payment.receipt
+audit.tail
 ```
 
-## 3. Store a Secret
+## Honest Limits
 
-Tool: `grimoire.secret.put`
+`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because the current Casper anchor path is local pending metadata, not a real deploy.
 
-```json
-{
-  "agent_id": "agent-demo-1",
-  "name": "demo_x402_key",
-  "type": "x402_client_key_ref",
-  "value": "local-demo-secret-value",
-  "scopes": ["x402:sign"]
-}
-```
-
-Expected: `status: stored` plus secret metadata only.
-
-## 4. Set a Policy
-
-Tool: `grimoire.policy.set`
-
-```json
-{
-  "agent_id": "agent-demo-1",
-  "policy_id": "pol_demo_weather",
-  "enabled": true,
-  "allowed_urls": ["http://localhost:4021/weather"],
-  "allowed_methods": ["GET"],
-  "allowed_asset": {
-    "caip2_chain_id": "casper:casper-test",
-    "asset_package": "demo-asset-package"
-  },
-  "max_amount_per_call": "0.05",
-  "max_amount_per_period": "1.00",
-  "period_seconds": 86400,
-  "secret_scopes": ["x402:sign"]
-}
-```
-
-Expected: deterministic `policy_hash`.
-
-## 5. Create a Payment Intent
-
-Tool: `payment.fetch`
-
-```json
-{
-  "agent_id": "agent-demo-1",
-  "policy_id": "pol_demo_weather",
-  "method": "GET",
-  "url": "http://localhost:4021/weather",
-  "expected_amount": "0.01",
-  "idempotency_key": "demo-weather-001"
-}
-```
-
-Expected:
-
-```json
-{
-  "allowed": true,
-  "status": "policy_checked",
-  "next_state": "challenge_received",
-  "settlement": "not_started"
-}
-```
-
-To capture a real first HTTP challenge from a running resource server, add:
-
-```json
-{
-  "request_challenge": true
-}
-```
-
-## 6. Write and Verify Memory
-
-Tool: `memory.write`
-
-```json
-{
-  "agent_id": "agent-demo-1",
-  "type": "observation",
-  "source": {
-    "kind": "x402_http",
-    "url": "http://localhost:4021/weather"
-  },
-  "body": {
-    "summary": "Weather data purchase preflight completed. Real settlement pending x402 facilitator verification."
-  },
-  "anchor": true
-}
-```
-
-Expected current anchor state:
-
-```json
-{
-  "anchor_status": "pending",
-  "casper_transaction_hash": null
-}
-```
-
-Then call `memory.verify` with the returned `memory_id`.
-
-## 7. Tail Audit
-
-Tool: `audit.tail`
-
-```json
-{
-  "agent_id": "agent-demo-1",
-  "limit": 20
-}
-```
-
-Expected events include `secret.stored`, `policy.set`, `policy.get`, `payment.policy_approved`, `memory.created`, and `memory.verify_succeeded`.
+For the full manual command sequence, use `docs/demo-runbook.md` in the repository root.
