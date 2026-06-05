@@ -2,7 +2,16 @@
 
 This directory holds the Casper Rust/Wasm contract source for `memory_anchor`.
 
-Current state: **hash-only contract source, locally built, not deployed**. The local runner built the Wasm artifact with stable Rust and the `wasm32-unknown-unknown` target. Real testnet deployment is still blocked until `casper-client` is installed and a funded Casper testnet account is available.
+Current state: **hash-only contract source, built and deployed on Casper testnet**. The local runner built the Wasm artifact with stable Rust and the `wasm32-unknown-unknown` target using repo Cargo flags that disable unsupported bulk-memory operations.
+
+Verified testnet deployment:
+
+```text
+deploy_transaction=3b8f624ef1d5960a8cf724811c0c68c51dff8809fa1128f69a2c7077afdcbc09
+contract_hash=hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df
+package_hash=hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c
+backend_smoke_anchor_transaction=91fb904e47b600b0a9e4f6571a3412c83187000e9ceab19ba26cc23fabec555c
+```
 
 Entry points:
 
@@ -57,6 +66,11 @@ CASPER_NETWORK_NAME="casper-test"
 MEMORY_ANCHOR_CONTRACT_HASH="hash-<64 hex chars>"
 MEMORY_ANCHOR_PACKAGE_HASH="hash-<64 hex chars>"
 CASPER_ACCOUNT_KEY_PATH="./keys/backend.pem"
+CASPER_ENABLE_REAL_SUBMISSION="true"
+CASPER_CLIENT_BIN="casper-client"
+CASPER_GAS_PRICE_TOLERANCE="10"
+CASPER_PRICING_MODE="classic"
+CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES="3000000000"
 ```
 
 Install and verify on testnet only after the build succeeds:
@@ -67,10 +81,12 @@ casper-client put-transaction session \
   --chain-name "$CASPER_NETWORK_NAME" \
   --secret-key "$CASPER_ACCOUNT_KEY_PATH" \
   --gas-price-tolerance 10 \
-  --pricing-mode fixed \
-  --transaction-path contracts/memory-anchor/target/wasm32-unknown-unknown/release/sigil_memory_anchor.wasm \
+  --pricing-mode classic \
+  --payment-amount 100000000000 \
+  --standard-payment true \
+  --wasm-path contracts/memory-anchor/target/wasm32-unknown-unknown/release/sigil_memory_anchor.wasm \
   --session-entry-point call \
-  --category "install-upgrade"
+  --install-upgrade
 
 casper-client get-transaction --node-address "$CASPER_RPC_URL" "<TRANSACTION_HASH>"
 ```

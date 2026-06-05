@@ -11,6 +11,7 @@ import { MemoryService } from "./memory/service.js";
 import { PaymentService } from "./payments/service.js";
 import { createBackendStores } from "./storage/store-factory.js";
 import { X402ChallengeClient } from "./x402/client.js";
+import { DisabledX402SettlementProvider } from "./x402/settlement.js";
 
 export function createSigilServer(config: SigilConfig): McpServer {
   const server = new McpServer({
@@ -38,7 +39,12 @@ export function createSigilServer(config: SigilConfig): McpServer {
     new X402ChallengeClient({
       facilitatorUrl: config.x402.facilitatorUrl,
       resourceUrl: config.x402.resourceDemoUrl
-    })
+    }),
+    new DisabledX402SettlementProvider(
+      config.x402.settlementEnabled
+        ? "x402_signing_provider_not_configured"
+        : "x402_settlement_disabled"
+    )
   );
 
   registerMemoryTools(server, memoryService);

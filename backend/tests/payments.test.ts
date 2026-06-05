@@ -7,6 +7,10 @@ import { FileGrimoireStore } from "../src/grimoire/store.js";
 import { PaymentService } from "../src/payments/service.js";
 import { FilePaymentStore } from "../src/payments/store.js";
 import { X402ChallengeClient } from "../src/x402/client.js";
+import {
+  DisabledX402SettlementProvider,
+  type X402SettlementProvider
+} from "../src/x402/settlement.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -119,14 +123,16 @@ describe("PaymentService", () => {
     const receipt = await service.receipt(result.payment_id);
     const rawStore = await readFile(join(dataDir, "payments.json"), "utf8");
 
-    expect(result.status).toBe("challenge_received");
-    expect(result.settlement).toBe("not_started");
-    expect(result.settlement_blocker).toBe("signed_payload_not_implemented");
+    expect(result.status).toBe("settlement_unavailable");
+    expect(result.settlement).toBe("unavailable");
+    expect(result.settlement_blocker).toBe("x402_settlement_disabled");
     expect(result.requirements).toMatchObject({ x402Version: 1 });
     expect(result.challenge?.status).toBe("payment_required");
     expect(result.challenge?.requirements_source).toBe("json-body");
-    expect(receipt.intent?.status).toBe("challenge_received");
+    expect(receipt.intent?.status).toBe("settlement_unavailable");
     expect(receipt.intent?.requirements_json).toContain("x402Version");
+    expect(receipt.receipt?.settlement_status).toBe("settlement_unavailable");
+    expect(receipt.receipt?.receipt_json).toContain("x402_settlement_disabled");
     expect(rawStore).toContain("\"requirements_json\"");
     expect(rawStore).toContain("asset-package-hash");
   });
@@ -172,10 +178,10 @@ describe("PaymentService", () => {
     const receipt = await restartedService.receipt(result.payment_id);
 
     expect(receipt.found).toBe(true);
-    expect(receipt.intent?.status).toBe("challenge_received");
+    expect(receipt.intent?.status).toBe("settlement_unavailable");
     expect(receipt.intent?.requirements_json).toContain("asset-package-hash");
     expect(receipt.intent?.signed_payload_hash).toBeNull();
-    expect(receipt.receipt).toBeNull();
+    expect(receipt.receipt?.settlement_status).toBe("settlement_unavailable");
   });
 
   it("rejects unexpected payment requirements before any signed payload exists", async () => {
@@ -328,9 +334,72 @@ describe("PaymentService", () => {
 
     expect(first.payment_id).toBe(second.payment_id);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(first.allowed && first.status).toBe("challenge_received");
-    expect(second.allowed && second.status).toBe("challenge_received");
+    expect(first.allowed && first.status).toBe("settlement_unavailable");
+    expect(second.allowed && second.status).toBe("settlement_unavailable");
     expect(second.allowed && second.requirements_json).toContain("x402Version");
+  });
+
+  it("persists a settled receipt only when a settlement provider returns verified settlement", async () => {
+    const requirements = {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper-test",
+          maxAmountRequired: "0.01",
+          resource: "http://localhost:4021/weather",
+          asset: "asset-package-hash",
+          payTo: "casper-payee"
+        }
+      ]
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify(requirements), {
+          status: 402,
+          headers: { "content-type": "application/json" }
+        })
+      )
+    );
+    const { service } = await createService({
+      withChallengeClient: true,
+      settlementProvider: {
+        async settle() {
+          return {
+            status: "settled",
+            signed_payload_hash: "b".repeat(64),
+            response_status: 200,
+            casper_transaction_hash: "c".repeat(64),
+            receipt_json: JSON.stringify({
+              success: true,
+              transactionHash: "c".repeat(64)
+            })
+          };
+        }
+      }
+    });
+
+    const result = await service.fetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-demo",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expected_amount: "0.01",
+      request_challenge: true
+    });
+    if (!result.allowed) {
+      throw new Error("Expected payment fetch to be policy-approved");
+    }
+    const receipt = await service.receipt(result.payment_id);
+
+    expect(result.status).toBe("settled");
+    expect(result.settlement).toBe("settled");
+    expect(result.settlement_blocker).toBeUndefined();
+    expect(receipt.intent?.signed_payload_hash).toBe("b".repeat(64));
+    expect(receipt.receipt?.settlement_status).toBe("settled");
+    expect(receipt.receipt?.casper_transaction_hash).toBe("c".repeat(64));
+    expect(receipt.receipt?.receipt_json).toContain("transactionHash");
   });
 
   it("returns a durable payment receipt view even before settlement exists", async () => {
@@ -352,7 +421,7 @@ describe("PaymentService", () => {
 });
 
 async function createService(
-  options: { withChallengeClient?: boolean } = {}
+  options: { withChallengeClient?: boolean; settlementProvider?: X402SettlementProvider } = {}
 ): Promise<{ service: PaymentService; dataDir: string }> {
   const dataDir = await mkdtemp(join(tmpdir(), "sigil-payments-"));
   const grimoire = new GrimoireService(new FileGrimoireStore(dataDir), Buffer.alloc(32, 1));
@@ -379,7 +448,8 @@ async function createService(
             facilitatorUrl: "http://localhost:4022",
             resourceUrl: "http://localhost:4021/weather"
           })
-        : undefined
+        : undefined,
+      options.settlementProvider ?? new DisabledX402SettlementProvider()
     ),
     dataDir
   };

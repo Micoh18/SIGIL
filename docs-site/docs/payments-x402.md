@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Payments and x402
 
-The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, and validates captured payment requirements before the future signing boundary. It does not claim signed payload creation, facilitator settlement, or Casper settlement.
+The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, validates captured payment requirements, and then enters an explicit settlement-provider boundary. By default that provider is disabled, so the backend persists an unavailable receipt instead of claiming signed payload creation, facilitator settlement, or Casper settlement.
 
 ## Flow States
 
@@ -21,7 +21,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for a future path that genuinely verifies settlement. The current implementation does not set settled.
+`settled` is reserved for a provider result that genuinely verifies settlement. The current production wiring does not enable real settlement because no Casper-compatible signing provider/facilitator has been verified in this repo.
 
 ## Official x402 Boundary
 
@@ -38,13 +38,14 @@ resource server settles locally or through facilitator /settle
 resource server returns PAYMENT-RESPONSE settlement details
 ```
 
-Mr Mainspring currently implements only the safe pre-signing portion:
+Mr Mainspring currently implements the safe pre-signing portion and a disabled settlement boundary:
 
 ```text
 challenge capture
 Grimoire policy approval
 captured requirement approval against policy
-signing/payment boundary stops here
+settlement provider boundary
+default disabled receipt
 ```
 
 The exact backend boundary is:
@@ -54,10 +55,10 @@ The exact backend boundary is:
 | Challenge capture | Implemented. The first HTTP request can capture `PAYMENT-REQUIRED`, `X-PAYMENT-REQUIRED`, JSON body requirements, or a raw body fallback. |
 | Policy approval | Implemented before any challenge request. URL, method, and expected amount are checked against the Grimoire policy. |
 | Requirement approval | Implemented after challenge capture and before any future signing. The selected requirement must match amount, resource URL, optional method, network, configured asset, configured payee, and configured scheme. |
-| Payment payload signing | Not implemented. No private key is read and no `PAYMENT-SIGNATURE` payload is created. |
-| Facilitator `/verify` | Not implemented. Verification response parsing is not enough to mark settlement. |
-| Facilitator `/settle` | Not implemented. Settlement can only be claimed after a successful settlement response with a transaction hash is verified. |
-| Receipt persistence | Store shape exists, but real x402 receipts are not written because `/settle` is not called. |
+| Payment payload signing | Interface exists, but production wiring is disabled. No private key is read and no `PAYMENT-SIGNATURE` payload is created by default. |
+| Facilitator `/verify` | Provider boundary exists and must pass before `/settle`; verify output alone never marks settlement. |
+| Facilitator `/settle` | Provider boundary verifies a successful settlement response with a transaction hash before returning `settled`, but no real Casper-compatible facilitator has been verified yet. |
+| Receipt persistence | Implemented for unavailable, failed, and settled provider outcomes. The default receipt is `settlement_unavailable`. |
 
 ## `payment.fetch`
 
@@ -105,9 +106,9 @@ If the resource returns HTTP 402, Mr Mainspring captures `PaymentRequirements` f
 ```json
 {
   "allowed": true,
-  "status": "challenge_received",
-  "settlement": "not_started",
-  "settlement_blocker": "signed_payload_not_implemented",
+  "status": "settlement_unavailable",
+  "settlement": "unavailable",
+  "settlement_blocker": "x402_settlement_disabled",
   "challenge": {
     "status": "payment_required",
     "status_code": 402,
@@ -160,11 +161,10 @@ When `idempotency_key` is present, Mr Mainspring returns the same persisted inte
 ## What Is Not Implemented
 
 - Grimoire-backed signing capability retrieval.
-- Signed x402 payment payload creation.
+- Production signed x402 payment payload creation.
 - Retrying the resource request with payment authorization.
-- Facilitator `/verify` calls.
-- Facilitator `/settle` calls.
-- Casper transaction hash recording for x402 settlement.
+- A verified real facilitator `/verify` and `/settle` run for Casper.
+- Casper transaction hash recording for real x402 settlement.
 
 ## Manual Credentials and Resources Needed for Real x402
 

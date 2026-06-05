@@ -46,7 +46,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for genuinely verified settlement. The current backend does not create settled receipts.
+`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable` receipts instead of settled receipts.
 
 ## Audit Tools
 

@@ -1,9 +1,14 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { AuditService } from "../audit/service.js";
 import type { GrimoireService } from "../grimoire/service.js";
+import type { JsonObject } from "../memory/types.js";
 import type { X402ChallengeRequest, X402ChallengeResult } from "../x402/client.js";
 import { approveX402Requirements } from "../x402/readiness.js";
 import { redactX402Value } from "../x402/redaction.js";
+import type {
+  X402SettlementOutcome,
+  X402SettlementProvider
+} from "../x402/settlement.js";
 import type {
   PaymentChallengeSummary,
   PaymentDenialReason,
@@ -29,7 +34,8 @@ export class PaymentService {
     private readonly grimoireService: GrimoireService,
     private readonly store: PaymentStore,
     private readonly audit?: AuditService,
-    private readonly challengeClient?: X402ChallengeRequester
+    private readonly challengeClient?: X402ChallengeRequester,
+    private readonly settlementProvider?: X402SettlementProvider
   ) {}
 
   async preflightFetch(input: PaymentFetchInput): Promise<PaymentFetchResult> {
@@ -233,7 +239,12 @@ export class PaymentService {
           );
         }
 
-        return this.resultFromIntent(updated, safeChallenge);
+        return this.settleApprovedRequirement(
+          updated,
+          safeChallenge,
+          approval.selected_requirement,
+          approval.selected_requirement_hash
+        );
       }
 
       if (challenge.status === "free_response") {
@@ -328,6 +339,129 @@ export class PaymentService {
       });
     }
     return updated;
+  }
+
+  private async settleApprovedRequirement(
+    intent: PaymentIntentRecord,
+    challenge: Extract<X402ChallengeResult, { status: "payment_required" }>,
+    selectedRequirement: JsonObject,
+    selectedRequirementHash: string
+  ): Promise<PaymentFetchResult> {
+    if (!this.settlementProvider) {
+      const unavailable = await this.markSettlementUnavailable(
+        intent,
+        "x402_settlement_provider_unavailable"
+      );
+      await this.persistSettlementReceipt(
+        unavailable,
+        {
+          status: "unavailable",
+          blocker: "x402_settlement_provider_unavailable",
+          signed_payload_hash: null,
+          response_status: null,
+          casper_transaction_hash: null,
+          receipt_json: JSON.stringify({
+            status: "settlement_unavailable",
+            blocker: "x402_settlement_provider_unavailable",
+            payment_id: unavailable.id,
+            selected_requirement_hash: selectedRequirementHash
+          })
+        },
+        challenge.facilitator_url
+      );
+      return this.resultFromIntent(
+        unavailable,
+        challenge,
+        "x402_settlement_provider_unavailable"
+      );
+    }
+
+    const settlement = await this.settlementProvider.settle({
+      payment_id: intent.id,
+      facilitator_url: challenge.facilitator_url,
+      method: intent.method,
+      url: intent.url,
+      selected_requirement: selectedRequirement,
+      selected_requirement_hash: selectedRequirementHash,
+      policy_hash: intent.policy_hash ?? ""
+    });
+
+    if (settlement.status === "settled") {
+      const settledIntent = {
+        ...intent,
+        status: "settled" as const,
+        signed_payload_hash: settlement.signed_payload_hash,
+        settlement_blocker: null,
+        updated_at: new Date().toISOString()
+      };
+      await this.store.saveIntent(settledIntent);
+      await this.persistSettlementReceipt(settledIntent, settlement, challenge.facilitator_url);
+      await this.audit?.record({
+        agent_id: settledIntent.agent_id,
+        event_type: "payment.settled",
+        subject_type: "payment",
+        subject_id: settledIntent.id,
+        metadata: {
+          policy_id: settledIntent.policy_id,
+          method: settledIntent.method,
+          url: settledIntent.url,
+          selected_requirement_hash: selectedRequirementHash,
+          signed_payload_hash: settlement.signed_payload_hash,
+          casper_transaction_hash: settlement.casper_transaction_hash
+        }
+      });
+      return this.resultFromIntent(settledIntent, challenge);
+    }
+
+    const unavailable = {
+      ...intent,
+      status: "settlement_unavailable" as const,
+      signed_payload_hash: settlement.signed_payload_hash,
+      settlement_blocker: settlement.blocker,
+      updated_at: new Date().toISOString()
+    };
+    await this.store.saveIntent(unavailable);
+    await this.persistSettlementReceipt(unavailable, settlement, challenge.facilitator_url);
+    await this.audit?.record({
+      agent_id: unavailable.agent_id,
+      event_type: "payment.settlement_unavailable",
+      subject_type: "payment",
+      subject_id: unavailable.id,
+      severity: settlement.status === "failed" ? "error" : "warn",
+      metadata: {
+        policy_id: unavailable.policy_id,
+        method: unavailable.method,
+        url: unavailable.url,
+        selected_requirement_hash: selectedRequirementHash,
+        signed_payload_hash: settlement.signed_payload_hash,
+        reason: settlement.blocker
+      }
+    });
+
+    return this.resultFromIntent(unavailable, challenge, settlement.blocker);
+  }
+
+  private async persistSettlementReceipt(
+    intent: PaymentIntentRecord,
+    settlement: X402SettlementOutcome,
+    facilitatorUrl: string | null
+  ): Promise<void> {
+    await this.store.saveReceipt({
+      id: createPaymentReceiptId(),
+      payment_id: intent.id,
+      facilitator_url: facilitatorUrl ?? "unconfigured",
+      casper_transaction_hash: settlement.casper_transaction_hash,
+      settlement_status:
+        settlement.status === "settled"
+          ? "settled"
+          : settlement.status === "failed"
+            ? "failed"
+            : "settlement_unavailable",
+      response_hash: settlement.receipt_json ? hashReceipt(settlement.receipt_json) : null,
+      response_status: settlement.response_status,
+      receipt_json: settlement.receipt_json,
+      created_at: new Date().toISOString()
+    });
   }
 
   private resultFromIntent(
@@ -471,7 +605,7 @@ function settlementBlockerFor(
   }
 
   if (intent.status === "challenge_received") {
-    return "signed_payload_not_implemented";
+    return "x402_settlement_provider_unavailable";
   }
 
   if (intent.status === "settlement_unavailable") {
@@ -528,6 +662,14 @@ function validatePolicy(
 
 function createPaymentId(): string {
   return `pay_${randomUUID().replaceAll("-", "")}`;
+}
+
+function createPaymentReceiptId(): string {
+  return `receipt_${randomUUID().replaceAll("-", "")}`;
+}
+
+function hashReceipt(receiptJson: string): string {
+  return createHash("sha256").update(receiptJson).digest("hex");
 }
 
 function compareDecimal(leftParts: DecimalAmount, rightParts: DecimalAmount): number {

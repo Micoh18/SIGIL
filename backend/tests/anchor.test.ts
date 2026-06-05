@@ -3,10 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildCasperAnchorCommand,
   ConfiguredCasperAnchorClient,
+  type CasperCommandRunner,
   computeAnchorId,
   createAnchorSubmission,
   createCasperAnchorClient,
+  extractCasperTransactionHash,
   MockCasperAnchorClient,
   REAL_CASPER_ANCHOR_ENV_VARS
 } from "../src/casper/anchorClient.js";
@@ -62,14 +65,34 @@ describe("Casper anchor foundation", () => {
       metadata_hash: "b".repeat(64),
       prev_anchor_hash: null
     });
+    const transactionHash = "d".repeat(64);
+    const calls: { command: string; args: readonly string[] }[] = [];
+    const runner: CasperCommandRunner = async (command, args) => {
+      calls.push({ command, args });
+
+      return {
+        exitCode: 0,
+        stdout: JSON.stringify({
+          jsonrpc: "2.0",
+          result: {
+            transaction_hash: {
+              Version1: transactionHash
+            }
+          }
+        }),
+        stderr: ""
+      };
+    };
     const unconfigured = createCasperAnchorClient(loadConfig({}).casper);
     const configured = createCasperAnchorClient(
       loadConfig({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
-        MEMORY_ANCHOR_PACKAGE_HASH: `hash-${"2".repeat(64)}`,
+        MEMORY_ANCHOR_PACKAGE_HASH: `package-${"2".repeat(64)}`,
         CASPER_RPC_URL: "https://node.test/rpc",
-        CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem"
-      }).casper
+        CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem",
+        CASPER_ENABLE_REAL_SUBMISSION: "true"
+      }).casper,
+      { commandRunner: runner }
     );
 
     const unconfiguredResult = await unconfigured.anchorMemory(submission);
@@ -83,8 +106,242 @@ describe("Casper anchor foundation", () => {
     expect(configured).toBeInstanceOf(ConfiguredCasperAnchorClient);
     expect(configured).not.toBeInstanceOf(MockCasperAnchorClient);
     expect(configuredResult.status).toBe("pending");
-    expect(configuredResult.reason).toBe("casper_transaction_submission_not_implemented");
-    expect(configuredResult.casper_transaction_hash).toBeNull();
+    expect(configuredResult.reason).toBeUndefined();
+    expect(configuredResult.casper_transaction_hash).toBe(transactionHash);
+    expect(configuredResult.onchain_content_hash).toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.command).toBe("casper-client");
+    expect(calls[0]?.args).toEqual(
+      expect.arrayContaining([
+        "put-transaction",
+        "package",
+        "--node-address",
+        "https://node.test/rpc",
+        "--chain-name",
+        "casper-test",
+        "--contract-package-hash",
+        `hash-${"2".repeat(64)}`,
+        "--session-entry-point",
+        "anchor_memory",
+        "--payment-amount",
+        "3000000000",
+        "--standard-payment",
+        "true",
+        "--secret-key",
+        "./keys/backend.pem",
+        "--session-args-json"
+      ])
+    );
+    expect(
+      JSON.parse(
+        String(calls[0]?.args[Number(calls[0]?.args.indexOf("--session-args-json")) + 1])
+      )
+    ).toContainEqual({ name: "prev_anchor_hash", type: "String", value: "" });
+  });
+
+  it("keeps configured Casper submission disabled until explicitly enabled", async () => {
+    const submission = createAnchorSubmission({
+      agent_id: "agent-demo-1",
+      memory_id: "mem_demo_1",
+      content_hash: "a".repeat(64),
+      metadata_hash: "b".repeat(64),
+      prev_anchor_hash: null
+    });
+    const calls: { command: string; args: readonly string[] }[] = [];
+    const client = createCasperAnchorClient(
+      loadConfig({
+        MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
+        MEMORY_ANCHOR_PACKAGE_HASH: `package-${"2".repeat(64)}`,
+        CASPER_RPC_URL: "https://node.test/rpc",
+        CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem"
+      }).casper,
+      {
+        commandRunner: async (command, args) => {
+          calls.push({ command, args });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        }
+      }
+    );
+
+    await expect(client.anchorMemory(submission)).resolves.toMatchObject({
+      status: "pending",
+      casper_transaction_hash: null,
+      reason: "casper_transaction_submission_disabled"
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("builds a hash-only Casper package transaction command", () => {
+    const submission = createAnchorSubmission({
+      agent_id: "agent-demo-1",
+      memory_id: "mem_demo_1",
+      content_hash: "a".repeat(64),
+      metadata_hash: "b".repeat(64),
+      prev_anchor_hash: "c".repeat(64)
+    });
+    const invocation = buildCasperAnchorCommand(
+      {
+        networkName: "casper-test",
+        caip2ChainId: "casper:casper-test",
+        rpcUrl: "https://node.test/rpc",
+        accountKeyPath: "./keys/backend.pem",
+        memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
+        memoryAnchorPackageHash: `hash-${"2".repeat(64)}`,
+        submissionEnabled: true,
+        clientBin: "casper-client",
+        clientWslDistro: null,
+        anchorSubmissionMode: "transaction-package",
+        gasPriceTolerance: "10",
+        pricingMode: "classic",
+        anchorPaymentAmountMotes: "3000000000"
+      },
+      submission
+    );
+    const argsJson = JSON.stringify(invocation.args);
+
+    expect(invocation.command).toBe("casper-client");
+    expect(invocation.args).toEqual(
+      expect.arrayContaining([
+        "put-transaction",
+        "package",
+        "--contract-package-hash",
+        `hash-${"2".repeat(64)}`,
+        "--payment-amount",
+        "3000000000",
+        "--standard-payment",
+        "true",
+        "--session-args-json"
+      ])
+    );
+    const sessionArgsJson = String(
+      invocation.args[Number(invocation.args.indexOf("--session-args-json")) + 1]
+    );
+    expect(JSON.parse(sessionArgsJson)).toEqual([
+      { name: "anchor_id", type: "String", value: submission.anchor_id },
+      { name: "agent_id_hash", type: "String", value: submission.agent_id_hash },
+      { name: "memory_id_hash", type: "String", value: submission.memory_id_hash },
+      { name: "content_hash", type: "String", value: submission.content_hash },
+      { name: "metadata_hash", type: "String", value: submission.metadata_hash },
+      { name: "prev_anchor_hash", type: "String", value: submission.prev_anchor_hash }
+    ]);
+    expect(argsJson).not.toContain("agent-demo-1");
+    expect(argsJson).not.toContain("mem_demo_1");
+  });
+
+  it("wraps Casper client invocations through WSL when configured", () => {
+    const submission = createAnchorSubmission({
+      agent_id: "agent-demo-1",
+      memory_id: "mem_demo_1",
+      content_hash: "a".repeat(64),
+      metadata_hash: "b".repeat(64),
+      prev_anchor_hash: null
+    });
+    const invocation = buildCasperAnchorCommand(
+      {
+        networkName: "casper-test",
+        caip2ChainId: "casper:casper-test",
+        rpcUrl: "https://node.test/rpc",
+        accountKeyPath: "/mnt/d/project/keys/backend.pem",
+        memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
+        memoryAnchorPackageHash: `package-${"2".repeat(64)}`,
+        submissionEnabled: true,
+        clientBin: "casper-client",
+        clientWslDistro: "Ubuntu",
+        anchorSubmissionMode: "transaction-package",
+        gasPriceTolerance: "10",
+        pricingMode: "classic",
+        anchorPaymentAmountMotes: "3000000000"
+      },
+      submission
+    );
+
+    expect(invocation.command).toBe("wsl");
+    expect(invocation.args.slice(0, 5)).toEqual([
+      "-d",
+      "Ubuntu",
+      "--",
+      "casper-client",
+      "put-transaction"
+    ]);
+    expect(invocation.args).toEqual(
+      expect.arrayContaining(["--secret-key", "/mnt/d/project/keys/backend.pem"])
+    );
+  });
+
+  it("parses Casper client transaction hashes conservatively", () => {
+    expect(
+      extractCasperTransactionHash({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          result: {
+            transaction_hash: {
+              Version1: "ABCDEF".toLowerCase().padEnd(64, "0")
+            }
+          }
+        }),
+        stderr: ""
+      })
+    ).toBe("abcdef".padEnd(64, "0"));
+    expect(
+      extractCasperTransactionHash({
+        exitCode: 0,
+        stdout: `deploy_hash: ${"e".repeat(64)}`,
+        stderr: ""
+      })
+    ).toBe("e".repeat(64));
+    expect(
+      extractCasperTransactionHash({
+        exitCode: 0,
+        stdout: "completed without a labelled hash",
+        stderr: ""
+      })
+    ).toBeNull();
+  });
+
+  it("fails configured Casper submissions without a verified transaction hash", async () => {
+    const submission = createAnchorSubmission({
+      agent_id: "agent-demo-1",
+      memory_id: "mem_demo_1",
+      content_hash: "a".repeat(64),
+      metadata_hash: "b".repeat(64),
+      prev_anchor_hash: null
+    });
+    const baseConfig = {
+      networkName: "casper-test",
+      caip2ChainId: "casper:casper-test",
+      rpcUrl: "https://node.test/rpc",
+      accountKeyPath: "./keys/backend.pem",
+      memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
+      memoryAnchorPackageHash: `hash-${"2".repeat(64)}`,
+      submissionEnabled: true,
+      clientBin: "casper-client",
+      clientWslDistro: null,
+      anchorSubmissionMode: "transaction-package" as const,
+      gasPriceTolerance: "10",
+      pricingMode: "classic",
+      anchorPaymentAmountMotes: "3000000000"
+    };
+    const failedClient = new ConfiguredCasperAnchorClient(baseConfig, async () => ({
+      exitCode: 1,
+      stdout: "",
+      stderr: "network error"
+    }));
+    const missingHashClient = new ConfiguredCasperAnchorClient(baseConfig, async () => ({
+      exitCode: 0,
+      stdout: "{}",
+      stderr: ""
+    }));
+
+    await expect(failedClient.anchorMemory(submission)).resolves.toMatchObject({
+      status: "failed",
+      casper_transaction_hash: null,
+      reason: "casper_transaction_submission_failed"
+    });
+    await expect(missingHashClient.anchorMemory(submission)).resolves.toMatchObject({
+      status: "failed",
+      casper_transaction_hash: null,
+      reason: "casper_transaction_hash_missing"
+    });
   });
 
   it("documents the required environment boundary for real Casper testnet use", () => {
@@ -93,7 +350,8 @@ describe("Casper anchor foundation", () => {
       "CASPER_NETWORK_NAME",
       "MEMORY_ANCHOR_CONTRACT_HASH",
       "MEMORY_ANCHOR_PACKAGE_HASH",
-      "CASPER_ACCOUNT_KEY_PATH"
+      "CASPER_ACCOUNT_KEY_PATH",
+      "CASPER_ENABLE_REAL_SUBMISSION"
     ]);
   });
 

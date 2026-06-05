@@ -23,7 +23,8 @@ A passing backend test run, docs build, and local MCP demo mean:
 
 A passing local demo does not mean:
 
-- A Casper transaction was submitted or verified.
+- A Casper transaction was submitted by the scripted local demo.
+- A submitted Casper transaction was automatically verified for final execution by the backend.
 - x402 payment authorization was signed.
 - A paid request was replayed successfully.
 - Facilitator settlement was verified.
@@ -31,20 +32,22 @@ A passing local demo does not mean:
 
 ## Casper
 
-- The memory-anchor contract under `contracts/memory-anchor/` is hash-only source and builds locally to Wasm, but it has not been deployed or queried on Casper testnet.
-- Contract integration tests are not present yet; only the Wasm build has been verified.
-- Backend anchoring returns pending metadata and null Casper transaction hashes.
-- A configured anchor client still returns `casper_transaction_submission_not_implemented`.
-- Real testnet use requires `CASPER_RPC_URL`, `CASPER_NETWORK_NAME`, `MEMORY_ANCHOR_CONTRACT_HASH`, `MEMORY_ANCHOR_PACKAGE_HASH`, and `CASPER_ACCOUNT_KEY_PATH`.
+- The memory-anchor contract under `contracts/memory-anchor/` is hash-only source, builds locally to Wasm, and has a verified Casper testnet deployment.
+- Contract integration tests are not present yet; Wasm build, testnet deploy, and one backend `anchor_memory` smoke transaction have been verified.
+- Backend anchoring without contract config returns pending metadata and null Casper transaction hashes.
+- A configured anchor client can submit `anchor_memory` with `casper-client put-transaction package` only when `CASPER_ENABLE_REAL_SUBMISSION=true`, and records a transaction hash only when the CLI returns one.
+- Backend anchoring does not yet run `get-transaction`, verify execution success, or query the stored on-chain anchor record.
+- Real testnet use requires `CASPER_RPC_URL`, `CASPER_NETWORK_NAME`, `MEMORY_ANCHOR_CONTRACT_HASH`, `MEMORY_ANCHOR_PACKAGE_HASH`, `CASPER_ACCOUNT_KEY_PATH`, and `CASPER_ENABLE_REAL_SUBMISSION=true`.
 
 ## x402
 
 - The backend can request and persist an HTTP 402 challenge.
 - The backend can hash free or unexpected non-402 responses.
-- The backend can validate captured payment requirements against policy before the future signing boundary.
-- The backend does not create signed x402 payment payloads.
-- The backend does not call facilitator `/verify`.
-- The backend does not call facilitator `/settle`.
+- The backend can validate captured payment requirements against policy before the settlement boundary.
+- The backend has a settlement-provider interface for signing, facilitator `/verify`, facilitator `/settle`, and receipt persistence.
+- The default production wiring keeps settlement disabled and persists an explicit `settlement_unavailable` receipt.
+- The backend does not create production signed x402 payment payloads.
+- The backend does not run a verified real facilitator `/verify` or `/settle` flow for Casper yet.
 - The backend does not replay paid requests with payment authorization.
 - The backend does not verify facilitator settlement.
 - The backend must not claim real Casper x402 settlement until the facilitator is run and verified.
@@ -76,16 +79,17 @@ A passing local demo does not mean:
 To complete the full intended demo, the project still needs:
 
 ```text
-cargo-casper and casper-client
-funded Casper testnet account
-deployed memory_anchor contract/package hashes
+casper-client available to the backend runtime
+funded Casper testnet account for future anchors
+configured deployed memory_anchor contract/package hashes
 deployed CEP-18 x402 token package
 running make-software/casper-x402 facilitator
 external wallet/KMS or encrypted Grimoire reference for the x402 client signing key
 configured facilitator /verify and /settle endpoints for the selected scheme/network
 Grimoire allowlist for resource URL, method, amount, network, asset package, payee, and scheme
 verified payment settlement path
-real Casper transaction hash capture
+real x402 Casper transaction hash capture
+automatic Casper transaction execution verification
 ```
 
 ## Verification Commands
@@ -99,4 +103,4 @@ npm test --prefix backend
 npm run build --prefix backend
 ```
 
-Then run the scripted [Local Demo](/local-demo) with `npm run demo:stdio --prefix backend`, or exercise the same tools through an MCP client. The correct current result is a working local pre-settlement flow, not a settled payment or anchored Casper transaction.
+Then run the scripted [Local Demo](/local-demo) with `npm run demo:stdio --prefix backend`, or exercise the same tools through an MCP client. The correct default result is a working local pre-settlement flow, not a settled payment or anchored Casper transaction. Real Casper transaction submission requires the deployed contract hashes and Casper CLI environment described in [Casper Anchoring](/casper-anchoring).

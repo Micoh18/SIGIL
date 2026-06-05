@@ -8,7 +8,7 @@ layout: home
 hero:
   name: Mr Mainspring
   text: Verifiable memory, Grimoire controls, and x402 preflight for local agents.
-  tagline: Run a TypeScript stdio MCP server that stores canonical memory records, encrypts Grimoire secrets, enforces allowlisted x402 policies, captures first 402 challenges, and keeps Casper anchoring claims at pending metadata until real settlement is verified.
+  tagline: Run a TypeScript stdio MCP server that stores canonical memory records, encrypts Grimoire secrets, enforces allowlisted x402 policies, captures first 402 challenges, and can submit hash-only Casper memory anchors when explicitly enabled.
   actions:
     - theme: brand
       text: Verify Locally
@@ -30,7 +30,7 @@ features:
   - title: Inspect
     details: Read generated /llms.txt, /llms-full.txt, and /api/tool-schemas.json files for machine-readable status and schema context.
   - title: Boundaries
-    details: Real Casper transaction submission, real x402 settlement, remote HTTP MCP transport, and production databases remain explicit limitations.
+    details: Casper transaction submission is real behind an explicit env gate; automatic finality checks, real x402 settlement, remote HTTP MCP transport, and production databases remain explicit limitations.
 ---
 
 ## Evaluator Snapshot
@@ -41,10 +41,10 @@ Mr Mainspring is a TypeScript MCP backend for local agent demos. It is currently
 - Grimoire encrypted secrets and deterministic spending/access policies.
 - x402 payment intent preflight, idempotency, and optional 402 challenge capture.
 - Audit event tailing.
-- Casper anchor metadata through a replaceable client interface.
+- Casper anchor metadata through a replaceable client interface, including a verified testnet submission path when configured.
 
 ::: warning Honest status
-Real Casper settlement, real x402 settlement, and a verified deployed Casper memory-anchor contract are not implemented until they are run and verified. Current anchored writes return local pending metadata unless a real client replaces the placeholder path.
+The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled until a real facilitator flow is verified.
 :::
 
 ## First 10 Minutes

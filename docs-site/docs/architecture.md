@@ -16,10 +16,10 @@ Mr Mainspring is organized around MCP tools backed by small service modules and 
 2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
 3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR` by default. When `SIGIL_STORAGE_BACKEND=supabase`, it writes the same domain records to Supabase JSONB tables through the Supabase REST API.
 4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
-5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, and can capture the first x402 challenge. It stops before Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
+5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and can persist an unavailable settlement receipt when the settlement provider is disabled. It stops before production Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
 6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
 
-For evaluator work, this means a successful demo proves local MCP semantics and durable state transitions. It does not prove external settlement until the missing Casper and x402 paths are implemented and verified.
+For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification and x402 settlement still require separate external checks.
 
 ## System Map
 
@@ -102,7 +102,7 @@ Mr Mainspring separates sensitive content from public proof material:
 | --- | --- |
 | MCP stdio | Implemented and covered by tests. |
 | Supabase persistence | Optional store adapter implemented through REST and covered by mocked tests. |
-| Casper anchor client | Interface implemented. Real transaction submission is not implemented. |
-| Casper memory-anchor contract | Hash-only source exists and builds to Wasm. Testnet deploy/query is not complete. |
+| Casper anchor client | Configured CLI submission boundary implemented behind `CASPER_ENABLE_REAL_SUBMISSION`; execution verification is still manual. |
+| Casper memory-anchor contract | Hash-only source builds to Wasm and is deployed on testnet; backend submission is smoke-tested, while automatic execution/query verification is still manual. |
 | x402 challenge request | Implemented for first HTTP request and 402 requirements capture. |
-| x402 signed settlement | Not implemented until a real facilitator flow is run and verified. |
+| x402 signed settlement | Provider boundary and tests exist, but real signing/settlement remains disabled until a real facilitator flow is run and verified. |

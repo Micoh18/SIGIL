@@ -77,8 +77,14 @@ Important local defaults:
 | `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
 | `CASPER_RPC_URL` | Casper node RPC address required for real anchoring. |
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
+| `CASPER_ENABLE_REAL_SUBMISSION` | Must be `true` before the backend shells out to `casper-client`. Defaults to disabled. |
+| `CASPER_CLIENT_BIN` | CLI executable name/path. Defaults to `casper-client`. |
+| `CASPER_CLIENT_WSL_DISTRO` | Optional Windows helper. Set to `Ubuntu` to run `wsl -d Ubuntu -- casper-client ...` while the backend runs on Windows. |
+| `CASPER_GAS_PRICE_TOLERANCE` | Casper transaction gas price tolerance. Defaults to `10`. |
+| `CASPER_PRICING_MODE` | Casper transaction pricing mode. Defaults to `classic`. |
+| `CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES` | Standard payment amount used for anchor transactions. Defaults to `3000000000`. |
 | `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
-| `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. |
+| `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. Accepts `package-<hex>`, `hash-<hex>`, or raw hex. |
 
 ## Optional Supabase Persistence
 
@@ -148,4 +154,4 @@ Set `request_challenge: true` on `payment.fetch` to make the initial HTTP reques
 
 ## Expected Boundary
 
-A successful quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, real Casper transaction submission, or real x402 settlement.
+A successful default quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, verified Casper execution, or real x402 settlement. Real Casper submission requires the deployed contract hashes, `casper-client`, and the Casper env described in [Casper Anchoring](/casper-anchoring).

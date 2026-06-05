@@ -31,7 +31,7 @@ Last verified: 2026-06-05
 - [Memory](/memory): Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata. Status: implemented.
 - [Grimoire](/grimoire): Encrypted secrets and spending/access policies for Mr Mainspring agents. Status: implemented.
 - [Payments and x402](/payments-x402): Durable payment intents, x402 challenge capture, requirement approval, and honest pre-settlement behavior. Status: pre-settlement.
-- [Casper Anchoring](/casper-anchoring): Current Casper anchor client boundary and memory-anchor contract readiness. Status: pending.
+- [Casper Anchoring](/casper-anchoring): Current Casper anchor client boundary and memory-anchor contract readiness. Status: current.
 - [Audit Trail](/audit-trail): Local audit event shape and current events emitted by Mr Mainspring services. Status: implemented.
 - [Security Model](/security-model): Current Mr Mainspring security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit. Status: current.
 - [Local Demo](/local-demo): Scripted local MCP stdio demo for memory, Grimoire, x402 pre-settlement, receipts, and audit. Status: current.

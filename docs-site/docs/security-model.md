@@ -16,8 +16,8 @@ Mr Mainspring is built around explicit boundaries: agents can ask for actions, b
 | --- | --- |
 | Secret values | AES-GCM encrypted locally and never returned by MCP tools. |
 | Memory bodies | Stored locally, hashed deterministically, and kept off-chain. |
-| Payment authorization | Not implemented; signed x402 payloads are not produced or persisted. |
-| Casper anchoring | Hash metadata only; transaction submission is not claimed. |
+| Payment authorization | Settlement provider boundary exists; production signed x402 payloads are not produced or persisted by default. |
+| Casper anchoring | Hash metadata only; configured submissions require `casper-client` and never include memory bodies. |
 | Audit events | Redacted local events for debugging and evaluator review. |
 
 ## Data Handling Rules
@@ -50,18 +50,18 @@ The current policy matcher uses exact URL and method allowlists and per-call amo
 
 ## x402 Boundary
 
-The implemented path captures requirements and response hashes. It does not sign payloads or submit settlement. This avoids false-positive payment claims while the facilitator path is not verified.
+The implemented path captures requirements, validates them against policy, and then reaches a settlement provider boundary. The default provider is disabled and persists `settlement_unavailable` receipt metadata rather than signing payloads or submitting settlement. This avoids false-positive payment claims while the facilitator path is not verified.
 
 ## Casper Boundary
 
-The anchor client validates hash payloads and returns pending metadata. It does not claim a transaction hash until a real Casper submission and verification path exists.
+The anchor client validates hash payloads and keeps the unconfigured path local-only. When contract hashes, Casper CLI env, and `CASPER_ENABLE_REAL_SUBMISSION=true` are configured, it submits `anchor_memory` through `casper-client` and records a transaction hash only if the command returns one. That transaction hash is pending evidence, not finality. The backend does not read or print private key material, and it does not yet verify execution/finality with `get-transaction`.
 
 ## Operational Gaps
 
 - No remote HTTP MCP transport yet.
 - No production database migrations yet.
 - No KMS/HSM integration yet.
-- No real Casper transaction submission yet.
+- No automatic Casper transaction execution verification yet.
 - No real x402 settlement verification yet.
 
 ## Evaluator Security Checks
@@ -70,5 +70,5 @@ During a local demo, check that:
 
 - `grimoire.secret.put` returns metadata, not plaintext secret values.
 - `payment.receipt` returns intent/receipt metadata, not signed payment payloads.
-- `memory.write` with `anchor: true` returns pending anchor metadata unless a real Casper path is implemented.
+- `memory.write` with `anchor: true` returns pending anchor metadata unless real Casper contract hashes, CLI env, and `CASPER_ENABLE_REAL_SUBMISSION=true` are configured.
 - `audit.tail` shows useful events without private keys, raw secrets, or signed authorization material.

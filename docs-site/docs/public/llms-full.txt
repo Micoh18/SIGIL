@@ -21,10 +21,10 @@ Mr Mainspring is a TypeScript MCP backend for local agent demos. It is currently
 - Grimoire encrypted secrets and deterministic spending/access policies.
 - x402 payment intent preflight, idempotency, and optional 402 challenge capture.
 - Audit event tailing.
-- Casper anchor metadata through a replaceable client interface.
+- Casper anchor metadata through a replaceable client interface, including a verified testnet submission path when configured.
 
 ::: warning Honest status
-Real Casper settlement, real x402 settlement, and a verified deployed Casper memory-anchor contract are not implemented until they are run and verified. Current anchored writes return local pending metadata unless a real client replaces the placeholder path.
+The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled until a real facilitator flow is verified.
 :::
 
 ## First 10 Minutes
@@ -124,8 +124,14 @@ Important local defaults:
 | `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
 | `CASPER_RPC_URL` | Casper node RPC address required for real anchoring. |
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
+| `CASPER_ENABLE_REAL_SUBMISSION` | Must be `true` before the backend shells out to `casper-client`. Defaults to disabled. |
+| `CASPER_CLIENT_BIN` | CLI executable name/path. Defaults to `casper-client`. |
+| `CASPER_CLIENT_WSL_DISTRO` | Optional Windows helper. Set to `Ubuntu` to run `wsl -d Ubuntu -- casper-client ...` while the backend runs on Windows. |
+| `CASPER_GAS_PRICE_TOLERANCE` | Casper transaction gas price tolerance. Defaults to `10`. |
+| `CASPER_PRICING_MODE` | Casper transaction pricing mode. Defaults to `classic`. |
+| `CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES` | Standard payment amount used for anchor transactions. Defaults to `3000000000`. |
 | `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
-| `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. |
+| `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. Accepts `package-<hex>`, `hash-<hex>`, or raw hex. |
 
 ## Optional Supabase Persistence
 
@@ -195,7 +201,7 @@ Set `request_challenge: true` on `payment.fetch` to make the initial HTTP reques
 
 ## Expected Boundary
 
-A successful quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, real Casper transaction submission, or real x402 settlement.
+A successful default quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, verified Casper execution, or real x402 settlement. Real Casper submission requires the deployed contract hashes, `casper-client`, and the Casper env described in [Casper Anchoring](/casper-anchoring).
 
 # Architecture
 
@@ -216,10 +222,10 @@ Mr Mainspring is organized around MCP tools backed by small service modules and 
 2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
 3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR` by default. When `SIGIL_STORAGE_BACKEND=supabase`, it writes the same domain records to Supabase JSONB tables through the Supabase REST API.
 4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
-5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, and can capture the first x402 challenge. It stops before Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
+5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and can persist an unavailable settlement receipt when the settlement provider is disabled. It stops before production Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
 6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
 
-For evaluator work, this means a successful demo proves local MCP semantics and durable state transitions. It does not prove external settlement until the missing Casper and x402 paths are implemented and verified.
+For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification and x402 settlement still require separate external checks.
 
 ## System Map
 
@@ -302,10 +308,10 @@ Mr Mainspring separates sensitive content from public proof material:
 | --- | --- |
 | MCP stdio | Implemented and covered by tests. |
 | Supabase persistence | Optional store adapter implemented through REST and covered by mocked tests. |
-| Casper anchor client | Interface implemented. Real transaction submission is not implemented. |
-| Casper memory-anchor contract | Hash-only source exists and builds to Wasm. Testnet deploy/query is not complete. |
+| Casper anchor client | Configured CLI submission boundary implemented behind `CASPER_ENABLE_REAL_SUBMISSION`; execution verification is still manual. |
+| Casper memory-anchor contract | Hash-only source builds to Wasm and is deployed on testnet; backend submission is smoke-tested, while automatic execution/query verification is still manual. |
 | x402 challenge request | Implemented for first HTTP request and 402 requirements capture. |
-| x402 signed settlement | Not implemented until a real facilitator flow is run and verified. |
+| x402 signed settlement | Provider boundary and tests exist, but real signing/settlement remains disabled until a real facilitator flow is run and verified. |
 
 # MCP Tools
 
@@ -356,7 +362,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for genuinely verified settlement. The current backend does not create settled receipts.
+`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable` receipts instead of settled receipts.
 
 ## Audit Tools
 
@@ -564,7 +570,7 @@ Last verified: 2026-06-05
 
 # Payments and x402
 
-The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, and validates captured payment requirements before the future signing boundary. It does not claim signed payload creation, facilitator settlement, or Casper settlement.
+The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, validates captured payment requirements, and then enters an explicit settlement-provider boundary. By default that provider is disabled, so the backend persists an unavailable receipt instead of claiming signed payload creation, facilitator settlement, or Casper settlement.
 
 ## Flow States
 
@@ -577,7 +583,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for a future path that genuinely verifies settlement. The current implementation does not set settled.
+`settled` is reserved for a provider result that genuinely verifies settlement. The current production wiring does not enable real settlement because no Casper-compatible signing provider/facilitator has been verified in this repo.
 
 ## Official x402 Boundary
 
@@ -594,13 +600,14 @@ resource server settles locally or through facilitator /settle
 resource server returns PAYMENT-RESPONSE settlement details
 ```
 
-Mr Mainspring currently implements only the safe pre-signing portion:
+Mr Mainspring currently implements the safe pre-signing portion and a disabled settlement boundary:
 
 ```text
 challenge capture
 Grimoire policy approval
 captured requirement approval against policy
-signing/payment boundary stops here
+settlement provider boundary
+default disabled receipt
 ```
 
 The exact backend boundary is:
@@ -610,10 +617,10 @@ The exact backend boundary is:
 | Challenge capture | Implemented. The first HTTP request can capture `PAYMENT-REQUIRED`, `X-PAYMENT-REQUIRED`, JSON body requirements, or a raw body fallback. |
 | Policy approval | Implemented before any challenge request. URL, method, and expected amount are checked against the Grimoire policy. |
 | Requirement approval | Implemented after challenge capture and before any future signing. The selected requirement must match amount, resource URL, optional method, network, configured asset, configured payee, and configured scheme. |
-| Payment payload signing | Not implemented. No private key is read and no `PAYMENT-SIGNATURE` payload is created. |
-| Facilitator `/verify` | Not implemented. Verification response parsing is not enough to mark settlement. |
-| Facilitator `/settle` | Not implemented. Settlement can only be claimed after a successful settlement response with a transaction hash is verified. |
-| Receipt persistence | Store shape exists, but real x402 receipts are not written because `/settle` is not called. |
+| Payment payload signing | Interface exists, but production wiring is disabled. No private key is read and no `PAYMENT-SIGNATURE` payload is created by default. |
+| Facilitator `/verify` | Provider boundary exists and must pass before `/settle`; verify output alone never marks settlement. |
+| Facilitator `/settle` | Provider boundary verifies a successful settlement response with a transaction hash before returning `settled`, but no real Casper-compatible facilitator has been verified yet. |
+| Receipt persistence | Implemented for unavailable, failed, and settled provider outcomes. The default receipt is `settlement_unavailable`. |
 
 ## `payment.fetch`
 
@@ -661,9 +668,9 @@ If the resource returns HTTP 402, Mr Mainspring captures `PaymentRequirements` f
 ```json
 {
   "allowed": true,
-  "status": "challenge_received",
-  "settlement": "not_started",
-  "settlement_blocker": "signed_payload_not_implemented",
+  "status": "settlement_unavailable",
+  "settlement": "unavailable",
+  "settlement_blocker": "x402_settlement_disabled",
   "challenge": {
     "status": "payment_required",
     "status_code": 402,
@@ -716,11 +723,10 @@ When `idempotency_key` is present, Mr Mainspring returns the same persisted inte
 ## What Is Not Implemented
 
 - Grimoire-backed signing capability retrieval.
-- Signed x402 payment payload creation.
+- Production signed x402 payment payload creation.
 - Retrying the resource request with payment authorization.
-- Facilitator `/verify` calls.
-- Facilitator `/settle` calls.
-- Casper transaction hash recording for x402 settlement.
+- A verified real facilitator `/verify` and `/settle` run for Casper.
+- Casper transaction hash recording for real x402 settlement.
 
 ## Manual Credentials and Resources Needed for Real x402
 
@@ -740,12 +746,12 @@ Source: docs/casper-anchoring.md
 Canonical path: /casper-anchoring
 Description: Current Casper anchor client boundary and memory-anchor contract readiness.
 Section: Core Modules
-Status: pending
+Status: current
 Last verified: 2026-06-05
 
 # Casper Anchoring
 
-Mr Mainspring is designed to anchor hash-only memory proofs on Casper. The repository now contains a minimal Casper contract source and a backend interface, but not a verified real transaction submission path.
+Mr Mainspring anchors hash-only memory proofs on Casper. The repository contains a minimal Casper contract source, verified testnet deployment metadata, and a backend submission boundary. The backend can call `casper-client` when explicitly enabled, but it still does not verify execution/finality on its own.
 
 ## Backend Client Modes
 
@@ -754,9 +760,9 @@ Mr Mainspring is designed to anchor hash-only memory proofs on Casper. The repos
 | Mode | When Selected | Behavior |
 | --- | --- | --- |
 | `unconfigured` | `MEMORY_ANCHOR_CONTRACT_HASH` is absent. | Accepts validated local hash metadata and returns `pending` with `casper_contract_not_configured`. |
-| `configured` | Contract hash, package hash, RPC URL, chain name, and account key path are present. | Validates config and returns `pending` with `casper_transaction_submission_not_implemented`. |
+| `configured` | Contract hash, package hash, RPC URL, chain name, and account key path are present. | Returns `pending` until `CASPER_ENABLE_REAL_SUBMISSION=true`. When enabled, runs `casper-client put-transaction package` for `anchor_memory` and stores the returned transaction hash. It returns `failed` if the CLI fails or no hash can be parsed. |
 
-Both modes validate anchor payloads. Neither mode currently submits a Casper transaction or claims a transaction hash.
+Both modes validate anchor payloads. The configured path shells out through an injectable command runner so tests never make live network calls.
 
 ## Required Real Testnet Environment
 
@@ -765,12 +771,27 @@ The configured client path requires:
 ```bash
 CASPER_RPC_URL="https://<testnet-node>:7777/rpc"
 CASPER_NETWORK_NAME="casper-test"
-MEMORY_ANCHOR_CONTRACT_HASH="hash-<64 hex chars>"
-MEMORY_ANCHOR_PACKAGE_HASH="hash-<64 hex chars>"
+MEMORY_ANCHOR_CONTRACT_HASH="hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df"
+MEMORY_ANCHOR_PACKAGE_HASH="hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c"
 CASPER_ACCOUNT_KEY_PATH="./keys/backend.pem"
+CASPER_ENABLE_REAL_SUBMISSION="true"
 ```
 
 `CASPER_CAIP2_CHAIN_ID` still defaults to `casper:casper-test` for MCP/payment metadata.
+`MEMORY_ANCHOR_PACKAGE_HASH` also accepts `package-<64 hex chars>` and raw lowercase hex, but the backend normalizes it to `hash-<hex>` for the legacy `--contract-package-hash` flag used by `casper-client put-transaction package`.
+
+Optional command tuning:
+
+```bash
+CASPER_CLIENT_BIN="casper-client"
+CASPER_CLIENT_WSL_DISTRO=""
+CASPER_ANCHOR_SUBMISSION_MODE="transaction-package"
+CASPER_GAS_PRICE_TOLERANCE="10"
+CASPER_PRICING_MODE="classic"
+CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES="3000000000"
+```
+
+On Windows, set `CASPER_CLIENT_WSL_DISTRO="Ubuntu"` when `casper-client` is installed inside WSL instead of Windows. The backend then invokes `wsl -d Ubuntu -- casper-client ...` and converts `CASPER_ACCOUNT_KEY_PATH` to a `/mnt/<drive>/...` path.
 
 ## Anchor Submission
 
@@ -788,6 +809,22 @@ The backend creates:
 ```
 
 Before a real contract call, `prev_anchor_hash: null` must be encoded as an empty string. The privacy boundary is deliberate: memory bodies, secret values, signed payment payloads, and private keys must not be written on-chain.
+
+The configured backend call is equivalent to:
+
+```bash
+casper-client put-transaction package \
+  --node-address "$CASPER_RPC_URL" \
+  --chain-name "$CASPER_NETWORK_NAME" \
+  --contract-package-hash "$MEMORY_ANCHOR_PACKAGE_HASH" \
+  --session-entry-point anchor_memory \
+  --gas-price-tolerance 10 \
+  --pricing-mode classic \
+  --payment-amount "$CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES" \
+  --standard-payment true \
+  --secret-key "$CASPER_ACCOUNT_KEY_PATH" \
+  --session-args-json '[{"name":"anchor_id","type":"String","value":"<anchor_id>"},{"name":"agent_id_hash","type":"String","value":"<agent_id_hash>"},{"name":"memory_id_hash","type":"String","value":"<memory_id_hash>"},{"name":"content_hash","type":"String","value":"<content_hash>"},{"name":"metadata_hash","type":"String","value":"<metadata_hash>"},{"name":"prev_anchor_hash","type":"String","value":"<prev_anchor_hash_or_empty_string>"}]'
+```
 
 ## Contract Source
 
@@ -807,8 +844,19 @@ agent_latest_<agent_id_hash> = anchor_id
 All values are hash-only. The contract rejects non-lowercase-hex hash arguments and duplicate `anchor_id` values.
 
 ::: warning Contract limitation
-The contract has been locally built to Wasm, but it has not been deployed or queried on Casper testnet. Real verification still requires `casper-client`, a funded testnet account, a successful install transaction, and retrieved contract/package hashes.
+The contract is deployed on Casper testnet and backend submission has been smoke-tested. The backend still does not automatically run `get-transaction`, verify execution success, or query the stored on-chain anchor record; do that manually before treating a pending anchor as final.
 :::
+
+## Verified Testnet Deployment
+
+```text
+deploy_transaction=3b8f624ef1d5960a8cf724811c0c68c51dff8809fa1128f69a2c7077afdcbc09
+contract_hash=hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df
+package_hash=hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c
+backend_smoke_anchor_transaction=91fb904e47b600b0a9e4f6571a3412c83187000e9ceab19ba26cc23fabec555c
+```
+
+The smoke transaction executed with `error_message: null` and wrote both `anchor_<anchor_id>` and `agent_latest_<agent_hash>` keys.
 
 ## Manual Build And Deploy
 
@@ -849,15 +897,17 @@ casper-client put-transaction session \
   --chain-name "$CASPER_NETWORK_NAME" \
   --secret-key "$CASPER_ACCOUNT_KEY_PATH" \
   --gas-price-tolerance 10 \
-  --pricing-mode fixed \
-  --transaction-path contracts/memory-anchor/target/wasm32-unknown-unknown/release/sigil_memory_anchor.wasm \
+  --pricing-mode classic \
+  --payment-amount 100000000000 \
+  --standard-payment true \
+  --wasm-path contracts/memory-anchor/target/wasm32-unknown-unknown/release/sigil_memory_anchor.wasm \
   --session-entry-point call \
-  --category "install-upgrade"
+  --install-upgrade
 
 casper-client get-transaction --node-address "$CASPER_RPC_URL" "<TRANSACTION_HASH>"
 ```
 
-Do not copy contract/package hashes into backend env or mark memories as `anchored` until the deploy transaction is retrieved and verified successful.
+Do not copy contract/package hashes into backend env until the deploy transaction is retrieved and verified successful. After backend submissions, use `get-transaction` on the returned transaction hash to confirm execution before relying on the on-chain record.
 
 # Audit Trail
 
@@ -937,8 +987,8 @@ Mr Mainspring is built around explicit boundaries: agents can ask for actions, b
 | --- | --- |
 | Secret values | AES-GCM encrypted locally and never returned by MCP tools. |
 | Memory bodies | Stored locally, hashed deterministically, and kept off-chain. |
-| Payment authorization | Not implemented; signed x402 payloads are not produced or persisted. |
-| Casper anchoring | Hash metadata only; transaction submission is not claimed. |
+| Payment authorization | Settlement provider boundary exists; production signed x402 payloads are not produced or persisted by default. |
+| Casper anchoring | Hash metadata only; configured submissions require `casper-client` and never include memory bodies. |
 | Audit events | Redacted local events for debugging and evaluator review. |
 
 ## Data Handling Rules
@@ -971,18 +1021,18 @@ The current policy matcher uses exact URL and method allowlists and per-call amo
 
 ## x402 Boundary
 
-The implemented path captures requirements and response hashes. It does not sign payloads or submit settlement. This avoids false-positive payment claims while the facilitator path is not verified.
+The implemented path captures requirements, validates them against policy, and then reaches a settlement provider boundary. The default provider is disabled and persists `settlement_unavailable` receipt metadata rather than signing payloads or submitting settlement. This avoids false-positive payment claims while the facilitator path is not verified.
 
 ## Casper Boundary
 
-The anchor client validates hash payloads and returns pending metadata. It does not claim a transaction hash until a real Casper submission and verification path exists.
+The anchor client validates hash payloads and keeps the unconfigured path local-only. When contract hashes, Casper CLI env, and `CASPER_ENABLE_REAL_SUBMISSION=true` are configured, it submits `anchor_memory` through `casper-client` and records a transaction hash only if the command returns one. That transaction hash is pending evidence, not finality. The backend does not read or print private key material, and it does not yet verify execution/finality with `get-transaction`.
 
 ## Operational Gaps
 
 - No remote HTTP MCP transport yet.
 - No production database migrations yet.
 - No KMS/HSM integration yet.
-- No real Casper transaction submission yet.
+- No automatic Casper transaction execution verification yet.
 - No real x402 settlement verification yet.
 
 ## Evaluator Security Checks
@@ -991,7 +1041,7 @@ During a local demo, check that:
 
 - `grimoire.secret.put` returns metadata, not plaintext secret values.
 - `payment.receipt` returns intent/receipt metadata, not signed payment payloads.
-- `memory.write` with `anchor: true` returns pending anchor metadata unless a real Casper path is implemented.
+- `memory.write` with `anchor: true` returns pending anchor metadata unless real Casper contract hashes, CLI env, and `CASPER_ENABLE_REAL_SUBMISSION=true` are configured.
 - `audit.tail` shows useful events without private keys, raw secrets, or signed authorization material.
 
 # Local Demo
@@ -1013,6 +1063,7 @@ npm run demo:stdio
 ```
 
 The command builds the backend, starts `dist/index.js` through MCP stdio, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to `.sigil/`.
+The script sets an explicit missing `SIGIL_ENV_FILE`, so it does not pick up real Casper/Supabase/x402 settings from your local `.env`.
 
 NPM prints normal script headers first. The stable transcript begins with:
 
@@ -1056,7 +1107,7 @@ audit.tail
 
 ## Honest Limits
 
-`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because the current Casper anchor path is local pending metadata, not a real deploy.
+`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because this scripted demo intentionally uses the local pending anchor path, not the configured Casper CLI submission path.
 
 For the full manual command sequence, use `docs/demo-runbook.md` in the repository root.
 
@@ -1213,7 +1264,8 @@ A passing backend test run, docs build, and local MCP demo mean:
 
 A passing local demo does not mean:
 
-- A Casper transaction was submitted or verified.
+- A Casper transaction was submitted by the scripted local demo.
+- A submitted Casper transaction was automatically verified for final execution by the backend.
 - x402 payment authorization was signed.
 - A paid request was replayed successfully.
 - Facilitator settlement was verified.
@@ -1221,20 +1273,22 @@ A passing local demo does not mean:
 
 ## Casper
 
-- The memory-anchor contract under `contracts/memory-anchor/` is hash-only source and builds locally to Wasm, but it has not been deployed or queried on Casper testnet.
-- Contract integration tests are not present yet; only the Wasm build has been verified.
-- Backend anchoring returns pending metadata and null Casper transaction hashes.
-- A configured anchor client still returns `casper_transaction_submission_not_implemented`.
-- Real testnet use requires `CASPER_RPC_URL`, `CASPER_NETWORK_NAME`, `MEMORY_ANCHOR_CONTRACT_HASH`, `MEMORY_ANCHOR_PACKAGE_HASH`, and `CASPER_ACCOUNT_KEY_PATH`.
+- The memory-anchor contract under `contracts/memory-anchor/` is hash-only source, builds locally to Wasm, and has a verified Casper testnet deployment.
+- Contract integration tests are not present yet; Wasm build, testnet deploy, and one backend `anchor_memory` smoke transaction have been verified.
+- Backend anchoring without contract config returns pending metadata and null Casper transaction hashes.
+- A configured anchor client can submit `anchor_memory` with `casper-client put-transaction package` only when `CASPER_ENABLE_REAL_SUBMISSION=true`, and records a transaction hash only when the CLI returns one.
+- Backend anchoring does not yet run `get-transaction`, verify execution success, or query the stored on-chain anchor record.
+- Real testnet use requires `CASPER_RPC_URL`, `CASPER_NETWORK_NAME`, `MEMORY_ANCHOR_CONTRACT_HASH`, `MEMORY_ANCHOR_PACKAGE_HASH`, `CASPER_ACCOUNT_KEY_PATH`, and `CASPER_ENABLE_REAL_SUBMISSION=true`.
 
 ## x402
 
 - The backend can request and persist an HTTP 402 challenge.
 - The backend can hash free or unexpected non-402 responses.
-- The backend can validate captured payment requirements against policy before the future signing boundary.
-- The backend does not create signed x402 payment payloads.
-- The backend does not call facilitator `/verify`.
-- The backend does not call facilitator `/settle`.
+- The backend can validate captured payment requirements against policy before the settlement boundary.
+- The backend has a settlement-provider interface for signing, facilitator `/verify`, facilitator `/settle`, and receipt persistence.
+- The default production wiring keeps settlement disabled and persists an explicit `settlement_unavailable` receipt.
+- The backend does not create production signed x402 payment payloads.
+- The backend does not run a verified real facilitator `/verify` or `/settle` flow for Casper yet.
 - The backend does not replay paid requests with payment authorization.
 - The backend does not verify facilitator settlement.
 - The backend must not claim real Casper x402 settlement until the facilitator is run and verified.
@@ -1266,16 +1320,17 @@ A passing local demo does not mean:
 To complete the full intended demo, the project still needs:
 
 ```text
-cargo-casper and casper-client
-funded Casper testnet account
-deployed memory_anchor contract/package hashes
+casper-client available to the backend runtime
+funded Casper testnet account for future anchors
+configured deployed memory_anchor contract/package hashes
 deployed CEP-18 x402 token package
 running make-software/casper-x402 facilitator
 external wallet/KMS or encrypted Grimoire reference for the x402 client signing key
 configured facilitator /verify and /settle endpoints for the selected scheme/network
 Grimoire allowlist for resource URL, method, amount, network, asset package, payee, and scheme
 verified payment settlement path
-real Casper transaction hash capture
+real x402 Casper transaction hash capture
+automatic Casper transaction execution verification
 ```
 
 ## Verification Commands
@@ -1289,7 +1344,7 @@ npm test --prefix backend
 npm run build --prefix backend
 ```
 
-Then run the scripted [Local Demo](/local-demo) with `npm run demo:stdio --prefix backend`, or exercise the same tools through an MCP client. The correct current result is a working local pre-settlement flow, not a settled payment or anchored Casper transaction.
+Then run the scripted [Local Demo](/local-demo) with `npm run demo:stdio --prefix backend`, or exercise the same tools through an MCP client. The correct default result is a working local pre-settlement flow, not a settled payment or anchored Casper transaction. Real Casper transaction submission requires the deployed contract hashes and Casper CLI environment described in [Casper Anchoring](/casper-anchoring).
 
 # MCP Tool Schemas
 
@@ -1630,7 +1685,7 @@ Then run the scripted [Local Demo](/local-demo) with `npm run demo:stdio --prefi
     "name": "payment.fetch",
     "title": "x402 Payment Fetch",
     "status": "pre-settlement",
-    "description": "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy before the signing boundary, and avoid claiming settlement.",
+    "description": "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy, and persist disabled/failed settlement receipts without exposing signed payloads.",
     "input": {
       "type": "object",
       "required": [

@@ -3,6 +3,11 @@ import { loadConfig } from "../src/config.js";
 import type { PolicyRecord } from "../src/grimoire/types.js";
 import { X402ChallengeClient } from "../src/x402/client.js";
 import { approveX402Requirements, verifyX402SettlementResponse } from "../src/x402/readiness.js";
+import {
+  createSignedPayloadHash,
+  DisabledX402SettlementProvider,
+  FacilitatorX402SettlementProvider
+} from "../src/x402/settlement.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -14,12 +19,14 @@ describe("x402 foundation", () => {
       X402_FACILITATOR_URL: "http://localhost:4022",
       X402_RESOURCE_DEMO_URL: "http://localhost:4021/weather",
       X402_ASSET_PACKAGE: "asset-package-hash",
+      X402_ENABLE_REAL_SETTLEMENT: "true",
       CASPER_CAIP2_CHAIN_ID: "casper:casper-test"
     });
 
     expect(config.x402.facilitatorUrl).toBe("http://localhost:4022");
     expect(config.x402.resourceDemoUrl).toBe("http://localhost:4021/weather");
     expect(config.x402.assetPackage).toBe("asset-package-hash");
+    expect(config.x402.settlementEnabled).toBe(true);
     expect(config.casper.caip2ChainId).toBe("casper:casper-test");
   });
 
@@ -238,6 +245,122 @@ describe("x402 foundation", () => {
     if (settled.settled) {
       expect(settled.transaction_hash).toBe("hash-abc123");
       expect(settled.receipt_json).toContain("transactionHash");
+    }
+  });
+
+  it("keeps settlement unavailable when the settlement provider is disabled", async () => {
+    const provider = new DisabledX402SettlementProvider();
+
+    const result = await provider.settle({
+      payment_id: "pay_demo",
+      facilitator_url: "http://localhost:4022",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      selected_requirement: {
+        scheme: "exact",
+        resource: "http://localhost:4021/weather",
+        privateKey: "must-not-leak"
+      },
+      selected_requirement_hash: "a".repeat(64),
+      policy_hash: "policy-hash"
+    });
+
+    expect(result.status).toBe("unavailable");
+    expect(result.blocker).toBe("x402_settlement_disabled");
+    expect(result.signed_payload_hash).toBeNull();
+    expect(result.receipt_json).toContain("settlement_unavailable");
+    expect(result.receipt_json).not.toContain("must-not-leak");
+  });
+
+  it("calls facilitator verify before settle and persists only verified settlement", async () => {
+    const signedPayload = {
+      x402Version: 1,
+      scheme: "exact",
+      signature: "signature-ref"
+    };
+    const calls: string[] = [];
+    const provider = new FacilitatorX402SettlementProvider(
+      {
+        async sign() {
+          return {
+            signed: true,
+            signed_payload: signedPayload,
+            signed_payload_hash: createSignedPayloadHash(signedPayload)
+          };
+        }
+      },
+      async (url) => {
+        calls.push(url);
+        if (url.endsWith("/verify")) {
+          return { status: 200, body: { valid: true } };
+        }
+
+        return {
+          status: 200,
+          body: {
+            success: true,
+            transactionHash: "f".repeat(64)
+          }
+        };
+      }
+    );
+
+    const result = await provider.settle({
+      payment_id: "pay_demo",
+      facilitator_url: "http://localhost:4022",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      selected_requirement: {
+        scheme: "exact",
+        resource: "http://localhost:4021/weather"
+      },
+      selected_requirement_hash: "a".repeat(64),
+      policy_hash: "policy-hash"
+    });
+
+    expect(calls).toEqual(["http://localhost:4022/verify", "http://localhost:4022/settle"]);
+    expect(result.status).toBe("settled");
+    if (result.status === "settled") {
+      expect(result.casper_transaction_hash).toBe("f".repeat(64));
+      expect(result.signed_payload_hash).toBe(createSignedPayloadHash(signedPayload));
+    }
+  });
+
+  it("does not treat facilitator verify success as settlement", async () => {
+    const provider = new FacilitatorX402SettlementProvider(
+      {
+        async sign() {
+          const payload = { signature: "signature-ref" };
+          return {
+            signed: true,
+            signed_payload: payload,
+            signed_payload_hash: createSignedPayloadHash(payload)
+          };
+        }
+      },
+      async (url) =>
+        url.endsWith("/verify")
+          ? { status: 200, body: { valid: true } }
+          : { status: 200, body: { valid: true } }
+    );
+
+    const result = await provider.settle({
+      payment_id: "pay_demo",
+      facilitator_url: "http://localhost:4022",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      selected_requirement: {
+        scheme: "exact",
+        resource: "http://localhost:4021/weather"
+      },
+      selected_requirement_hash: "a".repeat(64),
+      policy_hash: "policy-hash"
+    });
+
+    expect(result.status).toBe("failed");
+    if (result.status === "failed") {
+      expect(result.blocker).toBe("x402_facilitator_settlement_not_verified");
+      expect(result.casper_transaction_hash).toBeNull();
     }
   });
 });

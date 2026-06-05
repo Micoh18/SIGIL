@@ -1,0 +1,7 @@
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-C",
+  "target-cpu=mvp",
+  "-C",
+  "target-feature=-bulk-memory,-bulk-memory-opt"
+]

@@ -156,7 +156,7 @@ export const toolSchemas = [
     name: "payment.fetch",
     title: "x402 Payment Fetch",
     status: "pre-settlement",
-    description: "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy before the signing boundary, and avoid claiming settlement.",
+    description: "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy, and persist disabled/failed settlement receipts without exposing signed payloads.",
     input: {
       type: "object",
       required: ["agent_id", "policy_id", "method", "url"],

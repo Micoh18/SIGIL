@@ -44,6 +44,7 @@ async function main() {
     args: [join(backendRoot, "dist", "index.js")],
     cwd: backendRoot,
     env: {
+      SIGIL_ENV_FILE: join(dataDir, "missing-demo.env"),
       SIGIL_DATA_DIR: dataDir,
       SIGIL_MCP_NAME: "mr-mainspring-evaluator-demo",
       SIGIL_MCP_VERSION: "0.1.0-demo",

@@ -16,6 +16,7 @@ npm run demo:stdio
 ```
 
 The command builds the backend, starts `dist/index.js` through MCP stdio, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to `.sigil/`.
+The script sets an explicit missing `SIGIL_ENV_FILE`, so it does not pick up real Casper/Supabase/x402 settings from your local `.env`.
 
 NPM prints normal script headers first. The stable transcript begins with:
 
@@ -59,6 +60,6 @@ audit.tail
 
 ## Honest Limits
 
-`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because the current Casper anchor path is local pending metadata, not a real deploy.
+`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because this scripted demo intentionally uses the local pending anchor path, not the configured Casper CLI submission path.
 
 For the full manual command sequence, use `docs/demo-runbook.md` in the repository root.

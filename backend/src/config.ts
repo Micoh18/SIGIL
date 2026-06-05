@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CASPER_HASH_PATTERN = /^(hash-)?[a-f0-9]{64}$/i;
+const CASPER_PACKAGE_HASH_PATTERN = /^(hash-|package-)?[a-f0-9]{64}$/i;
 
 export type CasperConfig = {
   networkName: string;
@@ -10,6 +12,13 @@ export type CasperConfig = {
   accountKeyPath: string | null;
   memoryAnchorContractHash: string | null;
   memoryAnchorPackageHash: string | null;
+  submissionEnabled: boolean;
+  clientBin: string;
+  clientWslDistro: string | null;
+  anchorSubmissionMode: "transaction-package" | "deploy-contract-hash";
+  gasPriceTolerance: string;
+  pricingMode: string;
+  anchorPaymentAmountMotes: string;
 };
 
 export type X402Config = {
@@ -17,6 +26,7 @@ export type X402Config = {
   resourceDemoUrl: string;
   assetPackage: string | null;
   assetName: string | null;
+  settlementEnabled: boolean;
 };
 
 export type StorageConfig =
@@ -48,9 +58,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     networkName: optionalEnv(env.CASPER_NETWORK_NAME) ?? "casper-test",
     caip2ChainId: optionalEnv(env.CASPER_CAIP2_CHAIN_ID) ?? "casper:casper-test",
     rpcUrl: optionalEnv(env.CASPER_RPC_URL),
-    accountKeyPath: optionalEnv(env.CASPER_ACCOUNT_KEY_PATH) ?? "./keys/backend.pem",
+    accountKeyPath: normalizeCasperAccountKeyPath(
+      optionalEnv(env.CASPER_ACCOUNT_KEY_PATH) ?? "./keys/backend.pem",
+      optionalEnv(env.CASPER_CLIENT_WSL_DISTRO)
+    ),
     memoryAnchorContractHash: optionalEnv(env.MEMORY_ANCHOR_CONTRACT_HASH),
-    memoryAnchorPackageHash: optionalEnv(env.MEMORY_ANCHOR_PACKAGE_HASH)
+    memoryAnchorPackageHash: optionalEnv(env.MEMORY_ANCHOR_PACKAGE_HASH),
+    submissionEnabled: parseBoolean(env.CASPER_ENABLE_REAL_SUBMISSION),
+    clientBin: optionalEnv(env.CASPER_CLIENT_BIN) ?? "casper-client",
+    clientWslDistro: optionalEnv(env.CASPER_CLIENT_WSL_DISTRO),
+    anchorSubmissionMode: parseCasperAnchorSubmissionMode(
+      env.CASPER_ANCHOR_SUBMISSION_MODE
+    ),
+    gasPriceTolerance: optionalEnv(env.CASPER_GAS_PRICE_TOLERANCE) ?? "10",
+    pricingMode: optionalEnv(env.CASPER_PRICING_MODE) ?? "classic",
+    anchorPaymentAmountMotes:
+      optionalEnv(env.CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES) ?? "3000000000"
   };
 
   validateCasperConfig(casper);
@@ -66,7 +89,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
       facilitatorUrl: optionalEnv(env.X402_FACILITATOR_URL) ?? "http://localhost:4022",
       resourceDemoUrl: optionalEnv(env.X402_RESOURCE_DEMO_URL) ?? "http://localhost:4021/weather",
       assetPackage: optionalEnv(env.X402_ASSET_PACKAGE),
-      assetName: optionalEnv(env.X402_ASSET_NAME)
+      assetName: optionalEnv(env.X402_ASSET_NAME),
+      settlementEnabled: parseBoolean(env.X402_ENABLE_REAL_SETTLEMENT)
     }
   };
 }
@@ -154,12 +178,23 @@ function validateCasperConfig(config: CasperConfig): void {
   }
 
   if (config.memoryAnchorPackageHash) {
-    assertCasperHash("MEMORY_ANCHOR_PACKAGE_HASH", config.memoryAnchorPackageHash);
+    assertCasperPackageHash("MEMORY_ANCHOR_PACKAGE_HASH", config.memoryAnchorPackageHash);
   }
 
   if (config.rpcUrl) {
     assertHttpUrl("CASPER_RPC_URL", config.rpcUrl);
   }
+
+  assertNonEmpty("CASPER_CLIENT_BIN", config.clientBin);
+  if (config.clientWslDistro) {
+    assertNonEmpty("CASPER_CLIENT_WSL_DISTRO", config.clientWslDistro);
+  }
+  assertUnsignedInteger("CASPER_GAS_PRICE_TOLERANCE", config.gasPriceTolerance);
+  assertPricingMode("CASPER_PRICING_MODE", config.pricingMode);
+  assertUnsignedInteger(
+    "CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES",
+    config.anchorPaymentAmountMotes
+  );
 }
 
 function assertNonEmpty(name: string, value: string): void {
@@ -174,12 +209,79 @@ function assertCasperHash(name: string, value: string): void {
   }
 }
 
+function assertCasperPackageHash(name: string, value: string): void {
+  if (!CASPER_PACKAGE_HASH_PATTERN.test(value)) {
+    throw new Error(`${name} must be a Casper package hash value`);
+  }
+}
+
 function assertHttpUrl(name: string, value: string): void {
   const url = new URL(value);
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`${name} must be an HTTP(S) URL`);
   }
+}
+
+function assertUnsignedInteger(name: string, value: string): void {
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${name} must be an unsigned integer`);
+  }
+}
+
+function assertPricingMode(name: string, value: string): void {
+  if (value !== "classic" && value !== "reserved" && value !== "fixed") {
+    throw new Error(`${name} must be classic, reserved, or fixed`);
+  }
+}
+
+function parseBoolean(value: string | undefined): boolean {
+  const normalized = optionalEnv(value)?.toLowerCase();
+
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function parseCasperAnchorSubmissionMode(
+  value: string | undefined
+): CasperConfig["anchorSubmissionMode"] {
+  const normalized = optionalEnv(value) ?? "transaction-package";
+
+  if (normalized === "transaction-package" || normalized === "deploy-contract-hash") {
+    return normalized;
+  }
+
+  throw new Error(
+    "CASPER_ANCHOR_SUBMISSION_MODE must be transaction-package or deploy-contract-hash"
+  );
+}
+
+function normalizeCasperAccountKeyPath(value: string, clientWslDistro: string | null): string {
+  if (!clientWslDistro) {
+    return value;
+  }
+
+  if (value.startsWith("/")) {
+    return value;
+  }
+
+  const absolutePath = isAbsolute(value) ? value : resolve(repoRoot(), value);
+
+  return toWslPath(absolutePath);
+}
+
+function repoRoot(): string {
+  const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+
+  return dirname(backendRoot);
+}
+
+function toWslPath(value: string): string {
+  const match = value.match(/^([A-Za-z]):[\\/](.*)$/);
+  if (!match) {
+    return value.replaceAll("\\", "/");
+  }
+
+  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replaceAll("\\", "/")}`;
 }
 
 function optionalEnv(value: string | undefined): string | null {

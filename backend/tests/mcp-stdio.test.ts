@@ -23,6 +23,7 @@ describe("MCP stdio server", () => {
       ],
       cwd: backendRoot,
       env: {
+        SIGIL_ENV_FILE: join(dataDir, "missing-test.env"),
         SIGIL_DATA_DIR: dataDir,
         SIGIL_MCP_NAME: "sigil-stdio-test",
         SIGIL_MCP_VERSION: "0.0.0-test",
