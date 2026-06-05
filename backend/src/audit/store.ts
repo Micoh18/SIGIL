@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { JsonFileStore } from "../storage/json-file-store.js";
 import type { AuditEvent, AuditStore } from "./types.js";
 
 type AuditStoreFile = {
@@ -8,44 +8,25 @@ type AuditStoreFile = {
 };
 
 export class FileAuditStore implements AuditStore {
-  private readonly filePath: string;
+  private readonly store: JsonFileStore<AuditStoreFile>;
 
   constructor(dataDir: string) {
-    this.filePath = join(dataDir, "audit.json");
+    this.store = new JsonFileStore({
+      filePath: join(dataDir, "audit.json"),
+      empty: emptyStore,
+      normalize: normalizeStore
+    });
   }
 
   async append(event: AuditEvent): Promise<void> {
-    const data = await this.load();
-    data.events.push(event);
-    await this.persist(data);
+    await this.store.update((data) => {
+      data.events.push(event);
+    });
   }
 
   async list(): Promise<AuditEvent[]> {
-    const data = await this.load();
+    const data = await this.store.read();
     return [...data.events];
-  }
-
-  private async load(): Promise<AuditStoreFile> {
-    try {
-      const raw = await readFile(this.filePath, "utf8");
-      const parsed = JSON.parse(raw) as AuditStoreFile;
-
-      return {
-        schema_version: "sigil.audit-store.v1",
-        events: Array.isArray(parsed.events) ? parsed.events : []
-      };
-    } catch (error) {
-      if (isMissingFile(error)) {
-        return emptyStore();
-      }
-
-      throw error;
-    }
-  }
-
-  private async persist(data: AuditStoreFile): Promise<void> {
-    await mkdir(dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   }
 }
 
@@ -56,11 +37,15 @@ function emptyStore(): AuditStoreFile {
   };
 }
 
-function isMissingFile(error: unknown): boolean {
-  return Boolean(
-    error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as NodeJS.ErrnoException).code === "ENOENT"
-  );
+function normalizeStore(parsed: unknown): AuditStoreFile {
+  const data = asStoreObject(parsed);
+
+  return {
+    schema_version: "sigil.audit-store.v1",
+    events: Array.isArray(data.events) ? (data.events as AuditEvent[]) : []
+  };
+}
+
+function asStoreObject(parsed: unknown): Record<string, unknown> {
+  return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
 }
