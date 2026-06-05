@@ -64,7 +64,7 @@ Set `request_challenge: true` to make the initial HTTP request:
 }
 ```
 
-If the resource returns HTTP 402, SIGIL captures `PaymentRequirements` from a JSON body or standard x402 headers and persists `requirements_json`.
+If the resource returns HTTP 402, Mr Mainspring captures `PaymentRequirements` from a JSON body or standard x402 headers and persists `requirements_json`.
 
 ```json
 {
@@ -80,7 +80,7 @@ If the resource returns HTTP 402, SIGIL captures `PaymentRequirements` from a JS
 }
 ```
 
-If the resource is free, SIGIL hashes the response body and does not claim a payment:
+If the resource is free, Mr Mainspring hashes the response body and does not claim a payment:
 
 ```json
 {
@@ -95,7 +95,7 @@ If the resource is free, SIGIL hashes the response body and does not claim a pay
 }
 ```
 
-If the resource returns an unexpected non-402 error, SIGIL records an honest unavailable state:
+If the resource returns an unexpected non-402 error, Mr Mainspring records an honest unavailable state:
 
 ```json
 {
@@ -108,7 +108,7 @@ If the resource returns an unexpected non-402 error, SIGIL records an honest una
 
 ## Idempotency
 
-When `idempotency_key` is present, SIGIL returns the same persisted intent for the same `agent_id` and key. This avoids duplicate intent creation and prevents replaying the challenge request for the same idempotent call.
+When `idempotency_key` is present, Mr Mainspring returns the same persisted intent for the same `agent_id` and key. This avoids duplicate intent creation and prevents replaying the challenge request for the same idempotent call.
 
 ## What Is Not Implemented
 

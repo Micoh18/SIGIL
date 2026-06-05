@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Casper Anchoring
 
-SIGIL is designed to anchor hash-only memory proofs on Casper. The current repository has the backend interface and validation path, but not a verified real transaction submission path.
+Mr Mainspring is designed to anchor hash-only memory proofs on Casper. The current repository has the backend interface and validation path, but not a verified real transaction submission path.
 
 ## Backend Client Modes
 

@@ -1,6 +1,6 @@
 ---
 title: MCP Tools
-description: Current SIGIL MCP tool surface grouped by memory, Grimoire, payments, and audit.
+description: Current Mr Mainspring MCP tool surface grouped by memory, Grimoire, payments, and audit.
 section: Core Modules
 status: current
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # MCP Tools
 
-SIGIL exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
+Mr Mainspring exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
 
 ## Memory Tools
 

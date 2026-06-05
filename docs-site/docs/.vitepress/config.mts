@@ -1,9 +1,9 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "SIGIL Docs",
+  title: "Mr Mainspring Docs",
   description:
-    "Developer documentation for the SIGIL MCP backend: memory, Grimoire, Casper anchoring, x402 payments, and audit trails.",
+    "Developer documentation for the Mr Mainspring MCP backend: memory, Grimoire, Casper anchoring, x402 payments, and audit trails.",
   cleanUrls: true,
   lastUpdated: true,
   appearance: true,
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   themeConfig: {
     logo: "/sigil-mark.svg",
-    siteTitle: "SIGIL",
+    siteTitle: "Mr Mainspring",
     search: {
       provider: "local"
     },
@@ -72,7 +72,7 @@ export default defineConfig({
       }
     ],
     footer: {
-      message: "SIGIL docs are generated from repo-local source content and MCP schema data.",
+      message: "Mr Mainspring docs are generated from repo-local source content and MCP schema data.",
       copyright: "Current milestone: local backend and honest pre-settlement flows."
     }
   }

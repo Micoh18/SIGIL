@@ -1,6 +1,6 @@
 ---
 title: Security Model
-description: Current SIGIL security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit.
+description: Current Mr Mainspring security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit.
 section: Reference
 status: current
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Security Model
 
-SIGIL is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
+Mr Mainspring is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
 
 ## Data Handling Rules
 

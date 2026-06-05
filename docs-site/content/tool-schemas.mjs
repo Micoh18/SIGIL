@@ -5,7 +5,7 @@ export const toolSchemas = [
     name: "memory.write",
     title: "Write Memory",
     status: "implemented",
-    description: "Store a SIGIL agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
+    description: "Store a Mr Mainspring agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
     input: {
       type: "object",
       required: ["agent_id", "type", "body"],

@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Install and run the SIGIL backend MCP server from a local checkout.
+description: Install and run the Mr Mainspring backend MCP server from a local checkout.
 section: Start
 status: current
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Quickstart
 
-SIGIL currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
+Mr Mainspring currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
 
 ## Install Backend Dependencies
 
@@ -72,5 +72,5 @@ Use an MCP client connected to the stdio command and run:
 6. `audit.tail` to inspect the story.
 
 ::: tip Current x402 behavior
-Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. SIGIL still stops before signed payment payload creation and settlement.
+Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. Mr Mainspring still stops before signed payment payload creation and settlement.
 :::

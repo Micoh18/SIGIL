@@ -1,6 +1,6 @@
 ---
 title: Audit Trail
-description: Local audit event shape and current events emitted by SIGIL services.
+description: Local audit event shape and current events emitted by Mr Mainspring services.
 section: Core Modules
 status: implemented
 last_verified: 2026-06-05

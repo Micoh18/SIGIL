@@ -1,6 +1,6 @@
 ---
 title: Current Limitations
-description: Honest current gaps in SIGIL's Casper contract, x402 settlement, persistence, and transport story.
+description: Honest current gaps in Mr Mainspring's Casper contract, x402 settlement, persistence, and transport story.
 section: Reference
 status: current
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Current Limitations
 
-SIGIL is usable as a local MCP backend, but several production and demo-completion paths remain intentionally unfinished.
+Mr Mainspring is usable as a local MCP backend, but several production and demo-completion paths remain intentionally unfinished.
 
 ## Casper
 

@@ -112,9 +112,9 @@ function routeFor(file) {
 
 function renderLlmsTxt(pages) {
   const lines = [
-    "# SIGIL",
+    "# Mr Mainspring",
     "",
-    "> SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.",
+    "> Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.",
     "",
     `Last verified: ${lastVerified}`,
     "",
@@ -145,7 +145,7 @@ function renderLlmsTxt(pages) {
 
 function renderLlmsFull(pages) {
   const lines = [
-    "# SIGIL Full LLM Docs",
+    "# Mr Mainspring Full LLM Docs",
     "",
     `Last verified: ${lastVerified}`,
     "",

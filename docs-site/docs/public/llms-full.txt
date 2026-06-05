@@ -1,4 +1,4 @@
-# SIGIL Full LLM Docs
+# Mr Mainspring Full LLM Docs
 
 Last verified: 2026-06-05
 
@@ -8,14 +8,14 @@ This file is generated from the VitePress Markdown docs plus the MCP tool schema
 
 Source: docs/index.md
 Canonical path: /
-Description: SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
+Description: Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
 Section: Start
 Status: current
 Last verified: 2026-06-05
 
 ## Current Shape
 
-SIGIL is a TypeScript MCP backend for local agent demos. It exposes tools for:
+Mr Mainspring is a TypeScript MCP backend for local agent demos. It exposes tools for:
 
 - Memory write/read/search/verify.
 - Grimoire encrypted secrets and policies.
@@ -37,14 +37,14 @@ LLM-readable entry points are available at [/llms.txt](/llms.txt), [/llms-full.t
 
 Source: docs/quickstart.md
 Canonical path: /quickstart
-Description: Install and run the SIGIL backend MCP server from a local checkout.
+Description: Install and run the Mr Mainspring backend MCP server from a local checkout.
 Section: Start
 Status: current
 Last verified: 2026-06-05
 
 # Quickstart
 
-SIGIL currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
+Mr Mainspring currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
 
 ## Install Backend Dependencies
 
@@ -108,28 +108,28 @@ Use an MCP client connected to the stdio command and run:
 6. `audit.tail` to inspect the story.
 
 ::: tip Current x402 behavior
-Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. SIGIL still stops before signed payment payload creation and settlement.
+Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. Mr Mainspring still stops before signed payment payload creation and settlement.
 :::
 
 # Architecture
 
 Source: docs/architecture.md
 Canonical path: /architecture
-Description: Module boundaries and data flow for the SIGIL MCP backend.
+Description: Module boundaries and data flow for the Mr Mainspring MCP backend.
 Section: Start
 Status: current
 Last verified: 2026-06-05
 
 # Architecture
 
-SIGIL is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
+Mr Mainspring is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
 
 ```text
 Agent / MCP client
         |
         | stdio MCP tools
         v
-SIGIL TypeScript backend
+Mr Mainspring TypeScript backend
         |
         |-- Memory service
         |     |-- canonical JSON envelope
@@ -164,7 +164,7 @@ The product spec describes a SQLite/Postgres path, but the implemented backend u
 
 ## Trust Boundaries
 
-SIGIL separates sensitive content from public proof material:
+Mr Mainspring separates sensitive content from public proof material:
 
 - Memory bodies stay off-chain.
 - Secret values are encrypted and never returned by MCP tools.
@@ -186,14 +186,14 @@ SIGIL separates sensitive content from public proof material:
 
 Source: docs/mcp-tools.md
 Canonical path: /mcp-tools
-Description: Current SIGIL MCP tool surface grouped by memory, Grimoire, payments, and audit.
+Description: Current Mr Mainspring MCP tool surface grouped by memory, Grimoire, payments, and audit.
 Section: Core Modules
 Status: current
 Last verified: 2026-06-05
 
 # MCP Tools
 
-SIGIL exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
+Mr Mainspring exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
 
 ## Memory Tools
 
@@ -280,7 +280,7 @@ settled
 
 Source: docs/memory.md
 Canonical path: /memory
-Description: SIGIL memory envelopes, hashing rules, search, verification, and anchor metadata.
+Description: Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata.
 Section: Core Modules
 Status: implemented
 Last verified: 2026-06-05
@@ -325,7 +325,7 @@ The canonical JSON and content hash are stored with local mutable metadata such 
 
 ## Hashing
 
-SIGIL computes:
+Mr Mainspring computes:
 
 ```text
 content_hash = sha256(canonical_memory_envelope)
@@ -352,14 +352,14 @@ The current backend uses lowercase SHA-256 hex strings.
 
 Source: docs/grimoire.md
 Canonical path: /grimoire
-Description: Encrypted secrets and spending/access policies for SIGIL agents.
+Description: Encrypted secrets and spending/access policies for Mr Mainspring agents.
 Section: Core Modules
 Status: implemented
 Last verified: 2026-06-05
 
 # Grimoire
 
-Grimoire is SIGIL's local vault and policy layer. It exists to prevent agents from receiving raw secrets while still allowing backend code to enforce spending and access rules.
+Grimoire is Mr Mainspring's local vault and policy layer. It exists to prevent agents from receiving raw secrets while still allowing backend code to enforce spending and access rules.
 
 ## Secrets
 
@@ -495,7 +495,7 @@ Set `request_challenge: true` to make the initial HTTP request:
 }
 ```
 
-If the resource returns HTTP 402, SIGIL captures `PaymentRequirements` from a JSON body or standard x402 headers and persists `requirements_json`.
+If the resource returns HTTP 402, Mr Mainspring captures `PaymentRequirements` from a JSON body or standard x402 headers and persists `requirements_json`.
 
 ```json
 {
@@ -511,7 +511,7 @@ If the resource returns HTTP 402, SIGIL captures `PaymentRequirements` from a JS
 }
 ```
 
-If the resource is free, SIGIL hashes the response body and does not claim a payment:
+If the resource is free, Mr Mainspring hashes the response body and does not claim a payment:
 
 ```json
 {
@@ -526,7 +526,7 @@ If the resource is free, SIGIL hashes the response body and does not claim a pay
 }
 ```
 
-If the resource returns an unexpected non-402 error, SIGIL records an honest unavailable state:
+If the resource returns an unexpected non-402 error, Mr Mainspring records an honest unavailable state:
 
 ```json
 {
@@ -539,7 +539,7 @@ If the resource returns an unexpected non-402 error, SIGIL records an honest una
 
 ## Idempotency
 
-When `idempotency_key` is present, SIGIL returns the same persisted intent for the same `agent_id` and key. This avoids duplicate intent creation and prevents replaying the challenge request for the same idempotent call.
+When `idempotency_key` is present, Mr Mainspring returns the same persisted intent for the same `agent_id` and key. This avoids duplicate intent creation and prevents replaying the challenge request for the same idempotent call.
 
 ## What Is Not Implemented
 
@@ -561,7 +561,7 @@ Last verified: 2026-06-05
 
 # Casper Anchoring
 
-SIGIL is designed to anchor hash-only memory proofs on Casper. The current repository has the backend interface and validation path, but not a verified real transaction submission path.
+Mr Mainspring is designed to anchor hash-only memory proofs on Casper. The current repository has the backend interface and validation path, but not a verified real transaction submission path.
 
 ## Backend Client Modes
 
@@ -611,7 +611,7 @@ Treat the current contract as non-deployed and non-buildable until it is replace
 
 Source: docs/audit-trail.md
 Canonical path: /audit-trail
-Description: Local audit event shape and current events emitted by SIGIL services.
+Description: Local audit event shape and current events emitted by Mr Mainspring services.
 Section: Core Modules
 Status: implemented
 Last verified: 2026-06-05
@@ -670,14 +670,14 @@ The response returns newest relevant events first. Audit metadata must not inclu
 
 Source: docs/security-model.md
 Canonical path: /security-model
-Description: Current SIGIL security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit.
+Description: Current Mr Mainspring security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit.
 Section: Reference
 Status: current
 Last verified: 2026-06-05
 
 # Security Model
 
-SIGIL is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
+Mr Mainspring is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
 
 ## Data Handling Rules
 
@@ -1007,14 +1007,14 @@ The generated schema file should be treated as the canonical LLM-readable MCP to
 
 Source: docs/current-limitations.md
 Canonical path: /current-limitations
-Description: Honest current gaps in SIGIL's Casper contract, x402 settlement, persistence, and transport story.
+Description: Honest current gaps in Mr Mainspring's Casper contract, x402 settlement, persistence, and transport story.
 Section: Reference
 Status: current
 Last verified: 2026-06-05
 
 # Current Limitations
 
-SIGIL is usable as a local MCP backend, but several production and demo-completion paths remain intentionally unfinished.
+Mr Mainspring is usable as a local MCP backend, but several production and demo-completion paths remain intentionally unfinished.
 
 ## Casper
 
@@ -1073,7 +1073,7 @@ real Casper transaction hash capture
     "name": "memory.write",
     "title": "Write Memory",
     "status": "implemented",
-    "description": "Store a SIGIL agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
+    "description": "Store a Mr Mainspring agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
     "input": {
       "type": "object",
       "required": [

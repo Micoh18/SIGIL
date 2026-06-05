@@ -1,12 +1,12 @@
 ---
 title: Overview
-description: SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
+description: Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
 section: Start
 status: current
 last_verified: 2026-06-05
 layout: home
 hero:
-  name: SIGIL
+  name: Mr Mainspring
   text: MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
   tagline: Build agent infrastructure with durable local records, encrypted policy controls, hash-only anchoring boundaries, and honest x402 pre-settlement states.
   actions:
@@ -29,7 +29,7 @@ features:
 
 ## Current Shape
 
-SIGIL is a TypeScript MCP backend for local agent demos. It exposes tools for:
+Mr Mainspring is a TypeScript MCP backend for local agent demos. It exposes tools for:
 
 - Memory write/read/search/verify.
 - Grimoire encrypted secrets and policies.

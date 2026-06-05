@@ -1,6 +1,6 @@
 ---
 title: Grimoire
-description: Encrypted secrets and spending/access policies for SIGIL agents.
+description: Encrypted secrets and spending/access policies for Mr Mainspring agents.
 section: Core Modules
 status: implemented
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Grimoire
 
-Grimoire is SIGIL's local vault and policy layer. It exists to prevent agents from receiving raw secrets while still allowing backend code to enforce spending and access rules.
+Grimoire is Mr Mainspring's local vault and policy layer. It exists to prevent agents from receiving raw secrets while still allowing backend code to enforce spending and access rules.
 
 ## Secrets
 

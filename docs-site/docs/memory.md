@@ -1,6 +1,6 @@
 ---
 title: Memory
-description: SIGIL memory envelopes, hashing rules, search, verification, and anchor metadata.
+description: Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata.
 section: Core Modules
 status: implemented
 last_verified: 2026-06-05
@@ -46,7 +46,7 @@ The canonical JSON and content hash are stored with local mutable metadata such 
 
 ## Hashing
 
-SIGIL computes:
+Mr Mainspring computes:
 
 ```text
 content_hash = sha256(canonical_memory_envelope)

@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: Module boundaries and data flow for the SIGIL MCP backend.
+description: Module boundaries and data flow for the Mr Mainspring MCP backend.
 section: Start
 status: current
 last_verified: 2026-06-05
@@ -8,14 +8,14 @@ last_verified: 2026-06-05
 
 # Architecture
 
-SIGIL is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
+Mr Mainspring is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
 
 ```text
 Agent / MCP client
         |
         | stdio MCP tools
         v
-SIGIL TypeScript backend
+Mr Mainspring TypeScript backend
         |
         |-- Memory service
         |     |-- canonical JSON envelope
@@ -50,7 +50,7 @@ The product spec describes a SQLite/Postgres path, but the implemented backend u
 
 ## Trust Boundaries
 
-SIGIL separates sensitive content from public proof material:
+Mr Mainspring separates sensitive content from public proof material:
 
 - Memory bodies stay off-chain.
 - Secret values are encrypted and never returned by MCP tools.

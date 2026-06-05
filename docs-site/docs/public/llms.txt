@@ -1,24 +1,24 @@
-# SIGIL
+# Mr Mainspring
 
-> SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.
+> Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.
 
 Last verified: 2026-06-05
 
 ## Canonical Docs
 
-- [Overview](/): SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments. Status: current.
-- [Quickstart](/quickstart): Install and run the SIGIL backend MCP server from a local checkout. Status: current.
-- [Architecture](/architecture): Module boundaries and data flow for the SIGIL MCP backend. Status: current.
-- [MCP Tools](/mcp-tools): Current SIGIL MCP tool surface grouped by memory, Grimoire, payments, and audit. Status: current.
-- [Memory](/memory): SIGIL memory envelopes, hashing rules, search, verification, and anchor metadata. Status: implemented.
-- [Grimoire](/grimoire): Encrypted secrets and spending/access policies for SIGIL agents. Status: implemented.
+- [Overview](/): Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments. Status: current.
+- [Quickstart](/quickstart): Install and run the Mr Mainspring backend MCP server from a local checkout. Status: current.
+- [Architecture](/architecture): Module boundaries and data flow for the Mr Mainspring MCP backend. Status: current.
+- [MCP Tools](/mcp-tools): Current Mr Mainspring MCP tool surface grouped by memory, Grimoire, payments, and audit. Status: current.
+- [Memory](/memory): Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata. Status: implemented.
+- [Grimoire](/grimoire): Encrypted secrets and spending/access policies for Mr Mainspring agents. Status: implemented.
 - [Payments and x402](/payments-x402): Durable payment intents, x402 challenge capture, and honest pre-settlement behavior. Status: pre-settlement.
 - [Casper Anchoring](/casper-anchoring): Current Casper anchor client boundary and the memory-anchor contract stub. Status: stub.
-- [Audit Trail](/audit-trail): Local audit event shape and current events emitted by SIGIL services. Status: implemented.
-- [Security Model](/security-model): Current SIGIL security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit. Status: current.
+- [Audit Trail](/audit-trail): Local audit event shape and current events emitted by Mr Mainspring services. Status: implemented.
+- [Security Model](/security-model): Current Mr Mainspring security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit. Status: current.
 - [Local Demo](/local-demo): Suggested local MCP demo sequence for memory, Grimoire, x402 pre-settlement, and audit. Status: current.
 - [API/Schema Reference](/api-schema-reference): Implemented MCP schema summaries, payment states, memory types, and machine-readable schema file links. Status: current.
-- [Current Limitations](/current-limitations): Honest current gaps in SIGIL's Casper contract, x402 settlement, persistence, and transport story. Status: current.
+- [Current Limitations](/current-limitations): Honest current gaps in Mr Mainspring's Casper contract, x402 settlement, persistence, and transport story. Status: current.
 
 ## Machine-Readable References
 
