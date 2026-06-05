@@ -131,6 +131,102 @@ describe("PaymentService", () => {
     expect(rawStore).toContain("asset-package-hash");
   });
 
+  it("keeps captured challenge requirements durable across service instances", async () => {
+    const requirements = {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper-test",
+          maxAmountRequired: "0.01",
+          resource: "http://localhost:4021/weather",
+          asset: "asset-package-hash",
+          payTo: "casper-payee"
+        }
+      ]
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify(requirements), {
+          status: 402,
+          headers: { "content-type": "application/json" }
+        })
+      )
+    );
+    const { service, dataDir } = await createService({ withChallengeClient: true });
+
+    const result = await service.fetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-demo",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expected_amount: "0.01",
+      idempotency_key: "durable-challenge",
+      request_challenge: true
+    });
+    const restartedService = new PaymentService(
+      new GrimoireService(new FileGrimoireStore(dataDir), Buffer.alloc(32, 1)),
+      new FilePaymentStore(dataDir)
+    );
+    const receipt = await restartedService.receipt(result.payment_id);
+
+    expect(receipt.found).toBe(true);
+    expect(receipt.intent?.status).toBe("challenge_received");
+    expect(receipt.intent?.requirements_json).toContain("asset-package-hash");
+    expect(receipt.intent?.signed_payload_hash).toBeNull();
+    expect(receipt.receipt).toBeNull();
+  });
+
+  it("rejects unexpected payment requirements before any signed payload exists", async () => {
+    const requirements = {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper-test",
+          maxAmountRequired: "0.02",
+          resource: "http://localhost:4021/weather",
+          asset: "asset-package-hash",
+          payTo: "casper-payee"
+        }
+      ]
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify(requirements), {
+          status: 402,
+          headers: { "content-type": "application/json" }
+        })
+      )
+    );
+    const { service } = await createService({ withChallengeClient: true });
+
+    const result = await service.fetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-demo",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expected_amount: "0.01",
+      request_challenge: true
+    });
+    if (!result.allowed) {
+      throw new Error("Expected payment fetch to pass policy before requirement rejection");
+    }
+    const receipt = await service.receipt(result.payment_id);
+
+    expect(result.status).toBe("settlement_unavailable");
+    expect(result.settlement).toBe("unavailable");
+    expect(result.settlement_blocker).toBe("x402_requirements_not_allowed");
+    expect(result.requirements_json).toContain("maxAmountRequired");
+    expect(receipt.intent?.requirements_json).toContain("0.02");
+    expect(receipt.intent?.signed_payload_hash).toBeNull();
+    expect(receipt.intent?.settlement_blocker).toBe("x402_requirements_not_allowed");
+    expect(receipt.intent?.status).not.toBe("settled");
+    expect(receipt.receipt).toBeNull();
+  });
+
   it("does not claim settlement when the resource is free", async () => {
     vi.stubGlobal(
       "fetch",
@@ -190,9 +286,20 @@ describe("PaymentService", () => {
   });
 
   it("returns the same persisted challenge intent for an idempotent call", async () => {
+    const requirements = {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper-test",
+          maxAmountRequired: "0.01",
+          resource: "http://localhost:4021/weather"
+        }
+      ]
+    };
     const fetchMock = vi.fn(
       async () =>
-        new Response(JSON.stringify({ x402Version: 1, accepts: [{ scheme: "exact" }] }), {
+        new Response(JSON.stringify(requirements), {
           status: 402,
           headers: { "content-type": "application/json" }
         })

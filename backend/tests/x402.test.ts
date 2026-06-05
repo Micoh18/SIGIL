@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadConfig } from "../src/config.js";
+import type { PolicyRecord } from "../src/grimoire/types.js";
 import { X402ChallengeClient } from "../src/x402/client.js";
+import { approveX402Requirements, verifyX402SettlementResponse } from "../src/x402/readiness.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -118,4 +120,147 @@ describe("x402 foundation", () => {
     expect(result.response_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(result.settlement_status).toBe("not_required");
   });
+
+  it("approves only policy-matching payment requirements before signing", () => {
+    const policy = createPolicy({
+      allowed_asset: {
+        caip2_chain_id: "casper:casper-test",
+        asset_package: "asset-package-hash",
+        pay_to: "casper-payee",
+        scheme: "exact"
+      }
+    });
+
+    const approval = approveX402Requirements({
+      requirements: {
+        x402Version: 1,
+        accepts: [
+          {
+            scheme: "exact",
+            network: "casper-test",
+            maxAmountRequired: "0.01",
+            resource: "http://localhost:4021/weather",
+            asset: "asset-package-hash",
+            payTo: "casper-payee"
+          }
+        ]
+      },
+      policy,
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expectedAmount: "0.01"
+    });
+
+    expect(approval.approved).toBe(true);
+    if (approval.approved) {
+      expect(approval.selected_index).toBe(0);
+      expect(approval.selected_requirement_hash).toMatch(/^[a-f0-9]{64}$/);
+    }
+  });
+
+  it("rejects requirement resource, amount, asset, and payee mismatches", () => {
+    const policy = createPolicy({
+      allowed_asset: {
+        caip2_chain_id: "casper:casper-test",
+        asset_package: "asset-package-hash",
+        pay_to: "casper-payee"
+      }
+    });
+
+    const approval = approveX402Requirements({
+      requirements: {
+        x402Version: 1,
+        accepts: [
+          {
+            scheme: "exact",
+            network: "casper-test",
+            maxAmountRequired: "0.02",
+            resource: "http://localhost:4021/weather",
+            asset: "asset-package-hash",
+            payTo: "casper-payee"
+          },
+          {
+            scheme: "exact",
+            network: "casper-test",
+            maxAmountRequired: "0.01",
+            resource: "http://localhost:4021/other",
+            asset: "asset-package-hash",
+            payTo: "casper-payee"
+          },
+          {
+            scheme: "exact",
+            network: "casper-test",
+            maxAmountRequired: "0.01",
+            resource: "http://localhost:4021/weather",
+            asset: "other-asset",
+            payTo: "casper-payee"
+          },
+          {
+            scheme: "exact",
+            network: "casper-test",
+            maxAmountRequired: "0.01",
+            resource: "http://localhost:4021/weather",
+            asset: "asset-package-hash",
+            payTo: "other-payee"
+          }
+        ]
+      },
+      policy,
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expectedAmount: "0.01"
+    });
+
+    expect(approval.approved).toBe(false);
+    if (!approval.approved) {
+      const reasons = approval.rejected_candidates.map((candidate) => candidate.reason);
+      expect(approval.reason).toBe("no_acceptable_requirement");
+      expect(reasons).toEqual([
+        "expected_amount_mismatch",
+        "resource_mismatch",
+        "asset_mismatch",
+        "payee_mismatch"
+      ]);
+    }
+  });
+
+  it("does not treat facilitator verify output as settlement", () => {
+    const verifyOnly = verifyX402SettlementResponse({ valid: true });
+    const settleWithoutHash = verifyX402SettlementResponse({ success: true });
+    const settled = verifyX402SettlementResponse({
+      success: true,
+      transactionHash: "hash-abc123"
+    });
+
+    expect(verifyOnly.settled).toBe(false);
+    expect(settleWithoutHash.settled).toBe(false);
+    expect(settled.settled).toBe(true);
+    if (settled.settled) {
+      expect(settled.transaction_hash).toBe("hash-abc123");
+      expect(settled.receipt_json).toContain("transactionHash");
+    }
+  });
 });
+
+function createPolicy(overrides: Partial<PolicyRecord> = {}): PolicyRecord {
+  const now = new Date("2026-06-05T00:00:00.000Z").toISOString();
+
+  return {
+    agent_id: "agent-demo-1",
+    policy_id: "pol-demo",
+    enabled: true,
+    allowed_urls: ["http://localhost:4021/weather"],
+    allowed_methods: ["GET"],
+    allowed_asset: { caip2_chain_id: "casper:casper-test" },
+    max_amount_per_call: "0.05",
+    max_amount_per_period: "1.00",
+    period_seconds: 86400,
+    secret_scopes: ["x402:sign"],
+    policy_hash: "policy-hash",
+    current_period_spend: "0",
+    period_started_at: now,
+    created_at: now,
+    updated_at: now,
+    ...overrides
+  };
+}

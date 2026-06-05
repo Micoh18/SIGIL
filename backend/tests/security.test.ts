@@ -17,6 +17,7 @@ import { FileMemoryStore } from "../src/memory/store.js";
 import { PaymentService } from "../src/payments/service.js";
 import { FilePaymentStore } from "../src/payments/store.js";
 import type { PaymentDenialReason, PaymentFetchInput } from "../src/payments/types.js";
+import type { X402ChallengeRequest, X402ChallengeResult } from "../src/x402/client.js";
 
 type CapturedTool = {
   inputSchema: Record<string, z.ZodTypeAny>;
@@ -78,6 +79,74 @@ describe("security leak guards", () => {
 
     const memoryBodies = (await memoryStore.list("agent-demo-1")).map((memory) => memory.body);
     expect(JSON.stringify(memoryBodies)).not.toContain(secretValue);
+  });
+
+  it("redacts sensitive x402 requirement fields from payment MCP outputs and audit", async () => {
+    const secretValue = "task11-x402-private-key-value";
+    const requirements = {
+      x402Version: 1,
+      privateKey: secretValue,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper-test",
+          maxAmountRequired: "0.01",
+          resource: "http://localhost:4021/weather",
+          asset: "asset-package-hash",
+          payTo: "casper-payee",
+          extra: {
+            api_key: secretValue
+          }
+        }
+      ]
+    };
+    const { payment, audit } = await createPaymentFixture(
+      {},
+      {
+        challengeClient: {
+          async requestChallenge(input: X402ChallengeRequest): Promise<X402ChallengeResult> {
+            return {
+              status: "payment_required",
+              status_code: 402,
+              requirements,
+              requirements_json: JSON.stringify(requirements),
+              requirements_source: "json-body",
+              raw_body: JSON.stringify(requirements),
+              facilitator_url: "http://localhost:4022",
+              resource_url: "http://localhost:4021/weather",
+              request_url: input.url,
+              settlement_status: "not_started"
+            };
+          }
+        }
+      }
+    );
+    const paymentTools = captureTools((server) => registerPaymentTools(server, payment));
+    const auditTools = captureTools((server) => registerAuditTools(server, audit));
+
+    const fetchOutput = await callJsonTool<{ payment_id: string }>(
+      paymentTools.get("payment.fetch"),
+      {
+        agent_id: "agent-demo-1",
+        policy_id: "pol-demo",
+        method: "GET",
+        url: "http://localhost:4021/weather",
+        expected_amount: "0.01",
+        request_challenge: true
+      }
+    );
+    const receiptOutput = await callJsonTool(paymentTools.get("payment.receipt"), {
+      payment_id: fetchOutput.payment_id
+    });
+    const auditOutput = await callJsonTool(auditTools.get("audit.tail"), {
+      agent_id: "agent-demo-1",
+      limit: 20
+    });
+
+    expect(JSON.stringify(fetchOutput)).not.toContain(secretValue);
+    expect(JSON.stringify(receiptOutput)).not.toContain(secretValue);
+    expect(JSON.stringify(auditOutput)).not.toContain(secretValue);
+    expect(JSON.stringify(fetchOutput)).toContain("[redacted]");
   });
 
   it("bounds large audit metadata and keeps sensitive fields redacted", async () => {
@@ -223,8 +292,14 @@ describe("MCP input safety", () => {
 });
 
 async function createPaymentFixture(
-  policyOverrides: Partial<PolicySetInput> = {}
+  policyOverrides: Partial<PolicySetInput> = {},
+  options: {
+    challengeClient?: {
+      requestChallenge(input: X402ChallengeRequest): Promise<X402ChallengeResult>;
+    };
+  } = {}
 ): Promise<{
+  audit: AuditService;
   grimoire: GrimoireService;
   memoryStore: FileMemoryStore;
   payment: PaymentService;
@@ -255,9 +330,10 @@ async function createPaymentFixture(
   });
 
   return {
+    audit,
     grimoire,
     memoryStore,
-    payment: new PaymentService(grimoire, paymentStore, audit),
+    payment: new PaymentService(grimoire, paymentStore, audit, options.challengeClient),
     paymentStore
   };
 }

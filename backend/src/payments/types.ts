@@ -60,6 +60,7 @@ export type PaymentIntentRecord = {
   denial_reason: PaymentDenialReason | null;
   requirements_json: string | null;
   signed_payload_hash: string | null;
+  settlement_blocker: string | null;
   created_at: string;
   updated_at: string;
 };

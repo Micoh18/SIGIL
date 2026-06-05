@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { AuditService } from "../audit/service.js";
 import type { GrimoireService } from "../grimoire/service.js";
 import type { X402ChallengeRequest, X402ChallengeResult } from "../x402/client.js";
+import { approveX402Requirements } from "../x402/readiness.js";
+import { redactX402Value } from "../x402/redaction.js";
 import type {
   PaymentChallengeSummary,
   PaymentDenialReason,
@@ -61,6 +63,7 @@ export class PaymentService {
       denial_reason: null,
       requirements_json: null,
       signed_payload_hash: null,
+      settlement_blocker: null,
       created_at: now,
       updated_at: now
     };
@@ -120,7 +123,7 @@ export class PaymentService {
     });
 
     if (input.request_challenge) {
-      return this.fetchChallenge(intent);
+      return this.fetchChallenge(intent, policy!, input.expected_amount ?? null);
     }
 
     return this.resultFromIntent(intent);
@@ -140,7 +143,11 @@ export class PaymentService {
     };
   }
 
-  private async fetchChallenge(intent: PaymentIntentRecord): Promise<PaymentFetchResult> {
+  private async fetchChallenge(
+    intent: PaymentIntentRecord,
+    policy: PolicyLike,
+    expectedAmount: string | null
+  ): Promise<PaymentFetchResult> {
     if (!this.challengeClient) {
       const unavailable = await this.markSettlementUnavailable(
         intent,
@@ -156,13 +163,29 @@ export class PaymentService {
       });
 
       if (challenge.status === "payment_required") {
+        const safeRequirements = redactX402Value(challenge.requirements);
+        const safeRequirementsJson = JSON.stringify(safeRequirements);
+        const safeChallenge = {
+          ...challenge,
+          requirements: safeRequirements,
+          requirements_json: safeRequirementsJson
+        };
         const updated = {
           ...intent,
           status: "challenge_received" as const,
-          requirements_json: challenge.requirements_json,
+          requirements_json: safeRequirementsJson,
           updated_at: new Date().toISOString()
         };
         await this.store.saveIntent(updated);
+
+        const approval = approveX402Requirements({
+          requirements: challenge.requirements,
+          policy,
+          method: updated.method,
+          url: updated.url,
+          expectedAmount
+        });
+
         await this.audit?.record({
           agent_id: updated.agent_id,
           event_type: "payment.challenge_received",
@@ -176,10 +199,41 @@ export class PaymentService {
             requirements_source: challenge.requirements_source,
             facilitator_url: challenge.facilitator_url,
             resource_url: challenge.resource_url,
-            settlement: "not_started"
+            settlement: "not_started",
+            requirements_approved: approval.approved,
+            selected_requirement_hash: approval.approved
+              ? approval.selected_requirement_hash
+              : null
           }
         });
-        return this.resultFromIntent(updated, challenge);
+
+        if (!approval.approved) {
+          const unavailable = await this.markSettlementUnavailable(
+            updated,
+            "x402_requirements_not_allowed"
+          );
+          await this.audit?.record({
+            agent_id: unavailable.agent_id,
+            event_type: "payment.requirements_rejected",
+            subject_type: "payment",
+            subject_id: unavailable.id,
+            severity: "warn",
+            metadata: {
+              policy_id: unavailable.policy_id,
+              method: unavailable.method,
+              url: unavailable.url,
+              reason: approval.reason,
+              rejected_candidates: approval.rejected_candidates
+            }
+          });
+          return this.resultFromIntent(
+            unavailable,
+            safeChallenge,
+            "x402_requirements_not_allowed"
+          );
+        }
+
+        return this.resultFromIntent(updated, safeChallenge);
       }
 
       if (challenge.status === "free_response") {
@@ -254,6 +308,7 @@ export class PaymentService {
     const updated = {
       ...intent,
       status: "settlement_unavailable" as const,
+      settlement_blocker: reason,
       updated_at: new Date().toISOString()
     };
     await this.store.saveIntent(updated);
@@ -322,7 +377,8 @@ export class PaymentService {
       result.challenge = summarizeChallenge(challenge);
     }
 
-    const blocker = settlementBlocker ?? settlementBlockerFor(intent, challenge);
+    const blocker =
+      settlementBlocker ?? intent.settlement_blocker ?? settlementBlockerFor(intent, challenge);
     if (blocker) {
       result.settlement_blocker = blocker;
     }

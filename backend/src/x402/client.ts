@@ -1,4 +1,5 @@
 import { sha256Hex } from "../memory/hash.js";
+import { redactX402Value } from "./redaction.js";
 
 export type PaymentRequirements = unknown;
 
@@ -63,12 +64,13 @@ export class X402ChallengeClient {
 
     if (response.status === 402) {
       const requirements = parseRequirements(response.headers, bodyText);
+      const redactedRequirements = redactX402Value(requirements.value);
       return {
         ...metadata,
         status: "payment_required",
         status_code: 402,
-        requirements: requirements.value,
-        requirements_json: JSON.stringify(requirements.value),
+        requirements: redactedRequirements,
+        requirements_json: JSON.stringify(redactedRequirements),
         requirements_source: requirements.source,
         raw_body: bodyText,
         settlement_status: "not_started"

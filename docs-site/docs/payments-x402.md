@@ -1,6 +1,6 @@
 ---
 title: Payments and x402
-description: Durable payment intents, x402 challenge capture, and honest pre-settlement behavior.
+description: Durable payment intents, x402 challenge capture, requirement approval, and honest pre-settlement behavior.
 section: Core Modules
 status: pre-settlement
 last_verified: 2026-06-05
@@ -8,7 +8,7 @@ last_verified: 2026-06-05
 
 # Payments and x402
 
-The payment module is intentionally conservative. It creates durable payment intents and can request the first x402 challenge after policy approval, but it does not claim signed payload creation or Casper settlement.
+The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, and validates captured payment requirements before the future signing boundary. It does not claim signed payload creation, facilitator settlement, or Casper settlement.
 
 ## Flow States
 
@@ -22,6 +22,42 @@ settled
 ```
 
 `settled` is reserved for a future path that genuinely verifies settlement. The current implementation does not set settled.
+
+## Official x402 Boundary
+
+The official x402 flow is:
+
+```text
+initial resource request
+402 Payment Required with PAYMENT-REQUIRED requirements
+client selects an allowed requirement
+client signs a PaymentPayload
+client retries with PAYMENT-SIGNATURE
+resource server verifies locally or through facilitator /verify
+resource server settles locally or through facilitator /settle
+resource server returns PAYMENT-RESPONSE settlement details
+```
+
+Mr Mainspring currently implements only the safe pre-signing portion:
+
+```text
+challenge capture
+Grimoire policy approval
+captured requirement approval against policy
+signing/payment boundary stops here
+```
+
+The exact backend boundary is:
+
+| Boundary | Current status |
+| --- | --- |
+| Challenge capture | Implemented. The first HTTP request can capture `PAYMENT-REQUIRED`, `X-PAYMENT-REQUIRED`, JSON body requirements, or a raw body fallback. |
+| Policy approval | Implemented before any challenge request. URL, method, and expected amount are checked against the Grimoire policy. |
+| Requirement approval | Implemented after challenge capture and before any future signing. The selected requirement must match amount, resource URL, optional method, network, configured asset, configured payee, and configured scheme. |
+| Payment payload signing | Not implemented. No private key is read and no `PAYMENT-SIGNATURE` payload is created. |
+| Facilitator `/verify` | Not implemented. Verification response parsing is not enough to mark settlement. |
+| Facilitator `/settle` | Not implemented. Settlement can only be claimed after a successful settlement response with a transaction hash is verified. |
+| Receipt persistence | Store shape exists, but real x402 receipts are not written because `/settle` is not called. |
 
 ## `payment.fetch`
 
@@ -80,6 +116,17 @@ If the resource returns HTTP 402, Mr Mainspring captures `PaymentRequirements` f
 }
 ```
 
+If the captured requirements do not match the policy, the challenge remains durable but settlement is marked unavailable before any signing/payment action:
+
+```json
+{
+  "allowed": true,
+  "status": "settlement_unavailable",
+  "settlement": "unavailable",
+  "settlement_blocker": "x402_requirements_not_allowed"
+}
+```
+
 If the resource is free, Mr Mainspring hashes the response body and does not claim a payment:
 
 ```json
@@ -112,9 +159,21 @@ When `idempotency_key` is present, Mr Mainspring returns the same persisted inte
 
 ## What Is Not Implemented
 
-- Selecting and validating a specific payment requirement against asset/payee policy beyond the current policy preflight.
 - Grimoire-backed signing capability retrieval.
 - Signed x402 payment payload creation.
 - Retrying the resource request with payment authorization.
-- Facilitator settlement verification.
+- Facilitator `/verify` calls.
+- Facilitator `/settle` calls.
 - Casper transaction hash recording for x402 settlement.
+
+## Manual Credentials and Resources Needed for Real x402
+
+Real settlement still requires all of the following outside repo files:
+
+- A funded buyer wallet or signing provider for the target x402 scheme and network. Private keys must stay outside the repository; use an external wallet/KMS or an encrypted Grimoire secret reference.
+- A running x402 resource server that returns real `PAYMENT-REQUIRED` requirements for the protected endpoint.
+- A facilitator URL with working `/verify` and `/settle` endpoints for the selected `(scheme, network)` pair.
+- Casper RPC/network configuration for the target network when using the Casper path.
+- A deployed x402-compatible Casper asset package/token and a funded payee account.
+- A Grimoire policy whose allowlist includes the exact resource URL, method, max amount, CAIP-2 network, asset package, payee, and scheme expected from the resource server.
+- A non-demo `GRIMOIRE_MASTER_KEY` if any signing secret reference is stored locally.

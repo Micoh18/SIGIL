@@ -10,6 +10,16 @@ last_verified: 2026-06-05
 
 Mr Mainspring is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
 
+## Security Posture Snapshot
+
+| Boundary | Current Behavior |
+| --- | --- |
+| Secret values | AES-GCM encrypted locally and never returned by MCP tools. |
+| Memory bodies | Stored locally, hashed deterministically, and kept off-chain. |
+| Payment authorization | Not implemented; signed x402 payloads are not produced or persisted. |
+| Casper anchoring | Hash metadata only; transaction submission is not claimed. |
+| Audit events | Redacted local events for debugging and evaluator review. |
+
 ## Data Handling Rules
 
 - Do not return Grimoire plaintext secret values.
@@ -53,3 +63,12 @@ The anchor client validates hash payloads and returns pending metadata. It does 
 - No KMS/HSM integration yet.
 - No real Casper transaction submission yet.
 - No real x402 settlement verification yet.
+
+## Evaluator Security Checks
+
+During a local demo, check that:
+
+- `grimoire.secret.put` returns metadata, not plaintext secret values.
+- `payment.receipt` returns intent/receipt metadata, not signed payment payloads.
+- `memory.write` with `anchor: true` returns pending anchor metadata unless a real Casper path is implemented.
+- `audit.tail` shows useful events without private keys, raw secrets, or signed authorization material.
