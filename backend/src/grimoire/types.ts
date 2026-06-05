@@ -40,7 +40,7 @@ export type PolicySetInput = {
   enabled?: boolean;
   allowed_urls: string[];
   allowed_methods: string[];
-  allowed_asset: JsonObject;
+  allowed_asset: unknown;
   max_amount_per_call: string;
   max_amount_per_period: string;
   period_seconds: number;
@@ -72,4 +72,3 @@ export type GrimoireStore = {
   savePolicy(policy: PolicyRecord): Promise<void>;
   getPolicy(agentId: string, policyId: string): Promise<PolicyRecord | null>;
 };
-

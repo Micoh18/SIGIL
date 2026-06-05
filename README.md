@@ -20,3 +20,7 @@ Current MCP tools:
 - `memory.read`
 - `memory.search`
 - `memory.verify`
+- `grimoire.secret.put`
+- `grimoire.secret.list`
+- `grimoire.policy.set`
+- `grimoire.policy.get`

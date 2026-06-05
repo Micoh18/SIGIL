@@ -1,5 +1,5 @@
 import { createCipheriv, randomBytes, randomUUID } from "node:crypto";
-import { canonicalizeJson } from "../memory/canonical.js";
+import { canonicalizeJson, toJsonObject } from "../memory/canonical.js";
 import { sha256Hex } from "../memory/hash.js";
 import type {
   GrimoireStore,
@@ -54,7 +54,7 @@ export class GrimoireService {
       enabled: input.enabled ?? true,
       allowed_urls: input.allowed_urls,
       allowed_methods: input.allowed_methods.map((method) => method.toUpperCase()).sort(),
-      allowed_asset: input.allowed_asset,
+      allowed_asset: toJsonObject(input.allowed_asset, "allowed_asset"),
       max_amount_per_call: input.max_amount_per_call,
       max_amount_per_period: input.max_amount_per_period,
       period_seconds: input.period_seconds,
@@ -107,4 +107,3 @@ function toSecretMetadata(secret: SecretRecord): SecretMetadata {
 function createId(prefix: string): string {
   return `${prefix}_${randomUUID().replaceAll("-", "")}`;
 }
-
