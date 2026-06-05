@@ -1,4 +1,5 @@
 import { createCipheriv, randomBytes, randomUUID } from "node:crypto";
+import type { AuditService } from "../audit/service.js";
 import { canonicalizeJson, toJsonObject } from "../memory/canonical.js";
 import { sha256Hex } from "../memory/hash.js";
 import type {
@@ -13,7 +14,8 @@ import type {
 export class GrimoireService {
   constructor(
     private readonly store: GrimoireStore,
-    private readonly masterKey: Buffer
+    private readonly masterKey: Buffer,
+    private readonly audit?: AuditService
   ) {}
 
   async putSecret(input: SecretPutInput): Promise<SecretMetadata> {
@@ -37,12 +39,30 @@ export class GrimoireService {
     };
 
     await this.store.saveSecret(record);
+    await this.audit?.record({
+      agent_id: record.agent_id,
+      event_type: "secret.stored",
+      subject_type: "secret",
+      subject_id: record.id,
+      metadata: {
+        name: record.name,
+        type: record.type,
+        scopes: record.scopes
+      }
+    });
     return toSecretMetadata(record);
   }
 
   async listSecrets(agentId: string): Promise<SecretMetadata[]> {
     const secrets = await this.store.listSecrets(agentId);
-    return secrets.filter((secret) => !secret.deleted_at).map(toSecretMetadata);
+    const metadata = secrets.filter((secret) => !secret.deleted_at).map(toSecretMetadata);
+    await this.audit?.record({
+      agent_id: agentId,
+      event_type: "secret.listed",
+      subject_type: "secret",
+      metadata: { count: metadata.length }
+    });
+    return metadata;
   }
 
   async setPolicy(input: PolicySetInput): Promise<PolicyRecord> {
@@ -71,11 +91,31 @@ export class GrimoireService {
     };
 
     await this.store.savePolicy(record);
+    await this.audit?.record({
+      agent_id: record.agent_id,
+      event_type: "policy.set",
+      subject_type: "policy",
+      subject_id: record.policy_id,
+      metadata: {
+        enabled: record.enabled,
+        policy_hash: record.policy_hash,
+        allowed_urls: record.allowed_urls,
+        allowed_methods: record.allowed_methods
+      }
+    });
     return record;
   }
 
   async getPolicy(agentId: string, policyId: string): Promise<PolicyRecord | null> {
-    return this.store.getPolicy(agentId, policyId);
+    const policy = await this.store.getPolicy(agentId, policyId);
+    await this.audit?.record({
+      agent_id: agentId,
+      event_type: "policy.get",
+      subject_type: "policy",
+      subject_id: policyId,
+      metadata: { found: Boolean(policy) }
+    });
+    return policy;
   }
 }
 

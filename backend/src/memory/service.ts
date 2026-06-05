@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { AuditService } from "../audit/service.js";
 import { canonicalizeJson, toJsonObject } from "./canonical.js";
 import { sha256Hex } from "./hash.js";
 import type {
@@ -13,7 +14,10 @@ import type {
 const MEMORY_SCHEMA_VERSION = "sigil.memory.v1";
 
 export class MemoryService {
-  constructor(private readonly store: MemoryStore) {}
+  constructor(
+    private readonly store: MemoryStore,
+    private readonly audit?: AuditService
+  ) {}
 
   async write(input: WriteMemoryInput): Promise<StoredMemoryEntry> {
     const memoryId = input.memory_id ?? createMemoryId();
@@ -54,6 +58,18 @@ export class MemoryService {
     };
 
     await this.store.save(entry);
+    await this.audit?.record({
+      agent_id: entry.agent_id,
+      event_type: "memory.created",
+      subject_type: "memory",
+      subject_id: entry.memory_id,
+      metadata: {
+        type: entry.type,
+        content_hash: entry.content_hash,
+        metadata_hash: entry.metadata_hash,
+        anchor_status: entry.anchor_status
+      }
+    });
     return entry;
   }
 
@@ -99,6 +115,19 @@ export class MemoryService {
     const envelope = toEnvelope(entry);
     const localContentHash = sha256Hex(canonicalizeJson(envelope));
     const localValid = localContentHash === entry.content_hash;
+
+    await this.audit?.record({
+      agent_id: agentId,
+      event_type: localValid ? "memory.verify_succeeded" : "memory.verify_failed",
+      subject_type: "memory",
+      subject_id: memoryId,
+      severity: localValid ? "info" : "warn",
+      metadata: {
+        local_content_hash: localContentHash,
+        stored_content_hash: entry.content_hash,
+        anchor_status: entry.anchor_status
+      }
+    });
 
     return {
       valid: localValid,
