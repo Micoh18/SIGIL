@@ -24,3 +24,4 @@ Current MCP tools:
 - `grimoire.secret.list`
 - `grimoire.policy.set`
 - `grimoire.policy.get`
+- `payment.fetch`
