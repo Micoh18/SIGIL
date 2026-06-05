@@ -5,6 +5,7 @@ export type PaymentFetchInput = {
   url: string;
   expected_amount?: string;
   idempotency_key?: string;
+  request_challenge?: boolean;
 };
 
 export type PaymentPreflightInput = PaymentFetchInput;
@@ -14,19 +15,37 @@ export type PaymentDenialReason =
   | "policy_disabled"
   | "url_not_allowed"
   | "method_not_allowed"
-  | "amount_over_limit";
+  | "amount_over_limit"
+  | "invalid_amount";
 
 export type PaymentStatus =
   | "created"
-  | "policy_checked"
-  | "ready_for_x402_challenge"
   | "policy_denied"
-  | "requirements_received"
-  | "signed"
-  | "submitted"
-  | "settled"
-  | "failed"
-  | "settlement_unavailable";
+  | "policy_checked"
+  | "challenge_received"
+  | "settlement_unavailable"
+  | "settled";
+
+export type PaymentNextState =
+  | "ready_for_x402_challenge"
+  | "challenge_received"
+  | "settlement_unavailable"
+  | null;
+
+export type PaymentSettlementState = "not_started" | "not_required" | "unavailable" | "settled";
+
+export type PaymentChallengeSummary = {
+  status: "payment_required" | "free_response" | "unexpected_response";
+  status_code: number;
+  facilitator_url: string | null;
+  resource_url: string | null;
+  request_url: string;
+  settlement_status: "not_started" | "not_required";
+  requirements_json?: string | null;
+  requirements?: unknown;
+  requirements_source?: string;
+  response_hash?: string;
+};
 
 export type PaymentIntentRecord = {
   id: string;
@@ -68,8 +87,8 @@ export type PaymentStore = {
 export type PaymentFetchAllowed = {
   allowed: true;
   payment_id: string;
-  status: "policy_checked";
-  next_state: "ready_for_x402_challenge";
+  status: "policy_checked" | "challenge_received" | "settlement_unavailable" | "settled";
+  next_state: PaymentNextState;
   agent_id: string;
   policy_id: string;
   method: string;
@@ -78,7 +97,11 @@ export type PaymentFetchAllowed = {
   policy_hash: string;
   idempotency_key: string | null;
   persisted: true;
-  settlement: "not_started";
+  settlement: PaymentSettlementState;
+  requirements_json: string | null;
+  requirements?: unknown;
+  challenge?: PaymentChallengeSummary;
+  settlement_blocker?: string;
 };
 
 export type PaymentFetchDenied = {

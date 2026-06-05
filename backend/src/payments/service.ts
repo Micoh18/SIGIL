@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { AuditService } from "../audit/service.js";
 import type { GrimoireService } from "../grimoire/service.js";
+import type { X402ChallengeRequest, X402ChallengeResult } from "../x402/client.js";
 import type {
+  PaymentChallengeSummary,
   PaymentDenialReason,
+  PaymentFetchAllowed,
   PaymentFetchInput,
   PaymentFetchResult,
   PaymentIntentRecord,
@@ -10,15 +13,25 @@ import type {
   PaymentStore
 } from "./types.js";
 
+type X402ChallengeRequester = {
+  requestChallenge(input: X402ChallengeRequest): Promise<X402ChallengeResult>;
+};
+
+type DecimalAmount = {
+  value: bigint;
+  scale: number;
+};
+
 export class PaymentService {
   constructor(
     private readonly grimoireService: GrimoireService,
     private readonly store: PaymentStore,
-    private readonly audit?: AuditService
+    private readonly audit?: AuditService,
+    private readonly challengeClient?: X402ChallengeRequester
   ) {}
 
   async preflightFetch(input: PaymentFetchInput): Promise<PaymentFetchResult> {
-    return this.fetch(input);
+    return this.fetch({ ...input, request_challenge: false });
   }
 
   async fetch(input: PaymentFetchInput): Promise<PaymentFetchResult> {
@@ -101,9 +114,14 @@ export class PaymentService {
         amount: intent.amount,
         policy_hash: intent.policy_hash,
         idempotency_key: idempotencyKey,
-        next_state: "ready_for_x402_challenge"
+        next_state: "challenge_received",
+        request_challenge: input.request_challenge ?? false
       }
     });
+
+    if (input.request_challenge) {
+      return this.fetchChallenge(intent);
+    }
 
     return this.resultFromIntent(intent);
   }
@@ -122,7 +140,146 @@ export class PaymentService {
     };
   }
 
-  private resultFromIntent(intent: PaymentIntentRecord): PaymentFetchResult {
+  private async fetchChallenge(intent: PaymentIntentRecord): Promise<PaymentFetchResult> {
+    if (!this.challengeClient) {
+      const unavailable = await this.markSettlementUnavailable(
+        intent,
+        "x402_challenge_client_unavailable"
+      );
+      return this.resultFromIntent(unavailable, undefined, "x402_challenge_client_unavailable");
+    }
+
+    try {
+      const challenge = await this.challengeClient.requestChallenge({
+        method: intent.method,
+        url: intent.url
+      });
+
+      if (challenge.status === "payment_required") {
+        const updated = {
+          ...intent,
+          status: "challenge_received" as const,
+          requirements_json: challenge.requirements_json,
+          updated_at: new Date().toISOString()
+        };
+        await this.store.saveIntent(updated);
+        await this.audit?.record({
+          agent_id: updated.agent_id,
+          event_type: "payment.challenge_received",
+          subject_type: "payment",
+          subject_id: updated.id,
+          metadata: {
+            policy_id: updated.policy_id,
+            method: updated.method,
+            url: updated.url,
+            status_code: challenge.status_code,
+            requirements_source: challenge.requirements_source,
+            facilitator_url: challenge.facilitator_url,
+            resource_url: challenge.resource_url,
+            settlement: "not_started"
+          }
+        });
+        return this.resultFromIntent(updated, challenge);
+      }
+
+      if (challenge.status === "free_response") {
+        await this.audit?.record({
+          agent_id: intent.agent_id,
+          event_type: "payment.challenge_not_required",
+          subject_type: "payment",
+          subject_id: intent.id,
+          metadata: {
+            policy_id: intent.policy_id,
+            method: intent.method,
+            url: intent.url,
+            status_code: challenge.status_code,
+            response_hash: challenge.response_hash,
+            settlement: "not_required"
+          }
+        });
+        return this.resultFromIntent(intent, challenge);
+      }
+
+      const unavailable = await this.markSettlementUnavailable(
+        intent,
+        "x402_unexpected_resource_response"
+      );
+      await this.audit?.record({
+        agent_id: unavailable.agent_id,
+        event_type: "payment.settlement_unavailable",
+        subject_type: "payment",
+        subject_id: unavailable.id,
+        severity: "warn",
+        metadata: {
+          policy_id: unavailable.policy_id,
+          method: unavailable.method,
+          url: unavailable.url,
+          status_code: challenge.status_code,
+          response_hash: challenge.response_hash,
+          reason: "x402_unexpected_resource_response"
+        }
+      });
+      return this.resultFromIntent(
+        unavailable,
+        challenge,
+        "x402_unexpected_resource_response"
+      );
+    } catch (error) {
+      const unavailable = await this.markSettlementUnavailable(
+        intent,
+        "x402_challenge_request_failed"
+      );
+      await this.audit?.record({
+        agent_id: unavailable.agent_id,
+        event_type: "payment.settlement_unavailable",
+        subject_type: "payment",
+        subject_id: unavailable.id,
+        severity: "error",
+        metadata: {
+          policy_id: unavailable.policy_id,
+          method: unavailable.method,
+          url: unavailable.url,
+          reason: "x402_challenge_request_failed",
+          error: errorMessage(error)
+        }
+      });
+      return this.resultFromIntent(unavailable, undefined, "x402_challenge_request_failed");
+    }
+  }
+
+  private async markSettlementUnavailable(
+    intent: PaymentIntentRecord,
+    reason: string
+  ): Promise<PaymentIntentRecord> {
+    const updated = {
+      ...intent,
+      status: "settlement_unavailable" as const,
+      updated_at: new Date().toISOString()
+    };
+    await this.store.saveIntent(updated);
+    if (reason === "x402_challenge_client_unavailable") {
+      await this.audit?.record({
+        agent_id: updated.agent_id,
+        event_type: "payment.settlement_unavailable",
+        subject_type: "payment",
+        subject_id: updated.id,
+        severity: "warn",
+        metadata: {
+          policy_id: updated.policy_id,
+          method: updated.method,
+          url: updated.url,
+          reason
+        }
+      });
+    }
+    return updated;
+  }
+
+  private resultFromIntent(
+    intent: PaymentIntentRecord,
+    challenge?: X402ChallengeResult,
+    settlementBlocker?: string
+  ): PaymentFetchResult {
     if (intent.status === "policy_denied") {
       return {
         allowed: false,
@@ -139,11 +296,12 @@ export class PaymentService {
       };
     }
 
-    return {
+    const requirements = parseRequirementsJson(intent.requirements_json);
+    const result: PaymentFetchAllowed = {
       allowed: true,
       payment_id: intent.id,
-      status: "policy_checked",
-      next_state: "ready_for_x402_challenge",
+      status: intent.status === "created" ? "policy_checked" : intent.status,
+      next_state: nextStateFor(intent, challenge),
       agent_id: intent.agent_id,
       policy_id: intent.policy_id,
       method: intent.method,
@@ -152,9 +310,123 @@ export class PaymentService {
       policy_hash: intent.policy_hash ?? "",
       idempotency_key: intent.idempotency_key,
       persisted: true,
-      settlement: "not_started"
+      settlement: settlementFor(intent, challenge),
+      requirements_json: intent.requirements_json
     };
+
+    if (requirements.parsed) {
+      result.requirements = requirements.value;
+    }
+
+    if (challenge) {
+      result.challenge = summarizeChallenge(challenge);
+    }
+
+    const blocker = settlementBlocker ?? settlementBlockerFor(intent, challenge);
+    if (blocker) {
+      result.settlement_blocker = blocker;
+    }
+
+    return result;
   }
+}
+
+function summarizeChallenge(challenge: X402ChallengeResult): PaymentChallengeSummary {
+  const summary: PaymentChallengeSummary = {
+    status: challenge.status,
+    status_code: challenge.status_code,
+    facilitator_url: challenge.facilitator_url,
+    resource_url: challenge.resource_url,
+    request_url: challenge.request_url,
+    settlement_status: challenge.settlement_status
+  };
+
+  if (challenge.status === "payment_required") {
+    summary.requirements = challenge.requirements;
+    summary.requirements_json = challenge.requirements_json;
+    summary.requirements_source = challenge.requirements_source;
+  } else {
+    summary.response_hash = challenge.response_hash;
+  }
+
+  return summary;
+}
+
+function parseRequirementsJson(
+  requirementsJson: string | null
+): { parsed: true; value: unknown } | { parsed: false } {
+  if (!requirementsJson) {
+    return { parsed: false };
+  }
+
+  try {
+    return { parsed: true, value: JSON.parse(requirementsJson) as unknown };
+  } catch {
+    return { parsed: false };
+  }
+}
+
+function nextStateFor(
+  intent: PaymentIntentRecord,
+  challenge?: X402ChallengeResult
+): PaymentFetchAllowed["next_state"] {
+  if (challenge?.status === "free_response") {
+    return null;
+  }
+
+  switch (intent.status) {
+    case "policy_checked":
+      return "challenge_received";
+    case "challenge_received":
+      return "settlement_unavailable";
+    case "created":
+    case "policy_denied":
+    case "settlement_unavailable":
+    case "settled":
+      return null;
+  }
+}
+
+function settlementFor(
+  intent: PaymentIntentRecord,
+  challenge?: X402ChallengeResult
+): PaymentFetchAllowed["settlement"] {
+  if (intent.status === "settled") {
+    return "settled";
+  }
+
+  if (challenge?.status === "free_response") {
+    return "not_required";
+  }
+
+  if (intent.status === "settlement_unavailable") {
+    return "unavailable";
+  }
+
+  return "not_started";
+}
+
+function settlementBlockerFor(
+  intent: PaymentIntentRecord,
+  challenge?: X402ChallengeResult
+): string | undefined {
+  if (challenge?.status === "free_response" || intent.status === "settled") {
+    return undefined;
+  }
+
+  if (intent.status === "challenge_received") {
+    return "signed_payload_not_implemented";
+  }
+
+  if (intent.status === "settlement_unavailable") {
+    return "x402_settlement_unavailable";
+  }
+
+  return undefined;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 type PolicyLike = Awaited<ReturnType<GrimoireService["getPolicy"]>> extends infer P
@@ -170,6 +442,19 @@ function validatePolicy(
     return "policy_disabled";
   }
 
+  const expectedAmount = input.expected_amount
+    ? parseDecimalAmount(input.expected_amount)
+    : null;
+  const maxPerCall = parseDecimalAmount(policy.max_amount_per_call);
+
+  if (input.expected_amount !== undefined && !expectedAmount) {
+    return "invalid_amount";
+  }
+
+  if (!maxPerCall) {
+    return "invalid_amount";
+  }
+
   if (!policy.allowed_urls.includes(input.url)) {
     return "url_not_allowed";
   }
@@ -178,7 +463,7 @@ function validatePolicy(
     return "method_not_allowed";
   }
 
-  if (input.expected_amount && compareDecimal(input.expected_amount, policy.max_amount_per_call) > 0) {
+  if (expectedAmount && compareDecimal(expectedAmount, maxPerCall) > 0) {
     return "amount_over_limit";
   }
 
@@ -189,9 +474,7 @@ function createPaymentId(): string {
   return `pay_${randomUUID().replaceAll("-", "")}`;
 }
 
-function compareDecimal(left: string, right: string): number {
-  const leftParts = normalizeDecimal(left);
-  const rightParts = normalizeDecimal(right);
+function compareDecimal(leftParts: DecimalAmount, rightParts: DecimalAmount): number {
   const scale = Math.max(leftParts.scale, rightParts.scale);
   const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
   const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
@@ -203,9 +486,9 @@ function compareDecimal(left: string, right: string): number {
   return leftValue > rightValue ? 1 : -1;
 }
 
-function normalizeDecimal(value: string): { value: bigint; scale: number } {
+function parseDecimalAmount(value: string): DecimalAmount | null {
   if (!/^\d+(\.\d+)?$/.test(value)) {
-    throw new Error(`Invalid decimal amount: ${value}`);
+    return null;
   }
 
   const [whole, fraction = ""] = value.split(".");

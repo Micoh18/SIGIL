@@ -3,6 +3,13 @@ import { z } from "zod";
 import type { PaymentService } from "../payments/service.js";
 import { jsonResult } from "./jsonResult.js";
 
+const nonEmptyStringSchema = z.string().trim().min(1);
+const urlSchema = z.string().trim().url();
+const decimalAmountSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+(\.\d+)?$/, "Expected a non-negative decimal amount");
+
 export function registerPaymentTools(
   server: McpServer,
   paymentService: PaymentService
@@ -10,16 +17,17 @@ export function registerPaymentTools(
   server.registerTool(
     "payment.fetch",
     {
-      title: "Preflight x402 Fetch",
+      title: "x402 Payment Fetch",
       description:
-        "Create a durable x402 payment preflight record after checking a Grimoire policy. Real Casper settlement is not claimed until a facilitator client is wired and verified.",
+        "Create a durable x402 payment record after checking a Grimoire policy. When request_challenge is true, make the first x402 HTTP request and persist any 402 requirements without claiming Casper settlement.",
       inputSchema: {
-        agent_id: z.string().min(1),
-        policy_id: z.string().min(1),
-        method: z.string().min(1).default("GET"),
-        url: z.string().url(),
-        expected_amount: z.string().min(1).optional(),
-        idempotency_key: z.string().min(1).optional()
+        agent_id: nonEmptyStringSchema,
+        policy_id: nonEmptyStringSchema,
+        method: nonEmptyStringSchema.default("GET"),
+        url: urlSchema,
+        expected_amount: decimalAmountSchema.optional(),
+        idempotency_key: nonEmptyStringSchema.optional(),
+        request_challenge: z.boolean().optional().default(false)
       }
     },
     async (input) => {
@@ -35,7 +43,7 @@ export function registerPaymentTools(
       description:
         "Return the persisted SIGIL payment intent and receipt metadata. Signed payloads and secrets are never returned.",
       inputSchema: {
-        payment_id: z.string().min(1)
+        payment_id: nonEmptyStringSchema
       }
     },
     async ({ payment_id }) => jsonResult(await paymentService.receipt(payment_id))
