@@ -1,0 +1,10 @@
+[package]
+name = "sigil-memory-anchor"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Stub only until cargo-casper is available in the development environment.

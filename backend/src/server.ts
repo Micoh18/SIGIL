@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AuditService } from "./audit/service.js";
 import { FileAuditStore } from "./audit/store.js";
+import { MockCasperAnchorClient } from "./casper/anchorClient.js";
 import type { SigilConfig } from "./config.js";
 import { GrimoireService } from "./grimoire/service.js";
 import { FileGrimoireStore } from "./grimoire/store.js";
@@ -20,7 +21,12 @@ export function createSigilServer(config: SigilConfig): McpServer {
   });
 
   const auditService = new AuditService(new FileAuditStore(config.dataDir));
-  const memoryService = new MemoryService(new FileMemoryStore(config.dataDir), auditService);
+  const anchorClient = new MockCasperAnchorClient();
+  const memoryService = new MemoryService(
+    new FileMemoryStore(config.dataDir),
+    auditService,
+    anchorClient
+  );
   const grimoireService = new GrimoireService(
     new FileGrimoireStore(config.dataDir),
     config.grimoireMasterKey,
