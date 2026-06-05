@@ -13,7 +13,8 @@ export function registerMemoryTools(server: McpServer, memoryService: MemoryServ
     "memory.write",
     {
       title: "Write Memory",
-      description: "Store a SIGIL agent memory and compute its deterministic content hash.",
+      description:
+        "Store a Mr Mainspring agent memory and compute its deterministic content hash.",
       inputSchema: {
         agent_id: z.string().min(1),
         type: memoryTypeSchema,
@@ -41,7 +42,7 @@ export function registerMemoryTools(server: McpServer, memoryService: MemoryServ
     "memory.read",
     {
       title: "Read Memory",
-      description: "Read one stored SIGIL memory by agent and memory id.",
+      description: "Read one stored Mr Mainspring memory by agent and memory id.",
       inputSchema: {
         agent_id: z.string().min(1),
         memory_id: z.string().min(1)
@@ -69,7 +70,7 @@ export function registerMemoryTools(server: McpServer, memoryService: MemoryServ
     "memory.search",
     {
       title: "Search Memory",
-      description: "Search stored SIGIL memories for an agent.",
+      description: "Search stored Mr Mainspring memories for an agent.",
       inputSchema: {
         agent_id: z.string().min(1),
         query: z.string().default(""),
@@ -98,4 +99,3 @@ export function registerMemoryTools(server: McpServer, memoryService: MemoryServ
     }
   );
 }
-

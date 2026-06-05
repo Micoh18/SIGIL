@@ -41,7 +41,7 @@ export function registerPaymentTools(
     {
       title: "Read Payment Receipt",
       description:
-        "Return the persisted SIGIL payment intent and receipt metadata. Signed payloads and secrets are never returned.",
+        "Return the persisted Mr Mainspring payment intent and receipt metadata. Signed payloads and secrets are never returned.",
       inputSchema: {
         payment_id: nonEmptyStringSchema
       }

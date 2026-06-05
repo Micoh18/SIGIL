@@ -1,4 +1,4 @@
-# Backend Development Spec: SIGIL
+# Backend Development Spec: Mr Mainspring
 
 Version: 0.1  
 Scope: Backend only  
@@ -6,7 +6,7 @@ Source context: `contexto.md` at repository root
 
 ## 1. Project Summary
 
-SIGIL is backend infrastructure for agentic applications on Casper. It gives any AI agent an MCP server with three core capabilities:
+Mr Mainspring is backend infrastructure for agentic applications on Casper. It gives any AI agent an MCP server with three core capabilities:
 
 1. Verifiable agent memory: agents can write, read, search, and cryptographically anchor memory hashes on Casper testnet.
 2. Grimoire vault: agents can use scoped secrets and spending policies without exposing raw secrets to prompts, logs, or public chain state.
@@ -85,7 +85,7 @@ AI Agent / Claude
       |
       | MCP tools
       v
-SIGIL MCP Backend (TypeScript)
+Mr Mainspring MCP Backend (TypeScript)
       |
       |-- Memory module
       |      |-- SQLite/Postgres memory store
@@ -1004,7 +1004,7 @@ Recommended answers for the first build:
 
 The final backend demo should prove this sequence:
 
-1. Start SIGIL MCP backend.
+1. Start Mr Mainspring MCP backend.
 2. Start Casper x402 facilitator.
 3. Start paid demo resource server.
 4. Seed agent, encrypted x402 signing secret, and spending policy.

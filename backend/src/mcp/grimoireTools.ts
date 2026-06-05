@@ -26,7 +26,8 @@ export function registerGrimoireTools(
     "grimoire.secret.put",
     {
       title: "Store Secret",
-      description: "Encrypt and store a scoped SIGIL secret. The plaintext is never returned.",
+      description:
+        "Encrypt and store a scoped Mr Mainspring secret. The plaintext is never returned.",
       inputSchema: {
         agent_id: nonEmptyStringSchema,
         name: nonEmptyStringSchema,
@@ -49,7 +50,8 @@ export function registerGrimoireTools(
     "grimoire.secret.list",
     {
       title: "List Secrets",
-      description: "List SIGIL secret metadata for an agent without exposing secret values.",
+      description:
+        "List Mr Mainspring secret metadata for an agent without exposing secret values.",
       inputSchema: {
         agent_id: nonEmptyStringSchema
       }
@@ -69,7 +71,7 @@ export function registerGrimoireTools(
     "grimoire.policy.set",
     {
       title: "Set Policy",
-      description: "Create or update a SIGIL spending/access policy commitment.",
+      description: "Create or update a Mr Mainspring spending/access policy commitment.",
       inputSchema: {
         agent_id: nonEmptyStringSchema,
         policy_id: nonEmptyStringSchema,
@@ -97,7 +99,7 @@ export function registerGrimoireTools(
     "grimoire.policy.get",
     {
       title: "Get Policy",
-      description: "Read one SIGIL policy and current local spend metadata.",
+      description: "Read one Mr Mainspring policy and current local spend metadata.",
       inputSchema: {
         agent_id: nonEmptyStringSchema,
         policy_id: nonEmptyStringSchema

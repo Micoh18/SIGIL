@@ -8,7 +8,8 @@ export function registerAuditTools(server: McpServer, auditService: AuditService
     "audit.tail",
     {
       title: "Tail Audit Events",
-      description: "Return recent SIGIL audit events for memory, Grimoire, payment, and anchor activity.",
+      description:
+        "Return recent Mr Mainspring audit events for memory, Grimoire, payment, and anchor activity.",
       inputSchema: {
         agent_id: z.string().min(1).optional(),
         event_type: z.string().min(1).optional(),
