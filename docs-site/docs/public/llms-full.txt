@@ -1,0 +1,1513 @@
+# SIGIL Full LLM Docs
+
+Last verified: 2026-06-05
+
+This file is generated from the VitePress Markdown docs plus the MCP tool schema data.
+
+# Overview
+
+Source: docs/index.md
+Canonical path: /
+Description: SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
+Section: Start
+Status: current
+Last verified: 2026-06-05
+
+## Current Shape
+
+SIGIL is a TypeScript MCP backend for local agent demos. It exposes tools for:
+
+- Memory write/read/search/verify.
+- Grimoire encrypted secrets and policies.
+- x402 payment intent preflight and challenge capture.
+- Audit event tailing.
+- Casper anchor metadata through a replaceable client interface.
+
+::: warning Honest status
+Real Casper settlement, real x402 settlement, and a buildable deployed Casper memory-anchor contract are not implemented until they are run and verified. Current anchored writes return local pending metadata unless a real client replaces the placeholder path.
+:::
+
+## Documentation Map
+
+Start with [Quickstart](/quickstart), then read [Architecture](/architecture) for the module boundaries. The core backend surfaces are documented in [MCP Tools](/mcp-tools), [Memory](/memory), [Grimoire](/grimoire), [Payments and x402](/payments-x402), [Casper Anchoring](/casper-anchoring), and [Audit Trail](/audit-trail).
+
+LLM-readable entry points are available at [/llms.txt](/llms.txt), [/llms-full.txt](/llms-full.txt), and [/api/tool-schemas.json](/api/tool-schemas.json).
+
+# Quickstart
+
+Source: docs/quickstart.md
+Canonical path: /quickstart
+Description: Install and run the SIGIL backend MCP server from a local checkout.
+Section: Start
+Status: current
+Last verified: 2026-06-05
+
+# Quickstart
+
+SIGIL currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
+
+## Install Backend Dependencies
+
+```bash
+cd backend
+npm install
+npm test
+npm run build
+```
+
+For development without a prior build:
+
+```bash
+cd backend
+npm run dev
+```
+
+For stdio MCP execution after building:
+
+```bash
+cd backend
+npm run mcp:stdio
+```
+
+## Configure Local Environment
+
+Copy the root template:
+
+```bash
+cp .env.example .env
+```
+
+Generate a local 32-byte Grimoire key:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Set the generated value as `GRIMOIRE_MASTER_KEY`.
+
+Important local defaults:
+
+| Variable | Current Use |
+| --- | --- |
+| `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
+| `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
+| `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
+| `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
+| `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
+| `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
+
+## First Tool Flow
+
+Use an MCP client connected to the stdio command and run:
+
+1. `grimoire.secret.put` to store a local signing/API secret reference.
+2. `grimoire.policy.set` to allow a demo URL, method, amount, asset, and secret scope.
+3. `payment.fetch` with the policy id to create a durable payment intent.
+4. `memory.write` to store a result or decision.
+5. `memory.verify` to confirm local canonical hash integrity.
+6. `audit.tail` to inspect the story.
+
+::: tip Current x402 behavior
+Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. SIGIL still stops before signed payment payload creation and settlement.
+:::
+
+# Architecture
+
+Source: docs/architecture.md
+Canonical path: /architecture
+Description: Module boundaries and data flow for the SIGIL MCP backend.
+Section: Start
+Status: current
+Last verified: 2026-06-05
+
+# Architecture
+
+SIGIL is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
+
+```text
+Agent / MCP client
+        |
+        | stdio MCP tools
+        v
+SIGIL TypeScript backend
+        |
+        |-- Memory service
+        |     |-- canonical JSON envelope
+        |     |-- SHA-256 content and metadata hashes
+        |     `-- Casper anchor client interface
+        |
+        |-- Grimoire service
+        |     |-- AES-GCM encrypted secrets
+        |     `-- allowlisted policies with deterministic policy hashes
+        |
+        |-- Payment service
+        |     |-- policy approval/denial
+        |     |-- durable intent store
+        |     `-- optional x402 challenge capture
+        |
+        `-- Audit service
+              `-- local append-only event view
+```
+
+## Durable Stores
+
+The backend currently writes JSON files under `SIGIL_DATA_DIR`:
+
+| Store | File | Purpose |
+| --- | --- | --- |
+| Memory | `memory.json` | Canonical memory records, hashes, and anchor metadata. |
+| Grimoire | `grimoire.json` | Encrypted secrets and policy records. |
+| Payments | `payments.json` | Payment intents and receipts. |
+| Audit | `audit.json` | Redacted audit events. |
+
+The product spec describes a SQLite/Postgres path, but the implemented backend uses file stores for hackathon velocity and deterministic tests.
+
+## Trust Boundaries
+
+SIGIL separates sensitive content from public proof material:
+
+- Memory bodies stay off-chain.
+- Secret values are encrypted and never returned by MCP tools.
+- Signed x402 payloads are not returned and are not implemented yet.
+- Casper anchoring is hash-only.
+- Audit metadata is redacted and intended for demo/debug visibility.
+
+## Current External Integrations
+
+| Integration | Current Status |
+| --- | --- |
+| MCP stdio | Implemented and covered by tests. |
+| Casper anchor client | Interface implemented. Real transaction submission is not implemented. |
+| Casper memory-anchor contract | Source/spec stub only. |
+| x402 challenge request | Implemented for first HTTP request and 402 requirements capture. |
+| x402 signed settlement | Not implemented until a real facilitator flow is run and verified. |
+
+# MCP Tools
+
+Source: docs/mcp-tools.md
+Canonical path: /mcp-tools
+Description: Current SIGIL MCP tool surface grouped by memory, Grimoire, payments, and audit.
+Section: Core Modules
+Status: current
+Last verified: 2026-06-05
+
+# MCP Tools
+
+SIGIL exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
+
+## Memory Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `memory.write` | Store a memory envelope, compute deterministic hashes, and optionally request anchor metadata. |
+| `memory.read` | Read a stored memory by `agent_id` and `memory_id`. |
+| `memory.search` | Search stored memory summaries for an agent. |
+| `memory.verify` | Recompute local hashes and report integrity plus anchor metadata. |
+
+## Grimoire Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `grimoire.secret.put` | Encrypt and store a scoped secret. Plaintext is never returned. |
+| `grimoire.secret.list` | List secret metadata only. |
+| `grimoire.policy.set` | Store a spending/access policy with deterministic policy hash. |
+| `grimoire.policy.get` | Read one policy and local spend metadata. |
+
+## Payment Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `payment.fetch` | Check policy, persist an intent, and optionally capture the first x402 challenge. |
+| `payment.receipt` | Read persisted payment intent and receipt metadata. |
+
+Current payment states are:
+
+```text
+created
+policy_denied
+policy_checked
+challenge_received
+settlement_unavailable
+settled
+```
+
+`settled` is reserved for genuinely verified settlement. The current backend does not create settled receipts.
+
+## Audit Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `audit.tail` | Return recent audit events for an agent or event type. |
+
+## Example Sequence
+
+```json
+{
+  "tool": "grimoire.policy.set",
+  "arguments": {
+    "agent_id": "agent-demo-1",
+    "policy_id": "pol_demo_weather",
+    "allowed_urls": ["http://localhost:4021/weather"],
+    "allowed_methods": ["GET"],
+    "allowed_asset": {
+      "caip2_chain_id": "casper:casper-test",
+      "asset_package": "demo-asset-package"
+    },
+    "max_amount_per_call": "0.05",
+    "max_amount_per_period": "1.00",
+    "period_seconds": 86400,
+    "secret_scopes": ["x402:sign"]
+  }
+}
+```
+
+```json
+{
+  "tool": "payment.fetch",
+  "arguments": {
+    "agent_id": "agent-demo-1",
+    "policy_id": "pol_demo_weather",
+    "method": "GET",
+    "url": "http://localhost:4021/weather",
+    "expected_amount": "0.01",
+    "idempotency_key": "demo-weather-001",
+    "request_challenge": true
+  }
+}
+```
+
+# Memory
+
+Source: docs/memory.md
+Canonical path: /memory
+Description: SIGIL memory envelopes, hashing rules, search, verification, and anchor metadata.
+Section: Core Modules
+Status: implemented
+Last verified: 2026-06-05
+
+# Memory
+
+The memory module stores full agent records off-chain and computes deterministic proof material. It is implemented in `backend/src/memory/*` and exposed through `memory.write`, `memory.read`, `memory.search`, and `memory.verify`.
+
+## Memory Types
+
+```text
+observation
+decision
+payment
+secret_usage
+system_event
+```
+
+## Envelope
+
+`memory.write` builds a canonical envelope before hashing:
+
+```json
+{
+  "schema_version": "sigil.memory.v1",
+  "agent_id": "agent-demo-1",
+  "memory_id": "mem_...",
+  "type": "observation",
+  "source": {
+    "kind": "x402_http",
+    "url": "http://localhost:4021/weather"
+  },
+  "body": {
+    "summary": "Weather data purchase preflight completed."
+  },
+  "created_at": "2026-06-05T00:00:00.000Z",
+  "prev_anchor_hash": null
+}
+```
+
+The canonical JSON and content hash are stored with local mutable metadata such as anchor status and update time.
+
+## Hashing
+
+SIGIL computes:
+
+```text
+content_hash = sha256(canonical_memory_envelope)
+metadata_hash = sha256(canonical_metadata_subset)
+anchor_id = sha256(agent_id + ":" + memory_id + ":" + content_hash + ":" + prev_anchor_hash)
+```
+
+The current backend uses lowercase SHA-256 hex strings.
+
+## Anchor Status
+
+| Status | Meaning |
+| --- | --- |
+| `not_requested` | The memory was written without `anchor: true`. |
+| `pending` | The anchor client accepted hash metadata locally, but no verified Casper transaction hash exists. |
+| `anchored` | Reserved for a verified on-chain anchor. |
+| `failed` | Reserved for a failed anchor attempt. |
+
+## Verification
+
+`memory.verify` recomputes the local content hash and compares it to the stored hash. Until real Casper querying is implemented, `onchain_content_hash` remains null and local integrity is the only verified claim.
+
+# Grimoire
+
+Source: docs/grimoire.md
+Canonical path: /grimoire
+Description: Encrypted secrets and spending/access policies for SIGIL agents.
+Section: Core Modules
+Status: implemented
+Last verified: 2026-06-05
+
+# Grimoire
+
+Grimoire is SIGIL's local vault and policy layer. It exists to prevent agents from receiving raw secrets while still allowing backend code to enforce spending and access rules.
+
+## Secrets
+
+Supported secret types:
+
+```text
+casper_private_key_ref
+x402_client_key_ref
+api_key
+webhook_secret
+```
+
+`grimoire.secret.put` encrypts secret values with AES-256-GCM using `GRIMOIRE_MASTER_KEY`. The tool returns metadata only:
+
+```json
+{
+  "status": "stored",
+  "secret": {
+    "id": "sec_...",
+    "agent_id": "agent-demo-1",
+    "name": "demo_x402_key",
+    "type": "x402_client_key_ref",
+    "scopes": ["x402:sign"],
+    "created_at": "2026-06-05T00:00:00.000Z",
+    "updated_at": "2026-06-05T00:00:00.000Z"
+  }
+}
+```
+
+The plaintext `value`, ciphertext internals, auth tag, and nonce are not returned by MCP tools.
+
+## Policies
+
+Policies bind agents to exact URLs, methods, assets, amounts, periods, and required secret scopes.
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "policy_id": "pol_demo_weather",
+  "enabled": true,
+  "allowed_urls": ["http://localhost:4021/weather"],
+  "allowed_methods": ["GET"],
+  "allowed_asset": {
+    "caip2_chain_id": "casper:casper-test",
+    "asset_package": "demo-asset-package"
+  },
+  "max_amount_per_call": "0.05",
+  "max_amount_per_period": "1.00",
+  "period_seconds": 86400,
+  "secret_scopes": ["x402:sign"]
+}
+```
+
+The service canonicalizes policy bodies and stores `policy_hash` so later payment decisions can refer to a stable policy commitment.
+
+## Current Enforcement
+
+`payment.fetch` denies by default when:
+
+- The policy does not exist.
+- The policy is disabled.
+- The URL is not exactly allowlisted.
+- The method is not allowlisted.
+- The expected amount is invalid.
+- The expected amount exceeds `max_amount_per_call`.
+
+Period spend tracking is represented in the policy record, but real settlement spend updates are not implemented because settlement is not implemented.
+
+# Payments and x402
+
+Source: docs/payments-x402.md
+Canonical path: /payments-x402
+Description: Durable payment intents, x402 challenge capture, and honest pre-settlement behavior.
+Section: Core Modules
+Status: pre-settlement
+Last verified: 2026-06-05
+
+# Payments and x402
+
+The payment module is intentionally conservative. It creates durable payment intents and can request the first x402 challenge after policy approval, but it does not claim signed payload creation or Casper settlement.
+
+## Flow States
+
+```text
+created
+policy_denied
+policy_checked
+challenge_received
+settlement_unavailable
+settled
+```
+
+`settled` is reserved for a future path that genuinely verifies settlement. The current implementation does not set settled.
+
+## `payment.fetch`
+
+Default behavior checks policy and persists an intent:
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "policy_id": "pol_demo_weather",
+  "method": "GET",
+  "url": "http://localhost:4021/weather",
+  "expected_amount": "0.01",
+  "idempotency_key": "demo-weather-001"
+}
+```
+
+Expected current result:
+
+```json
+{
+  "allowed": true,
+  "status": "policy_checked",
+  "next_state": "challenge_received",
+  "settlement": "not_started",
+  "requirements_json": null
+}
+```
+
+Set `request_challenge: true` to make the initial HTTP request:
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "policy_id": "pol_demo_weather",
+  "method": "GET",
+  "url": "http://localhost:4021/weather",
+  "expected_amount": "0.01",
+  "idempotency_key": "demo-weather-001",
+  "request_challenge": true
+}
+```
+
+If the resource returns HTTP 402, SIGIL captures `PaymentRequirements` from a JSON body or standard x402 headers and persists `requirements_json`.
+
+```json
+{
+  "allowed": true,
+  "status": "challenge_received",
+  "settlement": "not_started",
+  "settlement_blocker": "signed_payload_not_implemented",
+  "challenge": {
+    "status": "payment_required",
+    "status_code": 402,
+    "requirements_source": "json-body"
+  }
+}
+```
+
+If the resource is free, SIGIL hashes the response body and does not claim a payment:
+
+```json
+{
+  "allowed": true,
+  "status": "policy_checked",
+  "settlement": "not_required",
+  "challenge": {
+    "status": "free_response",
+    "status_code": 200,
+    "response_hash": "sha256-hex"
+  }
+}
+```
+
+If the resource returns an unexpected non-402 error, SIGIL records an honest unavailable state:
+
+```json
+{
+  "allowed": true,
+  "status": "settlement_unavailable",
+  "settlement": "unavailable",
+  "settlement_blocker": "x402_unexpected_resource_response"
+}
+```
+
+## Idempotency
+
+When `idempotency_key` is present, SIGIL returns the same persisted intent for the same `agent_id` and key. This avoids duplicate intent creation and prevents replaying the challenge request for the same idempotent call.
+
+## What Is Not Implemented
+
+- Selecting and validating a specific payment requirement against asset/payee policy beyond the current policy preflight.
+- Grimoire-backed signing capability retrieval.
+- Signed x402 payment payload creation.
+- Retrying the resource request with payment authorization.
+- Facilitator settlement verification.
+- Casper transaction hash recording for x402 settlement.
+
+# Casper Anchoring
+
+Source: docs/casper-anchoring.md
+Canonical path: /casper-anchoring
+Description: Current Casper anchor client boundary and the memory-anchor contract stub.
+Section: Core Modules
+Status: stub
+Last verified: 2026-06-05
+
+# Casper Anchoring
+
+SIGIL is designed to anchor hash-only memory proofs on Casper. The current repository has the backend interface and validation path, but not a verified real transaction submission path.
+
+## Backend Client Modes
+
+`createCasperAnchorClient` selects a client from environment/config:
+
+| Mode | When Selected | Behavior |
+| --- | --- | --- |
+| `unconfigured` | `MEMORY_ANCHOR_CONTRACT_HASH` is absent. | Accepts validated local hash metadata and returns `pending` with `casper_contract_not_configured`. |
+| `configured` | Contract hash plus RPC and account key config are present. | Validates config and returns `pending` with `casper_transaction_submission_not_implemented`. |
+
+Both modes validate anchor payloads. Neither mode currently submits a Casper transaction.
+
+## Anchor Submission
+
+The backend creates:
+
+```json
+{
+  "anchor_id": "sha256-hex",
+  "agent_id_hash": "sha256-hex",
+  "memory_id_hash": "sha256-hex",
+  "content_hash": "sha256-hex",
+  "metadata_hash": "sha256-hex",
+  "prev_anchor_hash": null
+}
+```
+
+The privacy boundary is deliberate: memory bodies, secret values, signed payment payloads, and private keys must not be written on-chain.
+
+## Contract Status
+
+`contracts/memory-anchor/` is a source/spec stub. It currently contains a placeholder `call()` entry point and planned storage/entrypoint comments.
+
+Planned entry points:
+
+```text
+anchor_memory(agent_id_hash, memory_id_hash, content_hash, metadata_hash, prev_anchor_hash)
+anchor_policy(policy_id_hash, policy_hash)
+set_admin(account_hash, enabled)
+```
+
+::: warning Contract limitation
+Treat the current contract as non-deployed and non-buildable until it is replaced by a real `cargo-casper` project and verified with Rust/Casper tooling.
+:::
+
+# Audit Trail
+
+Source: docs/audit-trail.md
+Canonical path: /audit-trail
+Description: Local audit event shape and current events emitted by SIGIL services.
+Section: Core Modules
+Status: implemented
+Last verified: 2026-06-05
+
+# Audit Trail
+
+The audit module provides a local redacted event trail for demo and debugging. It is implemented with a JSON-file store and exposed through `audit.tail`.
+
+## Event Shape
+
+```json
+{
+  "id": "aud_...",
+  "agent_id": "agent-demo-1",
+  "event_type": "payment.policy_approved",
+  "subject_type": "payment",
+  "subject_id": "pay_...",
+  "severity": "info",
+  "metadata": {
+    "policy_id": "pol_demo_weather"
+  },
+  "created_at": "2026-06-05T00:00:00.000Z"
+}
+```
+
+## Common Events
+
+| Event | Source |
+| --- | --- |
+| `memory.created` | `memory.write` persisted a record. |
+| `memory.anchor_submitted` | Anchor metadata was submitted to the current anchor client. |
+| `memory.verify_succeeded` | Local memory verification matched the stored hash. |
+| `memory.verify_failed` | Verification did not match or the memory was missing. |
+| `secret.stored` | A Grimoire secret was encrypted and stored. |
+| `secret.listed` | Secret metadata was listed. |
+| `policy.set` | A policy was created or updated. |
+| `policy.get` | A policy lookup occurred. |
+| `payment.policy_approved` | Payment policy preflight passed. |
+| `payment.policy_denied` | Payment policy preflight failed. |
+| `payment.challenge_received` | A 402 challenge was captured. |
+| `payment.challenge_not_required` | The resource responded successfully without payment. |
+| `payment.settlement_unavailable` | The resource or local setup could not continue toward settlement. |
+
+## Tail Query
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "limit": 20
+}
+```
+
+The response returns newest relevant events first. Audit metadata must not include raw secrets, private keys, memory bodies unless explicitly written as memory content, or signed payment payloads.
+
+# Security Model
+
+Source: docs/security-model.md
+Canonical path: /security-model
+Description: Current SIGIL security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit.
+Section: Reference
+Status: current
+Last verified: 2026-06-05
+
+# Security Model
+
+SIGIL is built around explicit boundaries: agents can ask for actions, but the backend owns secret storage, policy enforcement, hashing, and payment state transitions.
+
+## Data Handling Rules
+
+- Do not return Grimoire plaintext secret values.
+- Do not write private keys, signed payment payloads, or payment authorization material to audit logs.
+- Do not write memory bodies or secrets on-chain.
+- Anchor hashes only.
+- Persist payment intents before attempting external challenge requests.
+- Use idempotency keys for payment retries.
+
+## Secret Storage
+
+Local secrets are encrypted with AES-256-GCM. `GRIMOIRE_MASTER_KEY` must be a base64-encoded 32-byte key for non-demo use. If omitted, the backend uses a deterministic development key, which is only acceptable for local demos.
+
+## Policy Enforcement
+
+Payment policy checks are deny-by-default:
+
+```text
+policy_not_found
+policy_disabled
+url_not_allowed
+method_not_allowed
+amount_over_limit
+invalid_amount
+```
+
+The current policy matcher uses exact URL and method allowlists and per-call amount checks. Future settlement work must validate x402 requirements against network, asset package, amount, resource URL, method, and payee before signing.
+
+## x402 Boundary
+
+The implemented path captures requirements and response hashes. It does not sign payloads or submit settlement. This avoids false-positive payment claims while the facilitator path is not verified.
+
+## Casper Boundary
+
+The anchor client validates hash payloads and returns pending metadata. It does not claim a transaction hash until a real Casper submission and verification path exists.
+
+## Operational Gaps
+
+- No remote HTTP MCP transport yet.
+- No production database migrations yet.
+- No KMS/HSM integration yet.
+- No real Casper transaction submission yet.
+- No real x402 settlement verification yet.
+
+# Local Demo
+
+Source: docs/local-demo.md
+Canonical path: /local-demo
+Description: Suggested local MCP demo sequence for memory, Grimoire, x402 pre-settlement, and audit.
+Section: Start
+Status: current
+Last verified: 2026-06-05
+
+# Local Demo
+
+This demo mirrors `docs/demo-runbook.md` and updates the current x402 state names used by the backend service.
+
+## 1. Verify Backend
+
+```bash
+cd backend
+npm install
+npm test
+npm run build
+```
+
+## 2. Start MCP Backend
+
+```bash
+cd backend
+npm run mcp:stdio
+```
+
+For live TypeScript development:
+
+```bash
+cd backend
+npm run dev
+```
+
+## 3. Store a Secret
+
+Tool: `grimoire.secret.put`
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "name": "demo_x402_key",
+  "type": "x402_client_key_ref",
+  "value": "local-demo-secret-value",
+  "scopes": ["x402:sign"]
+}
+```
+
+Expected: `status: stored` plus secret metadata only.
+
+## 4. Set a Policy
+
+Tool: `grimoire.policy.set`
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "policy_id": "pol_demo_weather",
+  "enabled": true,
+  "allowed_urls": ["http://localhost:4021/weather"],
+  "allowed_methods": ["GET"],
+  "allowed_asset": {
+    "caip2_chain_id": "casper:casper-test",
+    "asset_package": "demo-asset-package"
+  },
+  "max_amount_per_call": "0.05",
+  "max_amount_per_period": "1.00",
+  "period_seconds": 86400,
+  "secret_scopes": ["x402:sign"]
+}
+```
+
+Expected: deterministic `policy_hash`.
+
+## 5. Create a Payment Intent
+
+Tool: `payment.fetch`
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "policy_id": "pol_demo_weather",
+  "method": "GET",
+  "url": "http://localhost:4021/weather",
+  "expected_amount": "0.01",
+  "idempotency_key": "demo-weather-001"
+}
+```
+
+Expected:
+
+```json
+{
+  "allowed": true,
+  "status": "policy_checked",
+  "next_state": "challenge_received",
+  "settlement": "not_started"
+}
+```
+
+To capture a real first HTTP challenge from a running resource server, add:
+
+```json
+{
+  "request_challenge": true
+}
+```
+
+## 6. Write and Verify Memory
+
+Tool: `memory.write`
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "type": "observation",
+  "source": {
+    "kind": "x402_http",
+    "url": "http://localhost:4021/weather"
+  },
+  "body": {
+    "summary": "Weather data purchase preflight completed. Real settlement pending x402 facilitator verification."
+  },
+  "anchor": true
+}
+```
+
+Expected current anchor state:
+
+```json
+{
+  "anchor_status": "pending",
+  "casper_transaction_hash": null
+}
+```
+
+Then call `memory.verify` with the returned `memory_id`.
+
+## 7. Tail Audit
+
+Tool: `audit.tail`
+
+```json
+{
+  "agent_id": "agent-demo-1",
+  "limit": 20
+}
+```
+
+Expected events include `secret.stored`, `policy.set`, `policy.get`, `payment.policy_approved`, `memory.created`, and `memory.verify_succeeded`.
+
+# API/Schema Reference
+
+Source: docs/api-schema-reference.md
+Canonical path: /api-schema-reference
+Description: Implemented MCP schema summaries, payment states, memory types, and machine-readable schema file links.
+Section: Reference
+Status: current
+Last verified: 2026-06-05
+
+# API/Schema Reference
+
+The generated machine-readable tool schema file is available at:
+
+```text
+/api/tool-schemas.json
+```
+
+It covers:
+
+```text
+memory.write
+memory.read
+memory.search
+memory.verify
+grimoire.secret.put
+grimoire.secret.list
+grimoire.policy.set
+grimoire.policy.get
+payment.fetch
+payment.receipt
+audit.tail
+```
+
+## Memory Types
+
+```text
+observation
+decision
+payment
+secret_usage
+system_event
+```
+
+## Anchor Status
+
+```text
+not_requested
+pending
+anchored
+failed
+```
+
+## Payment Status
+
+```text
+created
+policy_denied
+policy_checked
+challenge_received
+settlement_unavailable
+settled
+```
+
+`settled` is reserved for genuinely verified settlement. The current backend does not emit it.
+
+## Payment Denial Reasons
+
+```text
+policy_not_found
+policy_disabled
+url_not_allowed
+method_not_allowed
+amount_over_limit
+invalid_amount
+```
+
+## Payment Settlement State
+
+```text
+not_started
+not_required
+unavailable
+settled
+```
+
+## Secret Types
+
+```text
+casper_private_key_ref
+x402_client_key_ref
+api_key
+webhook_secret
+```
+
+## Audit Severity
+
+```text
+debug
+info
+warn
+error
+```
+
+## Example Generated Schema Entry
+
+```json
+{
+  "name": "payment.fetch",
+  "status": "pre-settlement",
+  "input": {
+    "type": "object",
+    "required": ["agent_id", "policy_id", "method", "url"],
+    "properties": {
+      "agent_id": { "type": "string", "minLength": 1 },
+      "policy_id": { "type": "string", "minLength": 1 },
+      "method": { "type": "string", "minLength": 1, "default": "GET" },
+      "url": { "type": "string", "format": "uri" },
+      "expected_amount": { "type": "string", "pattern": "^\\d+(\\.\\d+)?$" },
+      "idempotency_key": { "type": "string", "minLength": 1 },
+      "request_challenge": { "type": "boolean", "default": false }
+    }
+  }
+}
+```
+
+The generated schema file should be treated as the canonical LLM-readable MCP tool summary for this docs milestone.
+
+# Current Limitations
+
+Source: docs/current-limitations.md
+Canonical path: /current-limitations
+Description: Honest current gaps in SIGIL's Casper contract, x402 settlement, persistence, and transport story.
+Section: Reference
+Status: current
+Last verified: 2026-06-05
+
+# Current Limitations
+
+SIGIL is usable as a local MCP backend, but several production and demo-completion paths remain intentionally unfinished.
+
+## Casper
+
+- The memory-anchor contract under `contracts/memory-anchor/` is a stub.
+- Rust/Casper build and deploy verification are not represented by the current contract source.
+- Backend anchoring returns pending metadata and null Casper transaction hashes.
+- A configured anchor client still returns `casper_transaction_submission_not_implemented`.
+
+## x402
+
+- The backend can request and persist an HTTP 402 challenge.
+- The backend can hash free or unexpected non-402 responses.
+- The backend does not create signed x402 payment payloads.
+- The backend does not replay paid requests with payment authorization.
+- The backend does not verify facilitator settlement.
+- The backend must not claim real Casper x402 settlement until the facilitator is run and verified.
+
+## Persistence
+
+- Current stores are JSON files under `SIGIL_DATA_DIR`.
+- SQLite/Postgres schemas from the product spec are not implemented.
+- There are no migrations yet.
+
+## Transport
+
+- MCP stdio is implemented.
+- Remote HTTP MCP transport is not implemented.
+- Local HTTP API endpoints from the product spec are not implemented.
+
+## Security Hardening
+
+- Local `GRIMOIRE_MASTER_KEY` management is environment-variable based.
+- KMS/HSM integration is not implemented.
+- Period spend updates depend on real settlement and are not complete.
+- Signed payload storage/redaction rules are reserved for future settlement work.
+
+## Demo Blockers
+
+To complete the full intended demo, the project still needs:
+
+```text
+Rust/Casper contract tooling
+buildable memory_anchor contract
+funded Casper testnet account
+deployed CEP-18 x402 token package
+running make-software/casper-x402 facilitator
+verified payment settlement path
+real Casper transaction hash capture
+```
+
+# MCP Tool Schemas
+
+```json
+[
+  {
+    "name": "memory.write",
+    "title": "Write Memory",
+    "status": "implemented",
+    "description": "Store a SIGIL agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "type",
+        "body"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "observation",
+            "decision",
+            "payment",
+            "secret_usage",
+            "system_event"
+          ]
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "anchor": {
+          "type": "boolean"
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prev_anchor_hash": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "outputSummary": [
+      "memory_id",
+      "content_hash",
+      "metadata_hash",
+      "anchor_status",
+      "created_at"
+    ]
+  },
+  {
+    "name": "memory.read",
+    "title": "Read Memory",
+    "status": "implemented",
+    "description": "Read one stored memory by agent and memory id.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "memory_id"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputSummary": [
+      "found",
+      "memory"
+    ]
+  },
+  {
+    "name": "memory.search",
+    "title": "Search Memory",
+    "status": "implemented",
+    "description": "Search stored memories for an agent using the current local JSON-file store.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "query": {
+          "type": "string",
+          "default": ""
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      }
+    },
+    "outputSummary": [
+      "agent_id",
+      "query",
+      "count",
+      "results"
+    ]
+  },
+  {
+    "name": "memory.verify",
+    "title": "Verify Memory",
+    "status": "implemented",
+    "description": "Recompute local memory hashes and report local integrity plus anchor metadata.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "memory_id"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputSummary": [
+      "found",
+      "valid",
+      "local_content_hash",
+      "stored_content_hash",
+      "anchor_status",
+      "anchor_id"
+    ]
+  },
+  {
+    "name": "grimoire.secret.put",
+    "title": "Store Secret",
+    "status": "implemented",
+    "description": "Encrypt and store a scoped secret. The plaintext value is never returned.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "name",
+        "type",
+        "value",
+        "scopes"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "casper_private_key_ref",
+            "x402_client_key_ref",
+            "api_key",
+            "webhook_secret"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scopes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "outputSummary": [
+      "status",
+      "secret"
+    ]
+  },
+  {
+    "name": "grimoire.secret.list",
+    "title": "List Secrets",
+    "status": "implemented",
+    "description": "List secret metadata for an agent without exposing secret values.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputSummary": [
+      "agent_id",
+      "count",
+      "secrets"
+    ]
+  },
+  {
+    "name": "grimoire.policy.set",
+    "title": "Set Policy",
+    "status": "implemented",
+    "description": "Create or update an allowlisted spending/access policy and deterministic policy hash.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "policy_id",
+        "allowed_urls",
+        "allowed_methods",
+        "allowed_asset",
+        "max_amount_per_call",
+        "max_amount_per_period",
+        "period_seconds"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "allowed_urls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "allowed_methods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allowed_asset": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "max_amount_per_call": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$"
+        },
+        "max_amount_per_period": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$"
+        },
+        "period_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "secret_scopes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        }
+      }
+    },
+    "outputSummary": [
+      "status",
+      "policy"
+    ]
+  },
+  {
+    "name": "grimoire.policy.get",
+    "title": "Get Policy",
+    "status": "implemented",
+    "description": "Read one policy plus current local spend metadata.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "policy_id"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputSummary": [
+      "found",
+      "policy"
+    ]
+  },
+  {
+    "name": "payment.fetch",
+    "title": "x402 Payment Fetch",
+    "status": "pre-settlement",
+    "description": "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request and persist any 402 requirements without claiming settlement.",
+    "input": {
+      "type": "object",
+      "required": [
+        "agent_id",
+        "policy_id",
+        "method",
+        "url"
+      ],
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policy_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "default": "GET"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "expected_amount": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)?$"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_challenge": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "outputSummary": [
+      "allowed",
+      "payment_id",
+      "status",
+      "next_state",
+      "settlement",
+      "requirements_json",
+      "challenge",
+      "settlement_blocker"
+    ]
+  },
+  {
+    "name": "payment.receipt",
+    "title": "Read Payment Receipt",
+    "status": "implemented",
+    "description": "Return persisted payment intent and receipt metadata. Signed payloads and secrets are never returned.",
+    "input": {
+      "type": "object",
+      "required": [
+        "payment_id"
+      ],
+      "properties": {
+        "payment_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputSummary": [
+      "found",
+      "payment_id",
+      "intent",
+      "receipt"
+    ]
+  },
+  {
+    "name": "audit.tail",
+    "title": "Tail Audit Events",
+    "status": "implemented",
+    "description": "Return recent audit events for memory, Grimoire, payment, and anchor activity.",
+    "input": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      }
+    },
+    "outputSummary": [
+      "count",
+      "events"
+    ]
+  }
+]
+```
+

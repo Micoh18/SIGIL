@@ -1,0 +1,198 @@
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { basename, dirname, join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+import { lastVerified, toolSchemas } from "../content/tool-schemas.mjs";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const docsDir = join(root, "docs");
+const publicDir = join(docsDir, "public");
+const schemaPath = join(publicDir, "api", "tool-schemas.json");
+const pageOrder = [
+  "index.md",
+  "quickstart.md",
+  "architecture.md",
+  "mcp-tools.md",
+  "memory.md",
+  "grimoire.md",
+  "payments-x402.md",
+  "casper-anchoring.md",
+  "audit-trail.md",
+  "security-model.md",
+  "local-demo.md",
+  "api-schema-reference.md",
+  "current-limitations.md"
+];
+
+const pages = await loadPages();
+await mkdir(dirname(schemaPath), { recursive: true });
+await writeFile(
+  schemaPath,
+  `${JSON.stringify({ generated_at: new Date().toISOString(), last_verified: lastVerified, tools: toolSchemas }, null, 2)}\n`,
+  "utf8"
+);
+await writeFile(join(publicDir, "llms.txt"), renderLlmsTxt(pages), "utf8");
+await writeFile(join(publicDir, "llms-full.txt"), renderLlmsFull(pages), "utf8");
+
+async function loadPages() {
+  const files = await collectMarkdown(docsDir);
+  const ordered = files.sort((a, b) => {
+    const aKey = relative(docsDir, a).split(sep).join("/");
+    const bKey = relative(docsDir, b).split(sep).join("/");
+    return orderIndex(aKey) - orderIndex(bKey);
+  });
+
+  return Promise.all(
+    ordered.map(async (file) => {
+      const raw = await readFile(file, "utf8");
+      const { frontmatter, body } = parseFrontmatter(raw);
+      const route = routeFor(file);
+      return {
+        file: relative(root, file).split(sep).join("/"),
+        route,
+        title: frontmatter.title ?? titleFromFile(file),
+        description: frontmatter.description ?? "",
+        section: frontmatter.section ?? "Guide",
+        status: frontmatter.status ?? "draft",
+        last_verified: frontmatter.last_verified ?? lastVerified,
+        body: stripInternalComments(body).trim()
+      };
+    })
+  );
+}
+
+async function collectMarkdown(dir) {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    if (entry.name === ".vitepress" || entry.name === "public") {
+      continue;
+    }
+
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectMarkdown(fullPath)));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function parseFrontmatter(raw) {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
+  if (!match) {
+    return { frontmatter: {}, body: raw };
+  }
+
+  const frontmatter = {};
+  for (const line of match[1].split(/\r?\n/)) {
+    const separator = line.indexOf(":");
+    if (separator < 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
+    frontmatter[key] = value;
+  }
+
+  return { frontmatter, body: raw.slice(match[0].length) };
+}
+
+function routeFor(file) {
+  const relativePath = relative(docsDir, file).split(sep).join("/");
+  if (relativePath === "index.md") {
+    return "/";
+  }
+
+  return `/${relativePath.replace(/\.md$/, "")}`;
+}
+
+function renderLlmsTxt(pages) {
+  const lines = [
+    "# SIGIL",
+    "",
+    "> SIGIL is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.",
+    "",
+    `Last verified: ${lastVerified}`,
+    "",
+    "## Canonical Docs",
+    ""
+  ];
+
+  for (const page of pages) {
+    lines.push(`- [${page.title}](${page.route}): ${page.description} Status: ${page.status}.`);
+  }
+
+  lines.push(
+    "",
+    "## Machine-Readable References",
+    "",
+    "- [Full single-file docs](/llms-full.txt)",
+    "- [MCP tool schemas](/api/tool-schemas.json)",
+    "",
+    "## Critical Current Limits",
+    "",
+    "- Real Casper settlement is not implemented until verified.",
+    "- Real x402 settlement is not implemented until verified.",
+    "- The current memory-anchor contract is a stub unless replaced by a real buildable Casper contract."
+  );
+
+  return `${lines.join("\n")}\n`;
+}
+
+function renderLlmsFull(pages) {
+  const lines = [
+    "# SIGIL Full LLM Docs",
+    "",
+    `Last verified: ${lastVerified}`,
+    "",
+    "This file is generated from the VitePress Markdown docs plus the MCP tool schema data.",
+    ""
+  ];
+
+  for (const page of pages) {
+    lines.push(
+      `# ${page.title}`,
+      "",
+      `Source: ${page.file}`,
+      `Canonical path: ${page.route}`,
+      `Description: ${page.description}`,
+      `Section: ${page.section}`,
+      `Status: ${page.status}`,
+      `Last verified: ${page.last_verified}`,
+      "",
+      page.body,
+      ""
+    );
+  }
+
+  lines.push(
+    "# MCP Tool Schemas",
+    "",
+    "```json",
+    JSON.stringify(toolSchemas, null, 2),
+    "```",
+    ""
+  );
+
+  return `${lines.join("\n")}\n`;
+}
+
+function orderIndex(key) {
+  const index = pageOrder.indexOf(key);
+  return index >= 0 ? index : pageOrder.length + key.localeCompare(key);
+}
+
+function titleFromFile(file) {
+  return basename(file, ".md")
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function stripInternalComments(value) {
+  return value.replace(/<!--[\s\S]*?-->/g, "");
+}
