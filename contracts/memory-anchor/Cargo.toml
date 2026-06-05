@@ -7,4 +7,4 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Stub only until cargo-casper is available in the development environment.
+# Stub only until Casper-specific tooling such as cargo-casper is available.

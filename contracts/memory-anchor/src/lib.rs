@@ -2,10 +2,10 @@
 
 // SIGIL memory_anchor Casper contract placeholder.
 //
-// This file intentionally avoids importing Casper crates until the project can be
-// scaffolded with cargo-casper in an environment that has Rust/Casper tooling.
-// The backend already routes memory.write(anchor=true) through a Casper anchor
-// client interface and stores only hash metadata.
+// This file intentionally avoids importing Casper crates until the project can
+// be scaffolded with cargo-casper and verified with casper-client. The current
+// backend anchor client accepts only hash-only payloads and does not claim a
+// transaction hash until a real Casper submission path is implemented.
 //
 // Planned storage model:
 // - anchors::<anchor_id_hex> -> AnchorRecord

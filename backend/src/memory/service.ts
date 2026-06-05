@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { AuditService } from "../audit/service.js";
-import type { CasperAnchorClient } from "../casper/anchorClient.js";
+import {
+  createAnchorSubmission,
+  createPendingAnchorResult,
+  type AnchorSubmission,
+  type AnchorSubmissionResult,
+  type CasperAnchorClient
+} from "../casper/anchorClient.js";
 import { canonicalizeJson, toJsonObject } from "./canonical.js";
 import { sha256Hex } from "./hash.js";
 import type {
@@ -50,15 +56,19 @@ export class MemoryService {
       })
     );
 
-    let anchorResult = null;
+    let anchorSubmission: AnchorSubmission | null = null;
+    let anchorResult: AnchorSubmissionResult | null = null;
     if (input.anchor) {
-      anchorResult = await this.anchorClient?.anchorMemory({
+      anchorSubmission = createAnchorSubmission({
         agent_id: envelope.agent_id,
         memory_id: envelope.memory_id,
         content_hash: contentHash,
         metadata_hash: metadataHash,
         prev_anchor_hash: envelope.prev_anchor_hash
       });
+      anchorResult = this.anchorClient
+        ? await this.anchorClient.anchorMemory(anchorSubmission)
+        : createPendingAnchorResult(anchorSubmission, "casper_client_not_configured");
     }
 
     const entry: StoredMemoryEntry = {
@@ -67,7 +77,7 @@ export class MemoryService {
       content_hash: contentHash,
       metadata_hash: metadataHash,
       anchor_status: anchorResult?.status ?? (input.anchor ? "pending" : "not_requested"),
-      anchor_id: anchorResult?.anchor_id ?? null,
+      anchor_id: anchorResult?.anchor_id ?? anchorSubmission?.anchor_id ?? null,
       casper_transaction_hash: anchorResult?.casper_transaction_hash ?? null,
       onchain_content_hash: anchorResult?.onchain_content_hash ?? null,
       updated_at: createdAt
