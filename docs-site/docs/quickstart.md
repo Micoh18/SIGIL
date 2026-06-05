@@ -10,27 +10,36 @@ last_verified: 2026-06-05
 
 Mr Mainspring currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
 
+## What You Can Verify Today
+
+| Capability | Local Check |
+| --- | --- |
+| MCP backend builds | `npm run build --prefix backend` |
+| Backend behavior is covered by tests | `npm test --prefix backend` |
+| Docs and LLM artifacts build | `npm.cmd run build --prefix docs-site` |
+| Tool schemas are machine-readable | Open `/api/tool-schemas.json` after preview or read `docs-site/docs/public/api/tool-schemas.json`. |
+| Current limits are explicit | Read [Current Limitations](/current-limitations) and [Payments and x402](/payments-x402). |
+
 ## Install Backend Dependencies
 
+From the repository root:
+
 ```bash
-cd backend
-npm install
-npm test
-npm run build
+npm install --prefix backend
+npm test --prefix backend
+npm run build --prefix backend
 ```
 
 For development without a prior build:
 
 ```bash
-cd backend
-npm run dev
+npm run dev --prefix backend
 ```
 
 For stdio MCP execution after building:
 
 ```bash
-cd backend
-npm run mcp:stdio
+npm run mcp:stdio --prefix backend
 ```
 
 ## Configure Local Environment
@@ -57,8 +66,37 @@ Important local defaults:
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
+| `CASPER_NETWORK_NAME` | Casper chain name, defaulting to `casper-test`. |
 | `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
+| `CASPER_RPC_URL` | Casper node RPC address required for real anchoring. |
+| `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
 | `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
+| `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. |
+
+## Verify Documentation Artifacts
+
+The docs site publishes both human pages and LLM-readable files. From the repository root:
+
+```bash
+npm.cmd run docs:llms --prefix docs-site
+npm.cmd run build --prefix docs-site
+```
+
+Optional local preview:
+
+```bash
+npm.cmd run preview --prefix docs-site -- --port 4176
+```
+
+Check these generated routes or files:
+
+```text
+/llms.txt
+/llms-full.txt
+/api/tool-schemas.json
+```
+
+The generated files should describe implemented tools, current real capabilities, and the same Casper/x402 limitations as the visible docs.
 
 ## First Tool Flow
 
@@ -74,3 +112,7 @@ Use an MCP client connected to the stdio command and run:
 ::: tip Current x402 behavior
 Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. Mr Mainspring still stops before signed payment payload creation and settlement.
 :::
+
+## Expected Boundary
+
+A successful quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, real Casper transaction submission, or real x402 settlement.

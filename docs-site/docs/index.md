@@ -1,48 +1,65 @@
 ---
 title: Overview
-description: Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
+description: Mr Mainspring is a local-first MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring metadata, and x402 pre-settlement workflows.
 section: Start
 status: current
 last_verified: 2026-06-05
 layout: home
 hero:
   name: Mr Mainspring
-  text: MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payments.
-  tagline: Build agent infrastructure with durable local records, encrypted policy controls, hash-only anchoring boundaries, and honest x402 pre-settlement states.
+  text: Verifiable memory, Grimoire controls, and x402 preflight for local agents.
+  tagline: Run a TypeScript stdio MCP server that stores canonical memory records, encrypts Grimoire secrets, enforces allowlisted x402 policies, captures first 402 challenges, and keeps Casper anchoring claims at pending metadata until real settlement is verified.
   actions:
     - theme: brand
-      text: Quickstart
+      text: Verify Locally
       link: /quickstart
     - theme: alt
-      text: MCP Tools
-      link: /mcp-tools
+      text: Evaluator Demo
+      link: /local-demo
+    - theme: alt
+      text: LLM Docs
+      link: /llms.txt
+  image:
+    src: /sigil-mark.svg
+    alt: Mr Mainspring mark
 features:
-  - title: Verifiable Memory
-    details: Store canonical memory envelopes, compute deterministic SHA-256 hashes, and track local anchor metadata without exposing memory bodies on-chain.
-  - title: Grimoire Controls
-    details: Encrypt secrets at rest, return metadata only, and enforce allowlisted spending/access policies before payment flows.
-  - title: x402 Pre-Settlement
-    details: Persist durable payment intents, optionally capture HTTP 402 requirements, and stop before signed payloads or Casper settlement are verified.
-  - title: Casper Boundary
-    details: Keep the backend behind a Casper anchor client interface while the current contract remains a source/spec stub.
+  - title: Run
+    details: Build and run the backend-only MCP server through stdio with repo-local TypeScript scripts.
+  - title: Verify
+    details: Exercise memory hashes, Grimoire policies, x402 payment intents, and redacted audit events from one local flow.
+  - title: Inspect
+    details: Read generated /llms.txt, /llms-full.txt, and /api/tool-schemas.json files for machine-readable status and schema context.
+  - title: Boundaries
+    details: Real Casper transaction submission, real x402 settlement, remote HTTP MCP transport, and production databases remain explicit limitations.
 ---
 
-## Current Shape
+## Evaluator Snapshot
 
-Mr Mainspring is a TypeScript MCP backend for local agent demos. It exposes tools for:
+Mr Mainspring is a TypeScript MCP backend for local agent demos. It is currently useful for evaluating the backend contract around:
 
 - Memory write/read/search/verify.
-- Grimoire encrypted secrets and policies.
-- x402 payment intent preflight and challenge capture.
+- Grimoire encrypted secrets and deterministic spending/access policies.
+- x402 payment intent preflight, idempotency, and optional 402 challenge capture.
 - Audit event tailing.
 - Casper anchor metadata through a replaceable client interface.
 
 ::: warning Honest status
-Real Casper settlement, real x402 settlement, and a buildable deployed Casper memory-anchor contract are not implemented until they are run and verified. Current anchored writes return local pending metadata unless a real client replaces the placeholder path.
+Real Casper settlement, real x402 settlement, and a verified deployed Casper memory-anchor contract are not implemented until they are run and verified. Current anchored writes return local pending metadata unless a real client replaces the placeholder path.
 :::
+
+## First 10 Minutes
+
+| Question | Where to Look | Local Signal |
+| --- | --- | --- |
+| Can the docs and generated LLM files build? | [Quickstart](/quickstart) | `npm.cmd run build --prefix docs-site` completes and regenerates public LLM files. |
+| What should an evaluator run? | [Local Demo](/local-demo) | Secret metadata, policy hash, payment intent state, memory hash, and audit events appear in sequence. |
+| What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores under `SIGIL_DATA_DIR`. |
+| What is not proven yet? | [Current Limitations](/current-limitations) | Casper and x402 settlement remain intentionally unavailable until real external verification exists. |
 
 ## Documentation Map
 
-Start with [Quickstart](/quickstart), then read [Architecture](/architecture) for the module boundaries. The core backend surfaces are documented in [MCP Tools](/mcp-tools), [Memory](/memory), [Grimoire](/grimoire), [Payments and x402](/payments-x402), [Casper Anchoring](/casper-anchoring), and [Audit Trail](/audit-trail).
+Start with [Quickstart](/quickstart), then read [Architecture](/architecture) for the five-minute module map. Use [Local Demo](/local-demo) when validating the implementation path end to end. The core backend surfaces are documented in [MCP Tools](/mcp-tools), [Memory](/memory), [Grimoire](/grimoire), [Payments and x402](/payments-x402), [Casper Anchoring](/casper-anchoring), and [Audit Trail](/audit-trail).
+
+## LLM-Readable Files
 
 LLM-readable entry points are available at [/llms.txt](/llms.txt), [/llms-full.txt](/llms-full.txt), and [/api/tool-schemas.json](/api/tool-schemas.json).

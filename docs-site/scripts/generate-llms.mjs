@@ -38,7 +38,8 @@ async function loadPages() {
   const ordered = files.sort((a, b) => {
     const aKey = relative(docsDir, a).split(sep).join("/");
     const bKey = relative(docsDir, b).split(sep).join("/");
-    return orderIndex(aKey) - orderIndex(bKey);
+    const orderDifference = orderIndex(aKey) - orderIndex(bKey);
+    return orderDifference === 0 ? aKey.localeCompare(bKey) : orderDifference;
   });
 
   return Promise.all(
@@ -111,12 +112,38 @@ function routeFor(file) {
 }
 
 function renderLlmsTxt(pages) {
+  const implementedTools = toolSchemas
+    .filter((tool) => tool.status === "implemented")
+    .map((tool) => tool.name)
+    .join(", ");
+  const preSettlementTools = toolSchemas
+    .filter((tool) => tool.status === "pre-settlement")
+    .map((tool) => tool.name)
+    .join(", ");
+
   const lines = [
     "# Mr Mainspring",
     "",
     "> Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.",
     "",
     `Last verified: ${lastVerified}`,
+    "",
+    "## Current Real Capabilities",
+    "",
+    `- Implemented MCP tools: ${implementedTools}.`,
+    `- Pre-settlement MCP tools: ${preSettlementTools}.`,
+    "- Local JSON-file stores are used under SIGIL_DATA_DIR for memory, Grimoire, payments, and audit.",
+    "- Memory records are canonicalized and verified with SHA-256 hashes.",
+    "- Grimoire secrets are encrypted locally and returned as metadata only.",
+    "- payment.fetch can policy-check, persist an intent, and optionally capture the first HTTP 402 challenge.",
+    "",
+    "## Verify Locally",
+    "",
+    "- Regenerate LLM docs: `npm.cmd run docs:llms --prefix docs-site`.",
+    "- Build docs: `npm.cmd run build --prefix docs-site`.",
+    "- Preview docs: `npm.cmd run preview --prefix docs-site -- --port 4176`.",
+    "- Check generated routes/files: `/llms.txt`, `/llms-full.txt`, and `/api/tool-schemas.json`.",
+    "- Verify backend: `npm test --prefix backend` and `npm run build --prefix backend`.",
     "",
     "## Canonical Docs",
     ""
@@ -137,7 +164,8 @@ function renderLlmsTxt(pages) {
     "",
     "- Real Casper settlement is not implemented until verified.",
     "- Real x402 settlement is not implemented until verified.",
-    "- The current memory-anchor contract is a stub unless replaced by a real buildable Casper contract."
+    "- The memory-anchor contract builds locally to Wasm, but testnet deploy/query verification is not complete.",
+    "- Remote HTTP MCP transport, production database migrations, and KMS/HSM integrations are not implemented."
   );
 
   return `${lines.join("\n")}\n`;
@@ -183,7 +211,7 @@ function renderLlmsFull(pages) {
 
 function orderIndex(key) {
   const index = pageOrder.indexOf(key);
-  return index >= 0 ? index : pageOrder.length + key.localeCompare(key);
+  return index >= 0 ? index : pageOrder.length;
 }
 
 function titleFromFile(file) {

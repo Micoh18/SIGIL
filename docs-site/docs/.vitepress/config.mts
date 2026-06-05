@@ -23,12 +23,14 @@ export default defineConfig({
     nav: [
       { text: "Overview", link: "/" },
       { text: "Quickstart", link: "/quickstart" },
+      { text: "Local Demo", link: "/local-demo" },
       { text: "MCP Tools", link: "/mcp-tools" },
       {
         text: "Context: local backend",
         items: [
+          { text: "Architecture", link: "/architecture" },
           { text: "Current Limitations", link: "/current-limitations" },
-          { text: "Local Demo", link: "/local-demo" },
+          { text: "Security Model", link: "/security-model" },
           { text: "API/Schema Reference", link: "/api-schema-reference" }
         ]
       },

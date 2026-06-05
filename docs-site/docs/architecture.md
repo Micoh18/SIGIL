@@ -10,6 +10,19 @@ last_verified: 2026-06-05
 
 Mr Mainspring is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
 
+## Architecture in 5 Minutes
+
+1. **Interface:** The implemented runtime surface is a stdio MCP server. Agents call named MCP tools; there is no remote HTTP MCP transport yet.
+2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
+3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR`. This keeps evaluator runs simple and deterministic; it is not a production database layer.
+4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
+5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, and can capture the first x402 challenge. It stops before Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
+6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
+
+For evaluator work, this means a successful demo proves local MCP semantics and durable state transitions. It does not prove external settlement until the missing Casper and x402 paths are implemented and verified.
+
+## System Map
+
 ```text
 Agent / MCP client
         |
@@ -34,6 +47,16 @@ Mr Mainspring TypeScript backend
         `-- Audit service
               `-- local append-only event view
 ```
+
+## Request Path
+
+| Step | Component | Responsibility |
+| --- | --- | --- |
+| 1 | MCP tool wrapper | Validate the tool input shape and call the relevant service. |
+| 2 | Service module | Apply domain rules such as canonical memory hashing, policy checks, or payment state transitions. |
+| 3 | Store | Persist JSON records under `SIGIL_DATA_DIR` and return durable ids. |
+| 4 | Audit | Append a redacted event for later inspection. |
+| 5 | External boundary | Return pending or unavailable metadata unless a real external integration is implemented and verified. |
 
 ## Durable Stores
 
@@ -64,6 +87,6 @@ Mr Mainspring separates sensitive content from public proof material:
 | --- | --- |
 | MCP stdio | Implemented and covered by tests. |
 | Casper anchor client | Interface implemented. Real transaction submission is not implemented. |
-| Casper memory-anchor contract | Source/spec stub only. |
+| Casper memory-anchor contract | Hash-only source exists and builds to Wasm. Testnet deploy/query is not complete. |
 | x402 challenge request | Implemented for first HTTP request and 402 requirements capture. |
 | x402 signed settlement | Not implemented until a real facilitator flow is run and verified. |
