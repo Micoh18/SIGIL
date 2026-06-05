@@ -25,7 +25,8 @@ describe("MCP stdio server", () => {
       env: {
         SIGIL_DATA_DIR: dataDir,
         SIGIL_MCP_NAME: "sigil-stdio-test",
-        SIGIL_MCP_VERSION: "0.0.0-test"
+        SIGIL_MCP_VERSION: "0.0.0-test",
+        SIGIL_STORAGE_BACKEND: "file"
       },
       stderr: "pipe"
     });

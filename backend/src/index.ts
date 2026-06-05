@@ -1,8 +1,10 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
+import { loadLocalEnvFile } from "./env-file.js";
 import { createSigilServer } from "./server.js";
 
 async function main() {
+  loadLocalEnvFile();
   const config = loadConfig();
   const server = createSigilServer(config);
   const transport = new StdioServerTransport();
@@ -15,4 +17,3 @@ main().catch((error: unknown) => {
   console.error(message);
   process.exitCode = 1;
 });
-

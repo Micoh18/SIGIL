@@ -47,6 +47,7 @@ async function main() {
       SIGIL_DATA_DIR: dataDir,
       SIGIL_MCP_NAME: "mr-mainspring-evaluator-demo",
       SIGIL_MCP_VERSION: "0.1.0-demo",
+      SIGIL_STORAGE_BACKEND: "file",
       GRIMOIRE_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
       CASPER_NETWORK_NAME: "casper-test",
       CASPER_CAIP2_CHAIN_ID: "casper:casper-test",

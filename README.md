@@ -57,6 +57,7 @@ cp .env.example .env
 Important values:
 
 - `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`.
+- `SIGIL_ENV_FILE`: optional explicit path to a local env file. If unset, the backend checks `.env` in the current/backend/repo root paths.
 - `SIGIL_MCP_NAME` and `SIGIL_MCP_VERSION`: stable MCP server identifier values.
 - `SIGIL_STORAGE_BACKEND`: `file` by default. Set `supabase` after applying `backend/supabase/schema.sql`.
 - `PROJECT_URL`: Supabase project URL for optional remote persistence.

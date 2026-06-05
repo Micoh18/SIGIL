@@ -110,6 +110,7 @@ Important local defaults:
 
 | Variable | Current Use |
 | --- | --- |
+| `SIGIL_ENV_FILE` | Optional explicit path to a local env file. If unset, the backend checks `.env` in the current/backend/repo root paths. |
 | `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
 | `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
 | `PROJECT_URL` | Supabase project URL for optional remote persistence. |
