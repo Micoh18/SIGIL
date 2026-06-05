@@ -27,7 +27,7 @@ const pages = await loadPages();
 await mkdir(dirname(schemaPath), { recursive: true });
 await writeFile(
   schemaPath,
-  `${JSON.stringify({ generated_at: new Date().toISOString(), last_verified: lastVerified, tools: toolSchemas }, null, 2)}\n`,
+  `${JSON.stringify({ generated_at: lastVerified, last_verified: lastVerified, tools: toolSchemas }, null, 2)}\n`,
   "utf8"
 );
 await writeFile(join(publicDir, "llms.txt"), renderLlmsTxt(pages), "utf8");
