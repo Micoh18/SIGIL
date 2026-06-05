@@ -16,6 +16,7 @@ Mr Mainspring currently runs as a backend-only MCP server. The repo does not req
 | --- | --- |
 | MCP backend builds | `npm run build --prefix backend` |
 | Backend behavior is covered by tests | `npm test --prefix backend` |
+| Optional Supabase store adapter works at the HTTP boundary | `npm test --prefix backend` includes mocked Supabase REST coverage. |
 | Docs and LLM artifacts build | `npm.cmd run build --prefix docs-site` |
 | Tool schemas are machine-readable | Open `/api/tool-schemas.json` after preview or read `docs-site/docs/public/api/tool-schemas.json`. |
 | Current limits are explicit | Read [Current Limitations](/current-limitations) and [Payments and x402](/payments-x402). |
@@ -63,6 +64,11 @@ Important local defaults:
 | Variable | Current Use |
 | --- | --- |
 | `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
+| `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
+| `SUPABASE_URL` | Supabase project URL for optional remote persistence. |
+| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` | Supabase REST key. Prefer service role only in private backend env, never in committed files. |
+| `SUPABASE_DB_SCHEMA` | Supabase schema, defaulting to `public`. |
+| `SUPABASE_TABLE_PREFIX` | Table prefix, defaulting to `sigil_`. |
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
@@ -72,6 +78,32 @@ Important local defaults:
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
 | `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
 | `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. |
+
+## Optional Supabase Persistence
+
+Local JSON files remain the fastest path for evaluator demos. To persist records in Supabase instead:
+
+1. Create a Supabase project.
+2. Open the Supabase SQL editor.
+3. Run `backend/supabase/schema.sql`.
+4. Set these values in `.env`:
+
+```bash
+SIGIL_STORAGE_BACKEND=supabase
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<server-side-key>
+SUPABASE_DB_SCHEMA=public
+SUPABASE_TABLE_PREFIX=sigil_
+```
+
+Then run:
+
+```bash
+npm test --prefix backend
+npm run build --prefix backend
+```
+
+The adapter uses Supabase REST tables and keeps each current domain object in a `record jsonb` column. It is useful for remote demo persistence while the richer production database schema remains future work.
 
 ## Verify Documentation Artifacts
 

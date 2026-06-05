@@ -19,11 +19,26 @@ export type X402Config = {
   assetName: string | null;
 };
 
+export type StorageConfig =
+  | {
+      backend: "file";
+    }
+  | {
+      backend: "supabase";
+      supabase: {
+        url: string;
+        key: string;
+        schema: string;
+        tablePrefix: string;
+      };
+    };
+
 export type SigilConfig = {
   dataDir: string;
   grimoireMasterKey: Buffer;
   serverName: string;
   serverVersion: string;
+  storage: StorageConfig;
   casper: CasperConfig;
   x402: X402Config;
 };
@@ -45,12 +60,54 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     grimoireMasterKey: loadMasterKey(env.GRIMOIRE_MASTER_KEY),
     serverName: optionalEnv(env.SIGIL_MCP_NAME) ?? "mr-mainspring",
     serverVersion: optionalEnv(env.SIGIL_MCP_VERSION) ?? "0.1.0",
+    storage: loadStorageConfig(env),
     casper,
     x402: {
       facilitatorUrl: optionalEnv(env.X402_FACILITATOR_URL) ?? "http://localhost:4022",
       resourceDemoUrl: optionalEnv(env.X402_RESOURCE_DEMO_URL) ?? "http://localhost:4021/weather",
       assetPackage: optionalEnv(env.X402_ASSET_PACKAGE),
       assetName: optionalEnv(env.X402_ASSET_NAME)
+    }
+  };
+}
+
+function loadStorageConfig(env: NodeJS.ProcessEnv): StorageConfig {
+  const backend = optionalEnv(env.SIGIL_STORAGE_BACKEND);
+  const supabaseUrl = optionalEnv(env.SUPABASE_URL);
+  const supabaseKey =
+    optionalEnv(env.SUPABASE_SERVICE_ROLE_KEY) ?? optionalEnv(env.SUPABASE_ANON_KEY);
+
+  if (!backend && !supabaseUrl && !supabaseKey) {
+    return { backend: "file" };
+  }
+
+  if (backend && backend !== "file" && backend !== "supabase") {
+    throw new Error("SIGIL_STORAGE_BACKEND must be either file or supabase");
+  }
+
+  if (backend === "file") {
+    return { backend: "file" };
+  }
+
+  if (!supabaseUrl) {
+    throw new Error("SUPABASE_URL is required when Supabase storage is enabled");
+  }
+
+  if (!supabaseKey) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY is required when Supabase storage is enabled"
+    );
+  }
+
+  assertHttpUrl("SUPABASE_URL", supabaseUrl);
+
+  return {
+    backend: "supabase",
+    supabase: {
+      url: supabaseUrl,
+      key: supabaseKey,
+      schema: optionalEnv(env.SUPABASE_DB_SCHEMA) ?? "public",
+      tablePrefix: optionalEnv(env.SUPABASE_TABLE_PREFIX) ?? "sigil_"
     }
   };
 }

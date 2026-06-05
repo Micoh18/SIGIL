@@ -15,6 +15,7 @@ Mr Mainspring is usable as a local MCP backend, but several production and demo-
 A passing backend test run, docs build, and local MCP demo mean:
 
 - The implemented MCP tools validate inputs and persist local JSON records.
+- Optional Supabase persistence can store the same records remotely once the included SQL schema is applied.
 - Memory hashes and local verification work for stored records.
 - Grimoire stores encrypted secrets and returns metadata only.
 - Payment policy preflight and optional first x402 challenge capture work.
@@ -50,9 +51,11 @@ A passing local demo does not mean:
 
 ## Persistence
 
-- Current stores are JSON files under `SIGIL_DATA_DIR`.
+- Default stores are JSON files under `SIGIL_DATA_DIR`.
+- Optional Supabase persistence is implemented through REST and `backend/supabase/schema.sql`.
+- Supabase stores current domain records as JSONB with lookup columns. This is not the final normalized production schema.
 - SQLite/Postgres schemas from the product spec are not implemented.
-- There are no migrations yet.
+- There is no migration runner yet; Supabase setup is a manual SQL step.
 
 ## Transport
 

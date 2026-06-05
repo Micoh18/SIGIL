@@ -133,6 +133,7 @@ function renderLlmsTxt(pages) {
     `- Implemented MCP tools: ${implementedTools}.`,
     `- Pre-settlement MCP tools: ${preSettlementTools}.`,
     "- Local JSON-file stores are used under SIGIL_DATA_DIR for memory, Grimoire, payments, and audit.",
+    "- Optional Supabase persistence is available after applying backend/supabase/schema.sql and setting SIGIL_STORAGE_BACKEND=supabase.",
     "- Memory records are canonicalized and verified with SHA-256 hashes.",
     "- Grimoire secrets are encrypted locally and returned as metadata only.",
     "- payment.fetch can policy-check, persist an intent, and optionally capture the first HTTP 402 challenge.",
@@ -165,6 +166,7 @@ function renderLlmsTxt(pages) {
     "- Real Casper settlement is not implemented until verified.",
     "- Real x402 settlement is not implemented until verified.",
     "- The memory-anchor contract builds locally to Wasm, but testnet deploy/query verification is not complete.",
+    "- Supabase persistence is a JSONB bridge, not the final normalized production database schema.",
     "- Remote HTTP MCP transport, production database migrations, and KMS/HSM integrations are not implemented."
   );
 

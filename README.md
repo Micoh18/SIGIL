@@ -58,6 +58,11 @@ Important values:
 
 - `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`.
 - `SIGIL_MCP_NAME` and `SIGIL_MCP_VERSION`: stable MCP server identifier values.
+- `SIGIL_STORAGE_BACKEND`: `file` by default. Set `supabase` after applying `backend/supabase/schema.sql`.
+- `SUPABASE_URL`: Supabase project URL for optional remote persistence.
+- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`: key used for Supabase REST calls. Prefer a server-side service role key only in local env/secret manager.
+- `SUPABASE_DB_SCHEMA`: defaults to `public`.
+- `SUPABASE_TABLE_PREFIX`: defaults to `sigil_`.
 - `GRIMOIRE_MASTER_KEY`: base64-encoded 32-byte AES-GCM key. If omitted, the backend uses a deterministic local development key only.
 - `X402_FACILITATOR_URL`: Casper x402 facilitator, expected at `http://localhost:4022` for the demo sidecar.
 - `X402_RESOURCE_DEMO_URL`: demo paid resource, expected at `http://localhost:4021/weather`.
@@ -107,6 +112,7 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 
 - TypeScript MCP backend with stdio transport.
 - File-backed JSON stores for memory, Grimoire secrets/policies, payments, and audit.
+- Optional Supabase persistence through PostgREST-compatible tables in `backend/supabase/schema.sql`.
 - Deterministic JSON canonicalization and SHA-256 memory hashing.
 - Encrypted Grimoire secret storage with metadata-only tool responses.
 - Spending/access policy enforcement before x402 payment intent creation.
@@ -121,7 +127,7 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 - Verified Casper testnet contract build, deploy, or transaction submission.
 - Real Casper x402 signed payment payload creation, facilitator verification, or settlement from the TypeScript backend.
 - A production-hardened Casper memory-anchor contract with deployed testnet hashes.
-- SQLite/Postgres migrations; current stores are JSON files for local velocity.
+- Full relational SQLite/Postgres domain migrations; Supabase currently stores domain records as JSONB with indexed lookup columns.
 - Remote HTTP MCP transport.
 - A frontend application. The public site is documentation only.
 

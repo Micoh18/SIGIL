@@ -63,6 +63,7 @@ Mr Mainspring currently runs as a backend-only MCP server. The repo does not req
 | --- | --- |
 | MCP backend builds | `npm run build --prefix backend` |
 | Backend behavior is covered by tests | `npm test --prefix backend` |
+| Optional Supabase store adapter works at the HTTP boundary | `npm test --prefix backend` includes mocked Supabase REST coverage. |
 | Docs and LLM artifacts build | `npm.cmd run build --prefix docs-site` |
 | Tool schemas are machine-readable | Open `/api/tool-schemas.json` after preview or read `docs-site/docs/public/api/tool-schemas.json`. |
 | Current limits are explicit | Read [Current Limitations](/current-limitations) and [Payments and x402](/payments-x402). |
@@ -110,6 +111,11 @@ Important local defaults:
 | Variable | Current Use |
 | --- | --- |
 | `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
+| `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
+| `SUPABASE_URL` | Supabase project URL for optional remote persistence. |
+| `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` | Supabase REST key. Prefer service role only in private backend env, never in committed files. |
+| `SUPABASE_DB_SCHEMA` | Supabase schema, defaulting to `public`. |
+| `SUPABASE_TABLE_PREFIX` | Table prefix, defaulting to `sigil_`. |
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
@@ -119,6 +125,32 @@ Important local defaults:
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
 | `MEMORY_ANCHOR_CONTRACT_HASH` | Required before the configured Casper anchor client path can be selected. |
 | `MEMORY_ANCHOR_PACKAGE_HASH` | Required with the contract hash before the configured Casper anchor client path can be selected. |
+
+## Optional Supabase Persistence
+
+Local JSON files remain the fastest path for evaluator demos. To persist records in Supabase instead:
+
+1. Create a Supabase project.
+2. Open the Supabase SQL editor.
+3. Run `backend/supabase/schema.sql`.
+4. Set these values in `.env`:
+
+```bash
+SIGIL_STORAGE_BACKEND=supabase
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<server-side-key>
+SUPABASE_DB_SCHEMA=public
+SUPABASE_TABLE_PREFIX=sigil_
+```
+
+Then run:
+
+```bash
+npm test --prefix backend
+npm run build --prefix backend
+```
+
+The adapter uses Supabase REST tables and keeps each current domain object in a `record jsonb` column. It is useful for remote demo persistence while the richer production database schema remains future work.
 
 ## Verify Documentation Artifacts
 
@@ -175,13 +207,13 @@ Last verified: 2026-06-05
 
 # Architecture
 
-Mr Mainspring is organized around MCP tools backed by small service modules and file-backed stores. The current implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator.
+Mr Mainspring is organized around MCP tools backed by small service modules and pluggable stores. The default implementation is intentionally local-first so the backend can be tested without a database server, a Casper node, or a running x402 facilitator. Supabase can be enabled for remote persistence after the included schema is applied.
 
 ## Architecture in 5 Minutes
 
 1. **Interface:** The implemented runtime surface is a stdio MCP server. Agents call named MCP tools; there is no remote HTTP MCP transport yet.
 2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
-3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR`. This keeps evaluator runs simple and deterministic; it is not a production database layer.
+3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR` by default. When `SIGIL_STORAGE_BACKEND=supabase`, it writes the same domain records to Supabase JSONB tables through the Supabase REST API.
 4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
 5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, and can capture the first x402 challenge. It stops before Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
 6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
@@ -212,7 +244,11 @@ Mr Mainspring TypeScript backend
         |     `-- optional x402 challenge capture
         |
         `-- Audit service
-              `-- local append-only event view
+              `-- append-only event view
+
+Store adapter
+        |-- JSON files under SIGIL_DATA_DIR
+        `-- optional Supabase tables with JSONB records
 ```
 
 ## Request Path
@@ -221,13 +257,13 @@ Mr Mainspring TypeScript backend
 | --- | --- | --- |
 | 1 | MCP tool wrapper | Validate the tool input shape and call the relevant service. |
 | 2 | Service module | Apply domain rules such as canonical memory hashing, policy checks, or payment state transitions. |
-| 3 | Store | Persist JSON records under `SIGIL_DATA_DIR` and return durable ids. |
+| 3 | Store | Persist records under `SIGIL_DATA_DIR` or Supabase and return durable ids. |
 | 4 | Audit | Append a redacted event for later inspection. |
 | 5 | External boundary | Return pending or unavailable metadata unless a real external integration is implemented and verified. |
 
 ## Durable Stores
 
-The backend currently writes JSON files under `SIGIL_DATA_DIR`:
+The backend defaults to JSON files under `SIGIL_DATA_DIR`:
 
 | Store | File | Purpose |
 | --- | --- | --- |
@@ -236,7 +272,18 @@ The backend currently writes JSON files under `SIGIL_DATA_DIR`:
 | Payments | `payments.json` | Payment intents and receipts. |
 | Audit | `audit.json` | Redacted audit events. |
 
-The product spec describes a SQLite/Postgres path, but the implemented backend uses file stores for hackathon velocity and deterministic tests.
+Supabase is available as an optional persistence backend. Run `backend/supabase/schema.sql`, then set `SIGIL_STORAGE_BACKEND=supabase`, `SUPABASE_URL`, and either `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_ANON_KEY`. The Supabase adapter uses one table per store and keeps the current domain record in a `record jsonb` column with scalar lookup columns for the queries the services need.
+
+| Store | Supabase Table |
+| --- | --- |
+| Memory | `sigil_memories` |
+| Grimoire secrets | `sigil_secrets` |
+| Grimoire policies | `sigil_policies` |
+| Payments intents | `sigil_payment_intents` |
+| Payment receipts | `sigil_payment_receipts` |
+| Audit | `sigil_audit_events` |
+
+The product spec describes richer SQLite/Postgres domain migrations. The Supabase adapter is a practical remote persistence bridge, not the final normalized production schema.
 
 ## Trust Boundaries
 
@@ -253,6 +300,7 @@ Mr Mainspring separates sensitive content from public proof material:
 | Integration | Current Status |
 | --- | --- |
 | MCP stdio | Implemented and covered by tests. |
+| Supabase persistence | Optional store adapter implemented through REST and covered by mocked tests. |
 | Casper anchor client | Interface implemented. Real transaction submission is not implemented. |
 | Casper memory-anchor contract | Hash-only source exists and builds to Wasm. Testnet deploy/query is not complete. |
 | x402 challenge request | Implemented for first HTTP request and 402 requirements capture. |
@@ -1156,6 +1204,7 @@ Mr Mainspring is usable as a local MCP backend, but several production and demo-
 A passing backend test run, docs build, and local MCP demo mean:
 
 - The implemented MCP tools validate inputs and persist local JSON records.
+- Optional Supabase persistence can store the same records remotely once the included SQL schema is applied.
 - Memory hashes and local verification work for stored records.
 - Grimoire stores encrypted secrets and returns metadata only.
 - Payment policy preflight and optional first x402 challenge capture work.
@@ -1191,9 +1240,11 @@ A passing local demo does not mean:
 
 ## Persistence
 
-- Current stores are JSON files under `SIGIL_DATA_DIR`.
+- Default stores are JSON files under `SIGIL_DATA_DIR`.
+- Optional Supabase persistence is implemented through REST and `backend/supabase/schema.sql`.
+- Supabase stores current domain records as JSONB with lookup columns. This is not the final normalized production schema.
 - SQLite/Postgres schemas from the product spec are not implemented.
-- There are no migrations yet.
+- There is no migration runner yet; Supabase setup is a manual SQL step.
 
 ## Transport
 

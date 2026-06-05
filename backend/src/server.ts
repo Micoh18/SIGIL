@@ -1,18 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AuditService } from "./audit/service.js";
-import { FileAuditStore } from "./audit/store.js";
 import { createCasperAnchorClient } from "./casper/anchorClient.js";
 import type { SigilConfig } from "./config.js";
 import { GrimoireService } from "./grimoire/service.js";
-import { FileGrimoireStore } from "./grimoire/store.js";
 import { registerAuditTools } from "./mcp/auditTools.js";
 import { registerGrimoireTools } from "./mcp/grimoireTools.js";
 import { registerMemoryTools } from "./mcp/memoryTools.js";
 import { registerPaymentTools } from "./mcp/paymentTools.js";
 import { MemoryService } from "./memory/service.js";
-import { FileMemoryStore } from "./memory/store.js";
 import { PaymentService } from "./payments/service.js";
-import { FilePaymentStore } from "./payments/store.js";
+import { createBackendStores } from "./storage/store-factory.js";
 import { X402ChallengeClient } from "./x402/client.js";
 
 export function createSigilServer(config: SigilConfig): McpServer {
@@ -21,21 +18,22 @@ export function createSigilServer(config: SigilConfig): McpServer {
     version: config.serverVersion
   });
 
-  const auditService = new AuditService(new FileAuditStore(config.dataDir));
+  const stores = createBackendStores(config);
+  const auditService = new AuditService(stores.audit);
   const anchorClient = createCasperAnchorClient(config.casper);
   const memoryService = new MemoryService(
-    new FileMemoryStore(config.dataDir),
+    stores.memory,
     auditService,
     anchorClient
   );
   const grimoireService = new GrimoireService(
-    new FileGrimoireStore(config.dataDir),
+    stores.grimoire,
     config.grimoireMasterKey,
     auditService
   );
   const paymentService = new PaymentService(
     grimoireService,
-    new FilePaymentStore(config.dataDir),
+    stores.payments,
     auditService,
     new X402ChallengeClient({
       facilitatorUrl: config.x402.facilitatorUrl,
