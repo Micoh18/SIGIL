@@ -3,10 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  ConfiguredCasperAnchorClient,
   computeAnchorId,
   createAnchorSubmission,
   createCasperAnchorClient,
-  MockCasperAnchorClient
+  MockCasperAnchorClient,
+  REAL_CASPER_ANCHOR_ENV_VARS
 } from "../src/casper/anchorClient.js";
 import { loadConfig } from "../src/config.js";
 import { sha256Hex } from "../src/memory/hash.js";
@@ -64,6 +66,7 @@ describe("Casper anchor foundation", () => {
     const configured = createCasperAnchorClient(
       loadConfig({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
+        MEMORY_ANCHOR_PACKAGE_HASH: `hash-${"2".repeat(64)}`,
         CASPER_RPC_URL: "https://node.test/rpc",
         CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem"
       }).casper
@@ -77,9 +80,21 @@ describe("Casper anchor foundation", () => {
     expect(unconfiguredResult.reason).toBe("casper_contract_not_configured");
     expect(unconfiguredResult.casper_transaction_hash).toBeNull();
     expect(configured.mode).toBe("configured");
+    expect(configured).toBeInstanceOf(ConfiguredCasperAnchorClient);
+    expect(configured).not.toBeInstanceOf(MockCasperAnchorClient);
     expect(configuredResult.status).toBe("pending");
     expect(configuredResult.reason).toBe("casper_transaction_submission_not_implemented");
     expect(configuredResult.casper_transaction_hash).toBeNull();
+  });
+
+  it("documents the required environment boundary for real Casper testnet use", () => {
+    expect(REAL_CASPER_ANCHOR_ENV_VARS).toEqual([
+      "CASPER_RPC_URL",
+      "CASPER_NETWORK_NAME",
+      "MEMORY_ANCHOR_CONTRACT_HASH",
+      "MEMORY_ANCHOR_PACKAGE_HASH",
+      "CASPER_ACCOUNT_KEY_PATH"
+    ]);
   });
 
   it("rejects invalid or partial configured Casper anchor config", () => {
@@ -92,6 +107,13 @@ describe("Casper anchor foundation", () => {
     expect(() =>
       loadConfig({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`
+      })
+    ).toThrow(/MEMORY_ANCHOR_PACKAGE_HASH/);
+
+    expect(() =>
+      loadConfig({
+        MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
+        MEMORY_ANCHOR_PACKAGE_HASH: `hash-${"2".repeat(64)}`
       })
     ).toThrow(/CASPER_RPC_URL/);
   });

@@ -3,6 +3,14 @@ import { sha256Hex } from "../memory/hash.js";
 const HEX_64_PATTERN = /^[a-f0-9]{64}$/;
 const CASPER_HASH_PATTERN = /^(hash-)?[a-f0-9]{64}$/i;
 
+export const REAL_CASPER_ANCHOR_ENV_VARS = [
+  "CASPER_RPC_URL",
+  "CASPER_NETWORK_NAME",
+  "MEMORY_ANCHOR_CONTRACT_HASH",
+  "MEMORY_ANCHOR_PACKAGE_HASH",
+  "CASPER_ACCOUNT_KEY_PATH"
+] as const;
+
 export type AnchorMemoryRequest = {
   agent_id: string;
   memory_id: string;
@@ -53,7 +61,7 @@ export type ValidatedCasperAnchorConfig = {
   rpcUrl: string;
   accountKeyPath: string;
   memoryAnchorContractHash: string;
-  memoryAnchorPackageHash: string | null;
+  memoryAnchorPackageHash: string;
 };
 
 export class UnconfiguredCasperAnchorClient implements CasperAnchorClient {
@@ -114,10 +122,11 @@ export function validateCasperAnchorConfig(
 
   assertCasperHash("MEMORY_ANCHOR_CONTRACT_HASH", contractHash);
 
-  const packageHash = normalizeOptional(config.memoryAnchorPackageHash);
-  if (packageHash) {
-    assertCasperHash("MEMORY_ANCHOR_PACKAGE_HASH", packageHash);
-  }
+  const packageHash = requireNonEmpty(
+    config.memoryAnchorPackageHash,
+    "MEMORY_ANCHOR_PACKAGE_HASH when MEMORY_ANCHOR_CONTRACT_HASH is set"
+  );
+  assertCasperHash("MEMORY_ANCHOR_PACKAGE_HASH", packageHash);
 
   const networkName = requireNonEmpty(config.networkName, "CASPER_NETWORK_NAME");
   const caip2ChainId = requireNonEmpty(config.caip2ChainId, "CASPER_CAIP2_CHAIN_ID");

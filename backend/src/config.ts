@@ -43,7 +43,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
   return {
     dataDir: resolve(optionalEnv(env.SIGIL_DATA_DIR) ?? ".sigil"),
     grimoireMasterKey: loadMasterKey(env.GRIMOIRE_MASTER_KEY),
-    serverName: optionalEnv(env.SIGIL_MCP_NAME) ?? "sigil",
+    serverName: optionalEnv(env.SIGIL_MCP_NAME) ?? "mr-mainspring",
     serverVersion: optionalEnv(env.SIGIL_MCP_VERSION) ?? "0.1.0",
     casper,
     x402: {
@@ -75,6 +75,12 @@ function validateCasperConfig(config: CasperConfig): void {
 
   if (config.memoryAnchorContractHash) {
     assertCasperHash("MEMORY_ANCHOR_CONTRACT_HASH", config.memoryAnchorContractHash);
+
+    if (!config.memoryAnchorPackageHash) {
+      throw new Error(
+        "MEMORY_ANCHOR_PACKAGE_HASH is required when MEMORY_ANCHOR_CONTRACT_HASH is set"
+      );
+    }
 
     if (!config.rpcUrl) {
       throw new Error("CASPER_RPC_URL is required when MEMORY_ANCHOR_CONTRACT_HASH is set");

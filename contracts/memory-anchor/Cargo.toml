@@ -7,4 +7,13 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Stub only until Casper-specific tooling such as cargo-casper is available.
+casper-contract = { version = "=5.1.1", default-features = false }
+casper-types = "=6.0.1"
+wee_alloc = "=0.4.5"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
