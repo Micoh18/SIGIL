@@ -1,0 +1,14 @@
+{
+  "name": "mr-mainspring",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "front:dev": "node scripts/serve-mainspring-front.mjs",
+    "front:build": "node scripts/build-public-site.mjs",
+    "build": "node scripts/build-public-site.mjs --with-docs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

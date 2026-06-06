@@ -1,6 +1,6 @@
 # Mr Mainspring
 
-Mr Mainspring is a backend-only MCP server for agent infrastructure on Casper. It gives agents a local tool surface for:
+Mr Mainspring combines a copied landing frontend with a local MCP server for agent infrastructure on Casper. The backend gives agents a local tool surface for:
 
 - Verifiable memory: write/read/search/verify memory envelopes, compute deterministic hashes, and keep hash-only Casper anchor metadata.
 - Grimoire controls: store encrypted secrets and enforce scoped spending/access policies without returning raw secret values.
@@ -14,10 +14,33 @@ Some package names, environment variables, schema versions, and storage paths st
 ```text
 backend/                    TypeScript MCP backend
 contracts/memory-anchor/    Casper memory-anchor hash-only contract source
+mainspring-front/           Coworker-provided landing frontend handoff copied into the repo
 docs-site/                  VitePress documentation site and generated LLM docs
 docs/demo-runbook.md        Local MCP demo guide
 backend-spec.md             Legacy backend product/security spec
 .env.example                Local backend environment template
+```
+
+## Run the Frontend
+
+The coworker frontend is copied as-is under `mainspring-front/`. The runnable static page is `mainspring-front/project/index.html`.
+
+```bash
+npm run front:dev
+```
+
+This serves the copied frontend at `http://127.0.0.1:4177/`.
+
+To assemble the deployable public site:
+
+```bash
+npm run front:build
+```
+
+To build the frontend root plus the docs under `/docs`:
+
+```bash
+npm run build
 ```
 
 ## Run the Backend
@@ -82,15 +105,17 @@ Important values:
 
 ## Documentation
 
-The docs site is configured for Vercel through `vercel.json`:
+The public site is configured for Vercel through `vercel.json`:
 
 ```text
 installCommand: npm ci --prefix docs-site
-buildCommand: npm run build --prefix docs-site
-outputDirectory: docs-site/docs/.vitepress/dist
+buildCommand: npm run build
+outputDirectory: dist
 ```
 
-To open the docs locally:
+The copied frontend is deployed at `/`. The docs build is copied under `/docs`.
+
+To open only the docs locally:
 
 ```bash
 npm install --prefix docs-site
@@ -135,7 +160,6 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 - Production hardening around contract upgrades, key custody, and automatic finality checks.
 - Full relational SQLite/Postgres domain migrations; Supabase currently stores domain records as JSONB with indexed lookup columns.
 - Remote HTTP MCP transport.
-- A frontend application. The public site is documentation only.
 
 Mr Mainspring should keep returning honest pre-settlement, unavailable-settlement, and pending-anchor states until those paths are implemented and verified. It should not fake verified Casper execution, signed payment payloads, or settled receipts.
 

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MAINSPRING — On-chain witness to every agent decision</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          obsidian: '#15120d',
+          'obsidian-soft': '#1d1913',
+          parchment: '#ece6d6',
+          gold: '#d4af6a',
+          ink: '#0c0a07',
+        },
+        fontFamily: {
+          display: ['Cinzel', 'serif'],
+          mono: ['"Space Mono"', 'ui-monospace', 'monospace'],
+          serif: ['Spectral', 'Georgia', 'serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style type="text/tailwindcss">
+  @layer base {
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body { background-color: #15120d; }
+    ::selection { background: #d4af6a; color: #15120d; }
+  }
+</style>
+
+<style>
+  :root { color-scheme: dark; }
+
+  html, body { margin: 0; padding: 0; }
+
+  /* film-grain / paper noise */
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+  .paper-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  @keyframes pulse {
+    from { opacity: 0.35; transform: scale(0.85); }
+    to   { opacity: 1;    transform: scale(1.1); }
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pullUp {
+    from { transform: translateY(108%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* entrance reveal — RESTING state is visible. `backwards` fill hides only
+     during the pre-start delay, then reverts to the declared visible state.
+     If the animation engine is throttled/paused, content still shows. */
+  .reveal:not(.is-in) { opacity: 0; transform: translateY(20px); }
+  .reveal.is-in {
+    opacity: 1; transform: none;
+    animation: fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  .pull-line { display: block; overflow: hidden; }
+  .pull-line > span { display: block; }
+  .pull-line:not(.is-in) > span { transform: translateY(108%); }
+  .pull-line.is-in > span {
+    transform: translateY(0);
+    animation: pullUp 1.05s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .pull-line > span { opacity: 1 !important; transform: none !important; animation: none !important; }
+  }
+
+  /* thin hairline divider used across sections */
+  .hairline { height: 1px; background: linear-gradient(to right, transparent, rgba(236,230,214,0.28), transparent); }
+
+  /* hide scrollbar aesthetics but keep scroll */
+  html { scroll-behavior: smooth; }
+</style>
+</head>
+<body class="bg-obsidian font-serif text-parchment antialiased overflow-x-hidden">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="hero.jsx"></script>
+  <script type="text/babel" src="sections.jsx"></script>
+  <script type="text/babel" src="try-it.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

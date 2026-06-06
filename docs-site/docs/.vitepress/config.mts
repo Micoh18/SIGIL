@@ -1,9 +1,12 @@
 import { defineConfig } from "vitepress";
 
+const base = process.env.MAINSPRING_DOCS_BASE || "/";
+
 export default defineConfig({
   title: "Mr Mainspring Docs",
   description:
     "Developer documentation for the Mr Mainspring MCP backend: memory, Grimoire, Casper anchoring, x402 payments, and audit trails.",
+  base,
   cleanUrls: true,
   lastUpdated: true,
   appearance: true,
