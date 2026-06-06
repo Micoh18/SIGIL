@@ -1,11 +1,13 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
 import { ensureGrimoireMasterKey, loadLocalEnvFile, resolveEnvPath } from "./env-file.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
-const VERSION = "0.1.2";
+const _pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const VERSION: string = JSON.parse(readFileSync(join(_pkgRoot, "package.json"), "utf8")).version;
 
 const HELP = `Mr Mainspring MCP server
 
