@@ -64,11 +64,11 @@ readable by Node. The signer sidecar rejects private keys inside the repository.
 
 ## Required `.env`
 
-Copy `.env.example`, generate a Grimoire key, then set:
+Copy `.env.example`, then set the real Casper/x402 values. If `GRIMOIRE_MASTER_KEY`
+is missing, Mainspring generates one automatically for local use.
 
 ```env
 SIGIL_DATA_DIR=./.sigil
-GRIMOIRE_MASTER_KEY=<base64-32-byte-key>
 
 CASPER_NETWORK_NAME=casper-test
 CASPER_CAIP2_CHAIN_ID=casper:casper-test

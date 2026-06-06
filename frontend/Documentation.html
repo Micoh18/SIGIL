@@ -276,14 +276,12 @@
       <!-- INSTALLATION -->
       <section id="installation" class="doc-section mt-20">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Installation</h2>
-        <p class="mt-6">Mainspring runs as an MCP server over stdio. Clone the repo, build the backend, then wire it into your agent's MCP config.</p>
+        <p class="mt-6">Mainspring runs as an MCP server over stdio. Install the published npm package, then wire the <code class="inline">mainspring</code> command into your agent's MCP config.</p>
 
         <div class="mt-7" data-code data-lang="bash" data-file="terminal">
-<pre><code><span class="tok-com"># clone and build</span>
-git clone https://github.com/Micoh18/Mr-Mainspring.git
-cd Mr-Mainspring/backend &amp;&amp; npm install
-cp .env.example .env       <span class="tok-com"># configure your environment</span>
-npm run build              <span class="tok-com"># compiles TypeScript → dist/</span></code></pre>
+<pre><code><span class="tok-com"># install the MCP server CLI</span>
+npm install -g mrmainspring
+mainspring --help</code></pre>
         </div>
 
         <p class="mt-7">Add it to your MCP client configuration (Claude Desktop, Cursor, or any MCP-compatible host):</p>
@@ -292,8 +290,7 @@ npm run build              <span class="tok-com"># compiles TypeScript → dist/
 <pre><code><span class="tok-punct">{</span>
   <span class="tok-str">"mcpServers"</span><span class="tok-punct">: {</span>
     <span class="tok-str">"mainspring"</span><span class="tok-punct">: {</span>
-      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"node"</span><span class="tok-punct">,</span>
-      <span class="tok-str">"args"</span><span class="tok-punct">: [</span><span class="tok-str">"/absolute/path/to/Mr-Mainspring/backend/dist/index.js"</span><span class="tok-punct">],</span>
+      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"mainspring"</span><span class="tok-punct">,</span>
       <span class="tok-str">"env"</span><span class="tok-punct">: {</span>
         <span class="tok-str">"SIGIL_DATA_DIR"</span><span class="tok-punct">:</span> <span class="tok-str">"/path/to/data/.sigil"</span>
       <span class="tok-punct">}</span>
@@ -303,11 +300,12 @@ npm run build              <span class="tok-com"># compiles TypeScript → dist/
         </div>
 
         <div class="mt-8 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
-          <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Generate a master key</div>
+          <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Local env</div>
           <div data-code data-lang="bash" data-file="terminal">
-<pre><code>node -e <span class="tok-str">"console.log(require('crypto').randomBytes(32).toString('base64'))"</span></code></pre>
+<pre><code><span class="tok-com"># optional: point Mainspring at a private env file</span>
+SIGIL_ENV_FILE=/absolute/path/to/.env mainspring</code></pre>
           </div>
-          <p class="!text-parchment/75 text-[14px] mt-3">Store it securely. Without it, all grimoire secrets are inaccessible — the key is never derived from the data.</p>
+          <p class="!text-parchment/75 text-[14px] mt-3">If <code class="inline">GRIMOIRE_MASTER_KEY</code> is missing, Mainspring creates one automatically for local use. Keep real keys and secrets outside the repository.</p>
         </div>
 
         <p class="mt-7">For Casper anchoring during development, use the testnet — anchors are free and the contract behavior is identical to mainnet.</p>
@@ -868,7 +866,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
 
         <p class="mt-7">CLI arguments passed to <code class="inline">casper-client</code> are validated against <code class="inline">/^(hash-)?[a-f0-9]{64}$/i</code> before the process is spawned. This prevents command injection via malformed hash strings in any stored data.</p>
 
-        <p class="mt-4">The grimoire master key is intentionally excluded from all storage backends, audit logs, and MCP responses. If <code class="inline">GRIMOIRE_MASTER_KEY</code> is absent at startup, a deterministic dev key is derived — this is flagged clearly and is unsuitable for production.</p>
+        <p class="mt-4">The grimoire master key is intentionally excluded from all storage backends, audit logs, and MCP responses. If <code class="inline">GRIMOIRE_MASTER_KEY</code> is absent at startup, Mainspring generates one automatically for local use; keep production secrets in a private env file.</p>
       </section>
 
       <!-- 06 breadcrumb -->
@@ -896,7 +894,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
               <tbody>
                 <tr><td class="var">SIGIL_DATA_DIR</td><td class="def">.sigil</td><td class="desc">Root directory for file-based storage.</td></tr>
                 <tr><td class="var">SIGIL_STORAGE_BACKEND</td><td class="def">file</td><td class="desc"><code class="inline">file</code> or <code class="inline">supabase</code>.</td></tr>
-                <tr><td class="var">GRIMOIRE_MASTER_KEY</td><td class="def">(dev hash)</td><td class="desc">Base64-encoded 32-byte AES-256-GCM master key. Generate with <code class="inline">openssl rand -base64 32</code>.</td></tr>
+                <tr><td class="var">GRIMOIRE_MASTER_KEY</td><td class="def">(auto)</td><td class="desc">Base64-encoded 32-byte AES-256-GCM master key. Generated automatically for local use when omitted.</td></tr>
                 <tr><td class="var">PROJECT_URL</td><td class="def">—</td><td class="desc">Supabase project URL (required when backend=supabase).</td></tr>
                 <tr><td class="var">SECRET_KEY</td><td class="def">—</td><td class="desc">Supabase service role key.</td></tr>
                 <tr><td class="var">CASPER_RPC_URL</td><td class="def">—</td><td class="desc">Casper node RPC endpoint for casper-client.</td></tr>
@@ -932,7 +930,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
           </div>
           <div class="bg-obsidian px-6 py-5">
             <div class="font-display text-lg text-parchment">Is the grimoire master key stored anywhere?</div>
-            <p class="mt-2 text-[15px]">Never. It lives only in your environment. If absent at startup, Mainspring derives a deterministic dev key and logs a clear warning — this is not suitable for production secrets.</p>
+            <p class="mt-2 text-[15px]">Never. It lives only in your environment. If absent at startup, Mainspring generates one automatically for local use. Production secrets should live in a private env file.</p>
           </div>
           <div class="bg-obsidian px-6 py-5">
             <div class="font-display text-lg text-parchment">Is real x402 settlement implemented?</div>

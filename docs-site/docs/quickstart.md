@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Install and run the Mr Mainspring backend MCP server from a local checkout.
+description: Install and run the Mr Mainspring MCP server from npm.
 section: Start
 status: current
 last_verified: 2026-06-05
@@ -8,13 +8,13 @@ last_verified: 2026-06-05
 
 # Quickstart
 
-Mr Mainspring currently runs as a backend-only MCP server. The repo does not require a frontend to exercise the core memory, Grimoire, payment, and audit flows.
+Mr Mainspring runs as a backend-only MCP server. Install the published npm package, then point your MCP-compatible client at the `mainspring` command.
 
 ## What You Can Verify Today
 
 | Capability | Local Check |
 | --- | --- |
-| MCP backend builds | `npm run build --prefix backend` |
+| MCP server installs | `npm install -g mrmainspring` |
 | Backend behavior is covered by tests | `npm test --prefix backend` |
 | Optional Supabase store adapter works at the HTTP boundary | `npm test --prefix backend` includes mocked Supabase REST coverage. |
 | Docs and LLM artifacts build | `npm.cmd run build --prefix docs-site` |
@@ -22,43 +22,39 @@ Mr Mainspring currently runs as a backend-only MCP server. The repo does not req
 | Current limits are explicit | Read [Current Limitations](/current-limitations) and [Payments and x402](/payments-x402). |
 | Real Casper x402 settlement | Follow [Casper x402 Runbook](/casper-x402-runbook) with funded testnet keys and `CASPER_ENABLE_REAL_SUBMISSION=true`. |
 
-## Install Backend Dependencies
+## Install The MCP Server
 
-From the repository root:
+Install the published package globally:
 
 ```bash
-npm install --prefix backend
-npm test --prefix backend
-npm run build --prefix backend
+npm install -g mrmainspring
+mainspring --help
 ```
 
-For development without a prior build:
+Add it to your MCP client configuration:
 
-```bash
-npm run dev --prefix backend
-```
-
-For stdio MCP execution after building:
-
-```bash
-npm run mcp:stdio --prefix backend
+```json
+{
+  "mcpServers": {
+    "mainspring": {
+      "command": "mainspring",
+      "env": {
+        "SIGIL_DATA_DIR": "/path/to/data/.sigil"
+      }
+    }
+  }
+}
 ```
 
 ## Configure Local Environment
 
-Copy the root template:
+For local development from this repository, copy the root template:
 
 ```bash
 cp .env.example .env
 ```
 
-Generate a local 32-byte Grimoire key:
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-Set the generated value as `GRIMOIRE_MASTER_KEY`.
+If `GRIMOIRE_MASTER_KEY` is missing, Mainspring generates one automatically for local use. Keep real keys and secrets outside the repository.
 
 Important local defaults:
 
@@ -71,7 +67,7 @@ Important local defaults:
 | `SECRET_KEY` / `PUBLISHABLE_KEY` | Supabase REST key. Prefer `SECRET_KEY` only in private backend env, never in committed files. |
 | `SUPABASE_DB_SCHEMA` | Supabase schema, defaulting to `public`. |
 | `SUPABASE_TABLE_PREFIX` | Table prefix, defaulting to `sigil_`. |
-| `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
+| `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Generated automatically for local use when omitted. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
 | `X402_ENABLE_REAL_SETTLEMENT` | Enables the real settlement provider only when set to `true`. Defaults to disabled. |

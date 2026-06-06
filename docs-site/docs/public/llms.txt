@@ -26,7 +26,7 @@ Last verified: 2026-06-05
 ## Canonical Docs
 
 - [Overview](/): Mr Mainspring is a local-first MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring metadata, and x402 payment workflows. Status: current.
-- [Quickstart](/quickstart): Install and run the Mr Mainspring backend MCP server from a local checkout. Status: current.
+- [Quickstart](/quickstart): Install and run the Mr Mainspring MCP server from npm. Status: current.
 - [Architecture](/architecture): Module boundaries and data flow for the Mr Mainspring MCP backend. Status: current.
 - [MCP Tools](/mcp-tools): Current Mr Mainspring MCP tool surface grouped by memory, Grimoire, payments, and audit. Status: current.
 - [Memory](/memory): Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata. Status: implemented.

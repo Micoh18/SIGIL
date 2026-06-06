@@ -33,7 +33,7 @@ Mr Mainspring is built around explicit boundaries: agents can ask for actions, b
 
 ## Secret Storage
 
-Local secrets are encrypted with AES-256-GCM. `GRIMOIRE_MASTER_KEY` must be a base64-encoded 32-byte key for non-demo use. If omitted, the backend uses a deterministic development key, which is only acceptable for local demos.
+Local secrets are encrypted with AES-256-GCM. `GRIMOIRE_MASTER_KEY` must be a base64-encoded 32-byte key for non-demo use. If omitted, Mainspring generates one automatically for local use; production secrets should live in a private env file.
 
 ## Policy Enforcement
 

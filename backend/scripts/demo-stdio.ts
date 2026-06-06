@@ -360,7 +360,7 @@ function parseJsonToolResult<T>(result: ToolCallResult): T {
 function printTranscript(steps: DemoStep[]) {
   console.log("Mr Mainspring evaluator stdio demo");
   console.log(`data_dir=${dataDir}`);
-  console.log("server=node dist/index.js");
+  console.log("server=mainspring");
   console.log("scope=local-only casper_transaction_hash=null x402_settlement=not_started");
 
   for (const step of steps) {

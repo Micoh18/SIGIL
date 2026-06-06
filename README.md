@@ -44,7 +44,33 @@ To build the frontend root plus the docs under `/docs`:
 npm run build
 ```
 
-## Run the Backend
+## Install the MCP Server
+
+For user-facing MCP setup, install the published package and point your MCP-compatible client at the `mainspring` command:
+
+```bash
+npm install -g mrmainspring
+mainspring --help
+```
+
+Example MCP config:
+
+```json
+{
+  "mcpServers": {
+    "mainspring": {
+      "command": "mainspring",
+      "env": {
+        "SIGIL_DATA_DIR": "/path/to/data/.sigil"
+      }
+    }
+  }
+}
+```
+
+If `GRIMOIRE_MASTER_KEY` is missing, Mainspring generates one automatically for local use. Keep production secrets in a private env file.
+
+## Backend Development
 
 ```bash
 cd backend
@@ -52,13 +78,6 @@ npm install
 npm test
 npm run build
 npm run demo:stdio
-```
-
-Run the MCP server over stdio after building:
-
-```bash
-cd backend
-npm run mcp:stdio
 ```
 
 For live TypeScript development:
@@ -261,7 +280,7 @@ Important values:
 - `SECRET_KEY` or `PUBLISHABLE_KEY`: key used for Supabase REST calls. Prefer `SECRET_KEY` only in local env/secret manager.
 - `SUPABASE_DB_SCHEMA`: defaults to `public`.
 - `SUPABASE_TABLE_PREFIX`: defaults to `sigil_`.
-- `GRIMOIRE_MASTER_KEY`: base64-encoded 32-byte AES-GCM key. If omitted, the backend uses a deterministic local development key only.
+- `GRIMOIRE_MASTER_KEY`: base64-encoded 32-byte AES-GCM key. If omitted, Mainspring generates one automatically for local use.
 - `X402_FACILITATOR_URL`: Casper x402 facilitator, expected at `http://localhost:4022` for the demo sidecar.
 - `X402_FACILITATOR_HOST` and `X402_FACILITATOR_PORT`: facilitator sidecar bind address. Defaults to `127.0.0.1:4022`.
 - `X402_RESOURCE_DEMO_URL`: demo paid resource, expected at `http://localhost:4021/weather`.
