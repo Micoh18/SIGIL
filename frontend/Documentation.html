@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MAINSPRING — Documentation</title>
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          obsidian: '#15120d',
+          'obsidian-soft': '#1d1913',
+          parchment: '#ece6d6',
+          gold: '#d4af6a',
+          ink: '#0c0a07',
+        },
+        fontFamily: {
+          display: ['Cinzel', 'serif'],
+          mono: ['"Space Mono"', 'ui-monospace', 'monospace'],
+          serif: ['Spectral', 'Georgia', 'serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root {
+    color-scheme: dark;
+    --color-border-tertiary: rgba(222, 220, 209, 0.15);
+  }
+  html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background-color: #15120d; }
+  ::selection { background: #d4af6a; color: #15120d; }
+
+  .doc-section { scroll-margin-top: 96px; }
+
+  .paper-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  .prose-doc p { color: rgba(236,230,214,0.72); line-height: 1.7; }
+  .prose-doc a.inline-link { color: #d4af6a; text-decoration: none; border-bottom: 1px solid rgba(212,175,106,0.35); }
+  .prose-doc a.inline-link:hover { border-bottom-color: #d4af6a; }
+  .prose-doc code.inline {
+    font-family: "Space Mono", monospace; font-size: 0.85em;
+    background: #0c0a07; color: #d8c89c; border: 1px solid rgba(236,230,214,0.10);
+    padding: 0.1em 0.4em; border-radius: 6px; white-space: nowrap;
+  }
+  .prose-doc ul { list-style: none; padding: 0; margin: 0; }
+  .prose-doc li { color: rgba(236,230,214,0.72); line-height: 1.6; padding-left: 1.4rem; position: relative; }
+  .prose-doc li::before { content: "✦"; color: #d4af6a; position: absolute; left: 0; font-size: 0.7em; top: 0.35em; }
+
+  .side-link.active { color: #ece6d6; }
+  .side-link.active::before { opacity: 1; }
+  .side-link::before {
+    content: ""; position: absolute; left: -13px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: #d4af6a; opacity: 0; transition: opacity .2s;
+  }
+
+  .toc-link.active { color: #d4af6a; }
+
+  pre { margin: 0; }
+  pre code { font-family: "Space Mono", monospace; }
+
+  .tok-key   { color: #c9a8e9; }
+  .tok-str   { color: #9ccf9c; }
+  .tok-com   { color: rgba(236,230,214,0.35); font-style: italic; }
+  .tok-fn    { color: #d4af6a; }
+  .tok-num   { color: #e0a86a; }
+  .tok-punct { color: rgba(236,230,214,0.6); }
+  .tok-type  { color: #85b3eb; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(236,230,214,0.12); border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* schema tables */
+  .schema-table { width: 100%; border-collapse: collapse; font-family: "Space Mono", monospace; font-size: 12px; }
+  .schema-table th { color: rgba(236,230,214,0.4); text-align: left; padding: 8px 12px; border-bottom: 1px solid rgba(236,230,214,0.08); font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; font-size: 10px; }
+  .schema-table td { padding: 9px 12px; border-bottom: 1px solid rgba(236,230,214,0.06); vertical-align: top; }
+  .schema-table tr:last-child td { border-bottom: none; }
+  .schema-table .field { color: #d4af6a; }
+  .schema-table .type  { color: #85b3eb; }
+  .schema-table .req   { color: rgba(236,230,214,0.35); }
+  .schema-table .desc  { color: rgba(236,230,214,0.65); line-height: 1.5; }
+
+  /* env table */
+  .env-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .env-table th { font-family:"Space Mono",monospace; color:rgba(236,230,214,0.4); text-align:left; padding:8px 14px; border-bottom:1px solid rgba(236,230,214,0.1); font-weight:400; letter-spacing:.12em; text-transform:uppercase; font-size:10px; }
+  .env-table td { padding:10px 14px; border-bottom:1px solid rgba(236,230,214,0.06); vertical-align:top; }
+  .env-table tr:last-child td { border-bottom:none; }
+  .env-table .var { font-family:"Space Mono",monospace; color:#d4af6a; font-size:12px; }
+  .env-table .def { font-family:"Space Mono",monospace; color:rgba(236,230,214,0.5); font-size:11px; }
+  .env-table .desc { color:rgba(236,230,214,0.65); font-family:Spectral,Georgia,serif; font-size:14px; line-height:1.5; }
+
+  /* svg diagram container */
+  .svg-diagram { margin-top: 2rem; border-radius: 1rem; border: 1px solid rgba(236,230,214,0.12); overflow: hidden; }
+  .svg-diagram-header { display:flex; align-items:center; justify-content:space-between; padding: 10px 20px; border-bottom: 1px solid rgba(236,230,214,0.1); background: #1d1913; font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.25em; text-transform:uppercase; color:rgba(236,230,214,0.5); }
+  .svg-diagram-body { background:#0c0a07; padding: 16px; }
+
+  /* audit event badges */
+  .badge { display:inline-block; font-family:"Space Mono",monospace; font-size:10px; letter-spacing:.08em; padding:2px 8px; border-radius:4px; }
+  .badge-info    { background:rgba(8,80,65,0.4);   color:rgb(93,202,165);  border:1px solid rgba(93,202,165,0.3); }
+  .badge-warn    { background:rgba(99,56,6,0.4);   color:rgb(239,159,39);  border:1px solid rgba(239,159,39,0.3); }
+  .badge-error   { background:rgba(121,31,31,0.4); color:rgb(240,149,149); border:1px solid rgba(240,149,149,0.3); }
+</style>
+</head>
+<body class="bg-obsidian font-serif text-parchment antialiased">
+
+<!-- ───────────── TOP BAR ───────────── -->
+<header class="sticky top-0 z-40 border-b border-parchment/10 bg-obsidian/85 backdrop-blur-md">
+  <div class="max-w-[1500px] mx-auto flex items-center justify-between gap-4 px-5 md:px-8 h-16">
+    <div class="flex items-center gap-4">
+      <button id="menuBtn" class="lg:hidden -ml-1 p-2 text-parchment/70 hover:text-parchment" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="flex items-center gap-2.5 select-none">
+        <span class="block" style="width:6px;height:6px;border-radius:50%;background:#d4af6a;box-shadow:0 0 8px rgba(212,175,106,0.7)"></span>
+        <span class="font-display" style="font-size:13px;letter-spacing:0.4em;color:#ece6d6">MAINSPRING</span>
+        <span class="hidden sm:inline font-mono text-[11px] tracking-[0.25em] uppercase text-parchment/40 border-l border-parchment/15 pl-3 ml-1">Docs</span>
+      </a>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="hidden md:flex items-center gap-2 rounded-full border border-parchment/15 bg-ink/50 px-3.5 py-2 text-parchment/40">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="font-mono text-[11px] tracking-wide">Search the manual</span>
+        <span class="font-mono text-[10px] border border-parchment/20 rounded px-1.5 py-0.5 ml-2">⌘K</span>
+      </div>
+      <a href="https://github.com/Micoh18/SIGIL" target="_blank" rel="noopener" class="flex items-center gap-2 rounded-full bg-parchment text-obsidian pl-4 pr-2 py-1.5 group hover:gap-2.5 transition-all duration-300">
+        <span class="font-mono text-[12px] font-medium">GitHub</span>
+        <span class="bg-obsidian rounded-full w-6 h-6 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ece6d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg)"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-[1500px] mx-auto flex">
+
+  <!-- ───────────── SIDEBAR ───────────── -->
+  <aside id="sidebar" class="fixed lg:sticky top-16 z-30 h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r border-parchment/10 bg-obsidian-soft lg:bg-transparent px-6 py-9 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+    <nav class="flex flex-col gap-8 text-[13.5px]">
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Getting Started</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#introduction">Introduction</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#installation">Installation</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#quickstart">Quickstart</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Architecture</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#architecture">Overview</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#the-loop">The Loop</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Core Concepts</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#attestations">Attestations</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#memory-envelope">Memory Envelope</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#witnesses">Witnesses</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">MCP Tools</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#memory-write">memory.write</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#memory-read">memory.read / search / verify</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#grimoire">Grimoire</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#payments">Payments</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#audit">Audit</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Deep Dive</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#casper-anchoring">Casper Anchoring</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#storage-backends">Storage Backends</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#security-model">Security Model</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Resources</div>
+        <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#env-reference">Environment</a></li>
+          <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- backdrop -->
+  <div id="backdrop" class="fixed inset-0 top-16 z-20 bg-obsidian/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 lg:hidden"></div>
+
+  <!-- ───────────── MAIN ───────────── -->
+  <main class="flex-1 min-w-0 px-6 md:px-12 lg:px-16 py-14 lg:py-20">
+    <div class="max-w-[760px] prose-doc">
+
+      <!-- 01 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-7">
+        <span style="color:#d4af6a">01</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>Getting Started</span>
+      </div>
+
+      <!-- INTRODUCTION -->
+      <section id="introduction" class="doc-section">
+        <h1 class="font-display font-medium text-parchment text-[10vw] md:text-6xl leading-[1] tracking-[-0.02em]">Introduction</h1>
+        <p class="mt-7 text-lg">Mainspring is an on-chain witness layer for autonomous agents. Every decision an agent makes — the intent, the inputs it weighed, the action it took — is sealed to Casper mainnet as a permanent, independently verifiable attestation.</p>
+        <p class="mt-5">Where a log file can be rewritten, a Mainspring attestation cannot. It turns <span class="italic text-parchment">&ldquo;trust me&rdquo;</span> into a receipt anyone — a counterparty, an auditor, a regulator — can verify without your cooperation.</p>
+
+        <div class="mt-9 grid sm:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-2xl text-gold">4 lines</div>
+            <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">to give any agent a witness</div>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-2xl text-gold">Immutable</div>
+            <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">sealed to Casper mainnet</div>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-2xl text-gold">Public</div>
+            <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">free to verify, forever</div>
+          </div>
+        </div>
+
+        <div class="mt-9 rounded-2xl border border-parchment/12 bg-obsidian-soft px-6 py-5">
+          <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Stack</div>
+          <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-2">
+            <li>Transport: <code class="inline">MCP · stdio</code></li>
+            <li>Runtime: <code class="inline">Node.js 20+ / TypeScript</code></li>
+            <li>On-chain: <code class="inline">Casper mainnet / testnet</code></li>
+            <li>Encryption: <code class="inline">AES-256-GCM</code></li>
+            <li>Storage: <code class="inline">File JSON</code> or <code class="inline">Supabase</code></li>
+            <li>Hashing: <code class="inline">SHA-256 · canonical JSON</code></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- INSTALLATION -->
+      <section id="installation" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Installation</h2>
+        <p class="mt-6">Mainspring runs as an MCP server over stdio. Clone the repo, build the backend, then wire it into your agent's MCP config.</p>
+
+        <div class="mt-7" data-code data-lang="bash" data-file="terminal">
+<pre><code><span class="tok-com"># clone and build</span>
+git clone https://github.com/Micoh18/SIGIL.git
+cd SIGIL/backend &amp;&amp; npm install
+cp .env.example .env       <span class="tok-com"># configure your environment</span>
+npm run build              <span class="tok-com"># compiles TypeScript → dist/</span></code></pre>
+        </div>
+
+        <p class="mt-7">Add it to your MCP client configuration (Claude Desktop, Cursor, or any MCP-compatible host):</p>
+
+        <div class="mt-5" data-code data-lang="json" data-file="claude_desktop_config.json">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"mcpServers"</span><span class="tok-punct">: {</span>
+    <span class="tok-str">"mainspring"</span><span class="tok-punct">: {</span>
+      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"node"</span><span class="tok-punct">,</span>
+      <span class="tok-str">"args"</span><span class="tok-punct">: [</span><span class="tok-str">"/absolute/path/to/SIGIL/backend/dist/index.js"</span><span class="tok-punct">],</span>
+      <span class="tok-str">"env"</span><span class="tok-punct">: {</span>
+        <span class="tok-str">"SIGIL_DATA_DIR"</span><span class="tok-punct">:</span> <span class="tok-str">"/path/to/data/.sigil"</span><span class="tok-punct">,</span>
+        <span class="tok-str">"GRIMOIRE_MASTER_KEY"</span><span class="tok-punct">:</span> <span class="tok-str">"&lt;base64-32-bytes&gt;"</span>
+      <span class="tok-punct">}</span>
+    <span class="tok-punct">}</span>
+  <span class="tok-punct">}</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <div class="mt-8 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
+          <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Generate a master key</div>
+          <div data-code data-lang="bash" data-file="terminal">
+<pre><code>node -e <span class="tok-str">"console.log(require('crypto').randomBytes(32).toString('base64'))"</span></code></pre>
+          </div>
+          <p class="!text-parchment/75 text-[14px] mt-3">Store it securely. Without it, all grimoire secrets are inaccessible — the key is never derived from the data.</p>
+        </div>
+
+        <p class="mt-7">For Casper anchoring during development, use the testnet — anchors are free and the contract behavior is identical to mainnet.</p>
+      </section>
+
+      <!-- QUICKSTART -->
+      <section id="quickstart" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Quickstart</h2>
+        <p class="mt-6">Once the MCP server is connected, your agent has access to all 9 Mainspring tools. Here is the minimal path: write a memory, request an anchor, verify the hash.</p>
+
+        <div class="mt-7" data-code data-lang="json" data-file="memory.write — input">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"agent_id"</span><span class="tok-punct">:</span>  <span class="tok-str">"atlas-treasury-02"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"type"</span><span class="tok-punct">:</span>     <span class="tok-str">"decision"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"source"</span><span class="tok-punct">: {</span> <span class="tok-str">"tool"</span><span class="tok-punct">:</span> <span class="tok-str">"price_oracle"</span><span class="tok-punct">,</span> <span class="tok-str">"symbol"</span><span class="tok-punct">:</span> <span class="tok-str">"CSPR"</span> <span class="tok-punct">},</span>
+  <span class="tok-str">"body"</span><span class="tok-punct">: {</span>
+    <span class="tok-str">"action"</span><span class="tok-punct">:</span>    <span class="tok-str">"TRANSFER 12400 CSPR"</span><span class="tok-punct">,</span>
+    <span class="tok-str">"rationale"</span><span class="tok-punct">:</span> <span class="tok-str">"Rebalance to 30% stable reserve after weekly inflow."</span>
+  <span class="tok-punct">},</span>
+  <span class="tok-str">"anchor"</span><span class="tok-punct">:</span> <span class="tok-key">true</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <div class="mt-4" data-code data-lang="json" data-file="memory.write — output">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"memory_id"</span><span class="tok-punct">:</span>     <span class="tok-str">"mem_4f2c8e1a-..."</span><span class="tok-punct">,</span>
+  <span class="tok-str">"content_hash"</span><span class="tok-punct">:</span>  <span class="tok-str">"9f3c4a71e0b2..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of full envelope</span>
+  <span class="tok-str">"metadata_hash"</span><span class="tok-punct">:</span> <span class="tok-str">"b8e109d2fa31..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of identity fields</span>
+  <span class="tok-str">"anchor_status"</span><span class="tok-punct">:</span> <span class="tok-str">"pending"</span><span class="tok-punct">,</span>           <span class="tok-com">// → "anchored" once chain confirms</span>
+  <span class="tok-str">"anchor_id"</span><span class="tok-punct">:</span>    <span class="tok-str">"c7f8a0e3..."</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <p class="mt-6">That receipt is a verifiable handle. Hand the <code class="inline">content_hash</code> to any counterparty — they can recompute it independently and confirm it on Casper without trusting you or Mainspring's uptime.</p>
+      </section>
+
+      <!-- 02 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+        <span style="color:#d4af6a">02</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>Architecture</span>
+      </div>
+
+      <!-- ARCHITECTURE -->
+      <section id="architecture" class="doc-section">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Overview</h2>
+        <p class="mt-6">Mainspring is a single MCP server with four internal services. All communication with the agent happens over stdio — no HTTP server, no port bindings. The only outbound connection is the optional call to <code class="inline">casper-client</code> for on-chain anchoring.</p>
+
+        <div class="svg-diagram">
+          <div class="svg-diagram-header">
+            <span>System architecture</span>
+          </div>
+          <div class="svg-diagram-body">
+            <svg width="100%" viewBox="0 0 680 540" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Arquitectura de Mainspring</title>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="240" y="20" width="200" height="52" rx="8" stroke-width="0.5" style="fill:rgb(60, 52, 137);stroke:rgb(175, 169, 236)"/>
+<text x="340" y="41" text-anchor="middle" dominant-baseline="central" style="fill:rgb(206, 203, 246);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Agent Process</text>
+<text x="340" y="58" text-anchor="middle" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">any LLM runtime</text>
+<text x="400" y="100" text-anchor="start" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">MCP · stdio</text>
+<line x1="340" y1="72" x2="340" y2="118" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);stroke-width:1.5px"/>
+<rect x="80" y="118" width="520" height="280" rx="14" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="340" y="142" text-anchor="middle" dominant-baseline="central" style="fill:rgb(211, 209, 199);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">McpServer</text>
+<text x="340" y="158" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">9 tools · stdio transport</text>
+<rect x="104" y="172" width="210" height="68" rx="8" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165)"/>
+<text x="209" y="199" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159, 225, 203);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Memory</text>
+<text x="209" y="216" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">write · read · search · verify</text>
+<rect x="366" y="172" width="210" height="68" rx="8" stroke-width="0.5" style="fill:rgb(113, 43, 19);stroke:rgb(240, 153, 123)"/>
+<text x="471" y="199" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245, 196, 179);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Grimoire</text>
+<text x="471" y="216" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240, 153, 123);font-family:'Space Mono',monospace;font-size:12px">secrets · policies · AES-256-GCM</text>
+<rect x="104" y="264" width="210" height="68" rx="8" stroke-width="0.5" style="fill:rgb(99, 56, 6);stroke:rgb(239, 159, 39)"/>
+<text x="209" y="291" text-anchor="middle" dominant-baseline="central" style="fill:rgb(250, 199, 117);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Payment</text>
+<text x="209" y="308" text-anchor="middle" dominant-baseline="central" style="fill:rgb(239, 159, 39);font-family:'Space Mono',monospace;font-size:12px">fetch · receipt · x402 challenge</text>
+<rect x="366" y="264" width="210" height="68" rx="8" stroke-width="0.5" style="fill:rgb(12, 68, 124);stroke:rgb(133, 183, 235)"/>
+<text x="471" y="291" text-anchor="middle" dominant-baseline="central" style="fill:rgb(181, 212, 244);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Audit</text>
+<text x="471" y="308" text-anchor="middle" dominant-baseline="central" style="fill:rgb(133, 183, 235);font-family:'Space Mono',monospace;font-size:12px">tail · redact · severity</text>
+<rect x="104" y="352" width="472" height="36" rx="6" stroke-width="0.5" style="fill:rgb(50, 48, 46);stroke:rgb(160, 158, 150)"/>
+<text x="224" y="370" text-anchor="middle" dominant-baseline="central" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">File JSON</text>
+<text x="300" y="370" text-anchor="middle" dominant-baseline="central" style="fill:rgb(130, 128, 120);font-family:'Space Mono',monospace;font-size:12px">─ or ─</text>
+<text x="390" y="370" text-anchor="middle" dominant-baseline="central" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">Supabase</text>
+<text x="400" y="430" text-anchor="start" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">casper-client · spawn()</text>
+<line x1="340" y1="398" x2="340" y2="448" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);stroke-width:1.5px"/>
+<rect x="190" y="448" width="300" height="72" rx="8" stroke-width="0.5" style="fill:rgb(60, 52, 137);stroke:rgb(175, 169, 236)"/>
+<text x="340" y="473" text-anchor="middle" dominant-baseline="central" style="fill:rgb(206, 203, 246);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Casper Mainnet / Testnet</text>
+<text x="340" y="492" text-anchor="middle" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">memory-anchor contract · hashes only</text>
+            </svg>
+          </div>
+        </div>
+
+        <p class="mt-7">The storage layer is swappable at startup. Both backends implement the same interface — switching from file to Supabase requires only an environment variable change, no code changes.</p>
+      </section>
+
+      <!-- THE LOOP -->
+      <section id="the-loop" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">The Loop</h2>
+        <p class="mt-6">Every decision runs the same clock. Mainspring is built like a watch — four movements that only mean something when they turn together.</p>
+        <ul class="mt-6 flex flex-col gap-3">
+          <li><span class="text-parchment font-mono text-[13px] mr-2">Act</span> — your agent decides and acts on available data.</li>
+          <li><span class="text-parchment font-mono text-[13px] mr-2">Witness</span> — Mainspring meters the decision at the source, hashing the full envelope before it can be altered.</li>
+          <li><span class="text-parchment font-mono text-[13px] mr-2">Anchor</span> — the content hash and anchor id are submitted to Casper via <code class="inline">casper-client</code>, creating an immutable on-chain record.</li>
+          <li><span class="text-parchment font-mono text-[13px] mr-2">Prove</span> — anyone can recompute the hash from the stored envelope and verify it against the chain, independently, without trusting Mainspring.</li>
+        </ul>
+      </section>
+
+      <!-- 03 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+        <span style="color:#d4af6a">03</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>Core Concepts</span>
+      </div>
+
+      <!-- ATTESTATIONS -->
+      <section id="attestations" class="doc-section">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Attestations</h2>
+        <p class="mt-6">An attestation is the sealed record of one decision. Mainspring stores the full envelope off-chain and anchors only its SHA-256 hash on Casper — nothing about the content ever reaches the blockchain.</p>
+
+        <div class="mt-7 rounded-2xl border border-parchment/15 bg-ink/60 overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-parchment/15 bg-obsidian-soft">
+            <span class="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Mainnet</span>
+            <span class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase" style="color:#7bbf8a">
+              <span style="width:6px;height:6px;border-radius:50%;background:#7bbf8a;box-shadow:0 0 8px #7bbf8a"></span>Immutable
+            </span>
+          </div>
+          <div class="p-5 md:p-6 font-mono text-xs md:text-[13px]">
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">agent_id</span><span class="text-parchment/90">atlas-treasury-02</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">memory_id</span><span class="text-parchment/90 break-all">mem_4f2c8e1a-b3d7-4a9c-…</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">type</span><span class="text-parchment/90">decision</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">content_hash</span><span class="text-parchment/90 break-all">9f3c4a71e0b2… (SHA-256, on-chain)</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">anchor_id</span><span class="text-parchment/90 break-all">c7f8a0e3d… (contract storage key)</span></div>
+            <div class="flex items-baseline gap-4 py-1.5"><span class="text-parchment/40 w-32 shrink-0">created_at</span><span class="text-parchment/90">2026-06-05T09:14:22Z</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MEMORY ENVELOPE -->
+      <section id="memory-envelope" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Memory Envelope</h2>
+        <p class="mt-6">Every memory written to Mainspring is serialized into a <code class="inline">MemoryEnvelope</code> before hashing. The schema is versioned and deterministic — the same inputs always produce the same hash.</p>
+
+        <div class="svg-diagram">
+          <div class="svg-diagram-header">
+            <span>MemoryEnvelope schema &amp; hashing pipeline</span>
+          </div>
+          <div class="svg-diagram-body">
+            <svg width="100%" viewBox="0 0 680 500" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Memory Envelope schema and hashing pipeline</title>
+<defs>
+<marker id="arrow-mem" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<rect x="40" y="20" width="290" height="340" rx="12" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165)"/>
+<text x="185" y="46" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159, 225, 203);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">MemoryEnvelope</text>
+<text x="185" y="62" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">sigil.memory.v1</text>
+<rect x="60" y="76" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="74" y="92" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">schema_version</text>
+<text x="296" y="92" text-anchor="end" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">"sigil.memory.v1"</text>
+<rect x="60" y="116" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165)"/>
+<text x="74" y="132" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">agent_id</text>
+<text x="296" y="132" text-anchor="end" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">string</text>
+<rect x="60" y="156" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165)"/>
+<text x="74" y="172" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">memory_id</text>
+<text x="296" y="172" text-anchor="end" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">mem_&lt;uuid&gt;</text>
+<rect x="60" y="196" width="250" height="44" rx="6" stroke-width="0.5" style="fill:rgb(99, 56, 6);stroke:rgb(239, 159, 39)"/>
+<text x="74" y="210" dominant-baseline="central" style="fill:rgb(239, 159, 39);font-family:'Space Mono',monospace;font-size:12px">type</text>
+<text x="296" y="210" text-anchor="end" dominant-baseline="central" style="fill:rgb(239, 159, 39);font-family:'Space Mono',monospace;font-size:12px">observation · decision</text>
+<text x="296" y="228" text-anchor="end" dominant-baseline="central" style="fill:rgb(239, 159, 39);font-family:'Space Mono',monospace;font-size:12px">payment · secret_usage · system_event</text>
+<rect x="60" y="248" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="74" y="264" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">source</text>
+<text x="296" y="264" text-anchor="end" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">JsonObject</text>
+<rect x="60" y="288" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="74" y="304" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">body</text>
+<text x="296" y="304" text-anchor="end" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">JsonObject</text>
+<rect x="60" y="328" width="250" height="32" rx="6" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="74" y="344" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">created_at</text>
+<text x="296" y="344" text-anchor="end" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">ISO 8601</text>
+<rect x="40" y="372" width="290" height="32" rx="6" stroke-width="0.5" style="fill:rgb(60, 52, 137);stroke:rgb(175, 169, 236)"/>
+<text x="56" y="388" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">prev_anchor_hash</text>
+<text x="316" y="388" text-anchor="end" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">string | null</text>
+<text x="390" y="36" text-anchor="middle" dominant-baseline="central" style="fill:rgb(250, 249, 245);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Hashing pipeline</text>
+<rect x="350" y="56" width="280" height="56" rx="8" stroke-width="0.5" style="fill:rgb(113, 43, 19);stroke:rgb(240, 153, 123)"/>
+<text x="490" y="76" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245, 196, 179);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">content_hash</text>
+<text x="490" y="94" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240, 153, 123);font-family:'Space Mono',monospace;font-size:12px">SHA-256(canonical JSON completo)</text>
+<rect x="350" y="136" width="280" height="56" rx="8" stroke-width="0.5" style="fill:rgb(113, 43, 19);stroke:rgb(240, 153, 123)"/>
+<text x="490" y="156" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245, 196, 179);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">metadata_hash</text>
+<text x="490" y="174" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240, 153, 123);font-family:'Space Mono',monospace;font-size:12px">SHA-256(agent+mem+type+src+ts)</text>
+<rect x="350" y="212" width="280" height="52" rx="8" fill="none" style="stroke:rgba(222,220,209,0.2);stroke-width:0.5px;stroke-dasharray:3px,3px"/>
+<text x="490" y="232" text-anchor="middle" dominant-baseline="central" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">Canonical JSON</text>
+<text x="490" y="250" text-anchor="middle" dominant-baseline="central" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">keys α-order · no spaces · no undefined</text>
+<line x1="330" y1="84" x2="348" y2="84" marker-end="url(#arrow-mem)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<line x1="330" y1="200" x2="340" y2="200" style="fill:none;stroke:rgba(222,220,209,0.2);stroke-width:0.5px;stroke-dasharray:3px,3px"/>
+<line x1="340" y1="200" x2="340" y2="164" style="fill:none;stroke:rgba(222,220,209,0.2);stroke-width:0.5px;stroke-dasharray:3px,3px"/>
+<line x1="340" y1="164" x2="348" y2="164" marker-end="url(#arrow-mem)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<line x1="490" y1="112" x2="490" y2="300" marker-end="url(#arrow-mem)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<rect x="350" y="300" width="280" height="68" rx="8" stroke-width="0.5" style="fill:rgb(60, 52, 137);stroke:rgb(175, 169, 236)"/>
+<text x="490" y="320" text-anchor="middle" dominant-baseline="central" style="fill:rgb(206, 203, 246);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">anchor_id</text>
+<text x="490" y="338" text-anchor="middle" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">SHA-256(</text>
+<text x="490" y="354" text-anchor="middle" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">agent_id:mem_id:content_hash:prev)</text>
+<rect x="350" y="386" width="280" height="72" rx="8" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
+<text x="366" y="404" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">anchor states</text>
+<rect x="362" y="414" width="118" height="28" rx="6" stroke-width="0.5" style="fill:rgb(68,68,65);stroke:rgb(180,178,169)"/>
+<text x="421" y="428" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180,178,169);font-family:'Space Mono',monospace;font-size:12px">not_requested</text>
+<rect x="488" y="414" width="60" height="28" rx="6" stroke-width="0.5" style="fill:rgb(99,56,6);stroke:rgb(239,159,39)"/>
+<text x="518" y="428" text-anchor="middle" dominant-baseline="central" style="fill:rgb(239,159,39);font-family:'Space Mono',monospace;font-size:12px">pending</text>
+<rect x="362" y="446" width="72" height="24" rx="6" stroke-width="0.5" style="fill:rgb(39,80,10);stroke:rgb(151,196,89)"/>
+<text x="398" y="458" text-anchor="middle" dominant-baseline="central" style="fill:rgb(151,196,89);font-family:'Space Mono',monospace;font-size:12px">anchored</text>
+<rect x="442" y="446" width="56" height="24" rx="6" stroke-width="0.5" style="fill:rgb(121,31,31);stroke:rgb(240,149,149)"/>
+<text x="470" y="458" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240,149,149);font-family:'Space Mono',monospace;font-size:12px">failed</text>
+<line x1="490" y1="368" x2="490" y2="384" marker-end="url(#arrow-mem)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+            </svg>
+          </div>
+        </div>
+
+        <p class="mt-7">Canonical JSON sorts all object keys alphabetically at every depth level and omits <code class="inline">undefined</code> values. This guarantees the same input always produces the same hash regardless of the serializer used.</p>
+
+        <p class="mt-4">The <code class="inline">prev_anchor_hash</code> field chains attestations together. When a memory is anchored, its <code class="inline">anchor_id</code> is stored as the previous hash for the agent's next anchored write — creating a verifiable chain of custody.</p>
+      </section>
+
+      <!-- WITNESSES -->
+      <section id="witnesses" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Witnesses</h2>
+        <p class="mt-6">A witness is the MCP server running alongside your agent. It is the sole trusted observer — it receives the raw decision data, computes the hash before any transmission can alter it, and dispatches the anchor submission.</p>
+        <p class="mt-4">The witness is non-blocking. Anchoring runs asynchronously — <code class="inline">anchor_status: "pending"</code> is returned immediately; the status transitions to <code class="inline">"anchored"</code> once <code class="inline">casper-client</code> confirms the transaction. If the anchor call fails, the memory is still stored locally with <code class="inline">anchor_status: "failed"</code> — no data is lost.</p>
+        <p class="mt-4">The witness never touches body content for anchoring — it only sees the hash. Body data stays in local storage (file or Supabase) and never reaches Casper.</p>
+      </section>
+
+      <!-- 04 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+        <span style="color:#d4af6a">04</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>MCP Tools</span>
+      </div>
+
+      <!-- MEMORY.WRITE -->
+      <section id="memory-write" class="doc-section">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">memory.write</h2>
+        <p class="mt-6">Creates a new <code class="inline">MemoryEnvelope</code>, computes both hashes, persists the entry, and optionally submits an anchor to Casper. Every write is also recorded as a <code class="inline">memory.created</code> audit event.</p>
+
+        <div class="mt-7 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="px-5 py-3 border-b border-parchment/10 bg-obsidian-soft font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40">Input</div>
+          <div class="p-1">
+            <table class="schema-table">
+              <thead><tr><th>Field</th><th>Type</th><th>Req</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="field">agent_id</td><td class="type">string</td><td class="req">✓</td><td class="desc">Identifies the writing agent. Used as a key in the anchor chain.</td></tr>
+                <tr><td class="field">type</td><td class="type">enum</td><td class="req">✓</td><td class="desc"><code class="inline">observation</code> · <code class="inline">decision</code> · <code class="inline">payment</code> · <code class="inline">secret_usage</code> · <code class="inline">system_event</code></td></tr>
+                <tr><td class="field">source</td><td class="type">object</td><td class="req">✓</td><td class="desc">Contextual metadata about the memory origin (arbitrary JSON).</td></tr>
+                <tr><td class="field">body</td><td class="type">object</td><td class="req">✓</td><td class="desc">The memory content (arbitrary JSON). Never sent on-chain.</td></tr>
+                <tr><td class="field">anchor</td><td class="type">boolean</td><td class="req">—</td><td class="desc">If <code class="inline">true</code>, submit anchor to Casper immediately. Default: <code class="inline">false</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="px-5 py-3 border-b border-parchment/10 bg-obsidian-soft font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40">Output</div>
+          <div class="p-1">
+            <table class="schema-table">
+              <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="field">memory_id</td><td class="type">string</td><td class="desc">Unique identifier — <code class="inline">mem_&lt;uuid&gt;</code></td></tr>
+                <tr><td class="field">content_hash</td><td class="type">string</td><td class="desc">SHA-256 of the canonical full envelope (anchored on-chain)</td></tr>
+                <tr><td class="field">metadata_hash</td><td class="type">string</td><td class="desc">SHA-256 of identity fields only (agent_id, memory_id, type, source, created_at)</td></tr>
+                <tr><td class="field">anchor_status</td><td class="type">enum</td><td class="desc"><code class="inline">not_requested</code> · <code class="inline">pending</code> · <code class="inline">anchored</code> · <code class="inline">failed</code></td></tr>
+                <tr><td class="field">anchor_id</td><td class="type">string?</td><td class="desc">Present when <code class="inline">anchor_status ≠ not_requested</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MEMORY.READ / SEARCH / VERIFY -->
+      <section id="memory-read" class="doc-section mt-16">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">memory.read · search · verify</h2>
+        <p class="mt-6">Three read-path tools that cover retrieval, discovery, and integrity verification.</p>
+
+        <div class="mt-7 flex flex-col gap-4">
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[13px] text-gold mb-2">memory.read</div>
+            <p class="text-[14px]">Reads one stored memory by <code class="inline">agent_id</code> + <code class="inline">memory_id</code>. Returns the full <code class="inline">StoredMemoryEntry</code> including both hashes and anchor state.</p>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[13px] text-gold mb-2">memory.search</div>
+            <p class="text-[14px]">Full-text search over <code class="inline">body</code>, <code class="inline">source</code>, and <code class="inline">type</code> fields for a given <code class="inline">agent_id</code>. Takes a <code class="inline">query</code> string and optional <code class="inline">limit</code> (default 20). Returns ranked matches.</p>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[13px] text-gold mb-2">memory.verify</div>
+            <p class="text-[14px]">Recomputes the <code class="inline">content_hash</code> locally from the stored envelope and compares it to the stored value. Returns <code class="inline">valid: true|false</code>, both hashes, and whether they match. Detects any tampering with the stored data.</p>
+          </div>
+        </div>
+
+        <div class="mt-7" data-code data-lang="json" data-file="memory.verify — output">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"valid"</span><span class="tok-punct">:</span>               <span class="tok-key">true</span><span class="tok-punct">,</span>
+  <span class="tok-str">"stored_hash"</span><span class="tok-punct">:</span>         <span class="tok-str">"9f3c4a71e0b2…"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"computed_hash"</span><span class="tok-punct">:</span>       <span class="tok-str">"9f3c4a71e0b2…"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"hashes_match"</span><span class="tok-punct">:</span>        <span class="tok-key">true</span><span class="tok-punct">,</span>
+  <span class="tok-str">"onchain_content_hash"</span><span class="tok-punct">:</span> <span class="tok-str">"9f3c4a71e0b2…"</span>  <span class="tok-com">// present if anchored</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+      </section>
+
+      <!-- GRIMOIRE -->
+      <section id="grimoire" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Grimoire</h2>
+        <p class="mt-6">The Grimoire is Mainspring's encrypted vault for secrets and spending policies. It provides two sub-systems: secret storage (AES-256-GCM) and policy enforcement for the x402 payment flow.</p>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-4">Secrets</h3>
+        <p>Secrets are encrypted with AES-256-GCM using a 12-byte random nonce. The plaintext is never returned by any MCP tool — not even in confirmations. If you lose the plaintext, it is gone.</p>
+
+        <div class="mt-5 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="px-5 py-3 border-b border-parchment/10 bg-obsidian-soft font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40">grimoire.secret.put — Input</div>
+          <div class="p-1">
+            <table class="schema-table">
+              <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="field">name</td><td class="type">string</td><td class="desc">Unique identifier for this secret.</td></tr>
+                <tr><td class="field">value</td><td class="type">string</td><td class="desc">The plaintext secret. Encrypted immediately; never stored in the clear.</td></tr>
+                <tr><td class="field">type</td><td class="type">enum</td><td class="desc"><code class="inline">casper_private_key_ref</code> · <code class="inline">x402_client_key_ref</code> · <code class="inline">api_key</code> · <code class="inline">webhook_secret</code></td></tr>
+                <tr><td class="field">scopes</td><td class="type">string[]</td><td class="desc">Permitted operations: <code class="inline">x402:sign</code> · <code class="inline">casper:sign</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-4">
+          <p class="!text-parchment/75 text-[14px]"><code class="inline">grimoire.secret.list</code> returns metadata only (name, type, scopes, created_at). The <code class="inline">value</code> field is never included in any response.</p>
+        </div>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-4">Policies</h3>
+        <p>Policies gate x402 payment operations. Every <code class="inline">payment.fetch</code> call runs a policy check first — no payment proceeds without an active, matching policy.</p>
+
+        <div class="mt-5" data-code data-lang="json" data-file="grimoire.policy.set — example">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"policy_id"</span><span class="tok-punct">:</span>             <span class="tok-str">"pol_cspr_transfers"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"enabled"</span><span class="tok-punct">:</span>              <span class="tok-key">true</span><span class="tok-punct">,</span>
+  <span class="tok-str">"allowed_urls"</span><span class="tok-punct">:</span>          <span class="tok-punct">[</span><span class="tok-str">"https://api.example.com/data"</span><span class="tok-punct">],</span>
+  <span class="tok-str">"allowed_methods"</span><span class="tok-punct">:</span>       <span class="tok-punct">[</span><span class="tok-str">"GET"</span><span class="tok-punct">],</span>
+  <span class="tok-str">"max_amount_per_call"</span><span class="tok-punct">:</span>   <span class="tok-str">"0.05"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"max_amount_per_period"</span><span class="tok-punct">:</span> <span class="tok-str">"1.00"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"period_seconds"</span><span class="tok-punct">:</span>        <span class="tok-num">86400</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <p class="mt-5">Policy denial reasons: <code class="inline">policy_not_found</code> · <code class="inline">policy_disabled</code> · <code class="inline">url_not_allowed</code> · <code class="inline">method_not_allowed</code> · <code class="inline">amount_over_limit</code> · <code class="inline">invalid_amount</code>. Each reason is audited.</p>
+      </section>
+
+      <!-- PAYMENTS -->
+      <section id="payments" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Payments</h2>
+        <p class="mt-6">Mainspring implements the <a href="https://x402.org" class="inline-link" target="_blank" rel="noopener">x402 payment protocol</a> — a three-stage state machine for policy-gated, challenge-based micropayments over HTTP. Each stage advances the same <code class="inline">PaymentIntent</code> record.</p>
+
+        <div class="svg-diagram">
+          <div class="svg-diagram-header">
+            <span>x402 payment state machine</span>
+            <span style="color:rgba(93,202,165,0.7)">3 stages</span>
+          </div>
+          <div class="svg-diagram-body">
+            <svg width="100%" viewBox="0 0 680 480" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>x402 payment states</title>
+<defs>
+<marker id="arrow-pay" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+<mask id="imagine-text-gaps-pay" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="680" height="480" fill="white"/><rect x="14.5" y="98" width="47" height="19" fill="black" rx="2"/><rect x="13.25" y="208" width="49.5" height="19" fill="black" rx="2"/><rect x="13.4" y="328" width="49.2" height="19" fill="black" rx="2"/><rect x="310" y="31.25" width="60" height="21.5" fill="black" rx="2"/><rect x="351" y="62" width="100" height="19" fill="black" rx="2"/><rect x="134.5" y="115.25" width="101" height="21.5" fill="black" rx="2"/><rect x="122.2" y="132.5" width="125.6" height="19" fill="black" rx="2"/><rect x="439" y="115.25" width="112" height="21.5" fill="black" rx="2"/><rect x="437" y="132.5" width="116" height="19" fill="black" rx="2"/><rect x="351" y="162" width="144" height="19" fill="black" rx="2"/><rect x="271.35" y="215.25" width="137.3" height="21.5" fill="black" rx="2"/><rect x="260.6" y="232.5" width="158.8" height="19" fill="black" rx="2"/><rect x="351" y="266" width="118" height="19" fill="black" rx="2"/><rect x="183.4" y="335.25" width="163.2" height="21.5" fill="black" rx="2"/><rect x="166.1" y="352.5" width="197.9" height="19" fill="black" rx="2"/><rect x="467.3" y="335.25" width="55.4" height="21.5" fill="black" rx="2"/><rect x="450.1" y="352.5" width="89.9" height="19" fill="black" rx="2"/></mask>
+</defs>
+<text x="38" y="112" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">Stage 1</text>
+<text x="38" y="222" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">Stage 2</text>
+<text x="38" y="342" text-anchor="middle" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">Stage 3</text>
+<line x1="62" y1="50" x2="62" y2="440" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:3px,3px" mask="url(#imagine-text-gaps-pay)"/>
+<rect x="240" y="20" width="200" height="44" rx="8" stroke-width="0.5" style="fill:rgb(68,68,65);stroke:rgb(180,178,169)"/>
+<text x="340" y="42" text-anchor="middle" dominant-baseline="central" style="fill:rgb(211,209,199);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">created</text>
+<line x1="340" y1="64" x2="340" y2="82" marker-end="url(#arrow-pay)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<text x="355" y="76" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">payment.fetch()</text>
+<rect x="80" y="86" width="520" height="76" rx="10" fill="none" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px"/>
+<text x="92" y="102" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">Policy check</text>
+<rect x="100" y="108" width="170" height="44" rx="8" stroke-width="0.5" style="fill:rgb(121,31,31);stroke:rgb(240,149,149)"/>
+<text x="185" y="126" text-anchor="middle" dominant-baseline="central" style="fill:rgb(247,193,193);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">policy_denied</text>
+<text x="185" y="142" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240,149,149);font-family:'Space Mono',monospace;font-size:12px">url · method · amount</text>
+<rect x="410" y="108" width="170" height="44" rx="8" stroke-width="0.5" style="fill:rgb(39,80,10);stroke:rgb(151,196,89)"/>
+<text x="495" y="126" text-anchor="middle" dominant-baseline="central" style="fill:rgb(192,221,151);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">policy_checked</text>
+<text x="495" y="142" text-anchor="middle" dominant-baseline="central" style="fill:rgb(151,196,89);font-family:'Space Mono',monospace;font-size:12px">ready for challenge</text>
+<line x1="280" y1="130" x2="272" y2="130" marker-end="url(#arrow-pay)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<line x1="400" y1="130" x2="408" y2="130" marker-end="url(#arrow-pay)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<line x1="495" y1="152" x2="495" y2="168" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:3px,3px"/>
+<line x1="495" y1="168" x2="340" y2="168" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:3px,3px" mask="url(#imagine-text-gaps-pay)"/>
+<line x1="340" y1="168" x2="340" y2="182" marker-end="url(#arrow-pay)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<text x="355" y="176" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">request_challenge=true</text>
+<rect x="80" y="186" width="520" height="76" rx="10" fill="none" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px"/>
+<text x="92" y="202" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">HTTP 402 challenge</text>
+<rect x="240" y="208" width="200" height="44" rx="8" stroke-width="0.5" style="fill:rgb(99,56,6);stroke:rgb(239,159,39)"/>
+<text x="340" y="226" text-anchor="middle" dominant-baseline="central" style="fill:rgb(250,199,117);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">challenge_received</text>
+<text x="340" y="242" text-anchor="middle" dominant-baseline="central" style="fill:rgb(239,159,39);font-family:'Space Mono',monospace;font-size:12px">parsed · validated vs policy</text>
+<line x1="340" y1="252" x2="340" y2="302" marker-end="url(#arrow-pay)" style="fill:none;stroke:rgb(156,154,146);stroke-width:1.5px"/>
+<text x="355" y="280" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">settlement attempt</text>
+<rect x="80" y="306" width="520" height="76" rx="10" fill="none" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px"/>
+<text x="92" y="322" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">Settlement</text>
+<rect x="160" y="328" width="210" height="44" rx="8" stroke-width="0.5" style="fill:rgb(113,43,19);stroke:rgb(240,153,123)"/>
+<text x="265" y="346" text-anchor="middle" dominant-baseline="central" style="fill:rgb(245,196,179);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">settlement_unavailable</text>
+<text x="265" y="362" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240,153,123);font-family:'Space Mono',monospace;font-size:12px">DisabledX402SettlementProvider</text>
+<rect x="410" y="328" width="170" height="44" rx="8" stroke-width="0.5" style="fill:rgb(8,80,65);stroke:rgb(93,202,165)"/>
+<text x="495" y="346" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159,225,203);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">settled</text>
+<text x="495" y="362" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93,202,165);font-family:'Space Mono',monospace;font-size:12px">coming soon</text>
+<line x1="370" y1="350" x2="408" y2="350" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px" marker-end="url(#arrow-pay)"/>
+<rect x="80" y="412" width="12" height="12" rx="2" style="fill:rgba(222,220,209,0.15)"/>
+<text x="98" y="422" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">current flow</text>
+<line x1="160" y1="418" x2="192" y2="418" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px" mask="url(#imagine-text-gaps-pay)"/>
+<text x="198" y="422" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">future state</text>
+            </svg>
+          </div>
+        </div>
+
+        <p class="mt-7">Not yet implemented: real Casper x402 signed payload, paid retry to the resource, and facilitator settlement verification. The <code class="inline">DisabledX402SettlementProvider</code> always returns <code class="inline">settlement_unavailable</code>. Both <code class="inline">CASPER_ENABLE_REAL_SUBMISSION</code> and <code class="inline">X402_ENABLE_REAL_SETTLEMENT</code> are explicit opt-in gates — they never default to <code class="inline">true</code>.</p>
+
+        <p class="mt-4">Use <code class="inline">payment.receipt</code> to read a payment intent at any stage — it returns the full record including status, denial reason, and challenge requirements.</p>
+      </section>
+
+      <!-- AUDIT -->
+      <section id="audit" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Audit</h2>
+        <p class="mt-6"><code class="inline">audit.tail</code> returns the most recent audit events across all services. Every tool call that writes state records an event automatically — no opt-in required.</p>
+
+        <div class="mt-7" data-code data-lang="json" data-file="audit.tail — input">
+<pre><code><span class="tok-punct">{</span> <span class="tok-str">"limit"</span><span class="tok-punct">:</span> <span class="tok-num">20</span> <span class="tok-punct">}</span>  <span class="tok-com">// default: 20, max: 100</span></code></pre>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="px-5 py-3 border-b border-parchment/10 bg-obsidian-soft font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40">Event types</div>
+          <div class="p-5 grid sm:grid-cols-2 gap-x-8 gap-y-3">
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">memory.created</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">memory.verify_succeeded</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-warn">warn</span><code class="inline text-[11px]">memory.verify_failed</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">payment.policy_approved</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-warn">warn</span><code class="inline text-[11px]">payment.policy_denied</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">payment.challenge_received</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">payment.settled</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">secret.stored</code></div>
+            <div class="flex items-center gap-3"><span class="badge badge-info">info</span><code class="inline text-[11px]">policy.set</code></div>
+          </div>
+        </div>
+
+        <p class="mt-6">All audit metadata is sanitized before storage. Keys matching <code class="inline">secret</code>, <code class="inline">token</code>, <code class="inline">key</code>, <code class="inline">password</code>, <code class="inline">private</code>, <code class="inline">payload</code>, <code class="inline">credential</code>, <code class="inline">authorization</code>, or <code class="inline">value</code> are automatically redacted to <code class="inline">[REDACTED]</code>. Max depth: 6, max string: 2 048 chars, max total event size: 16 KB.</p>
+      </section>
+
+      <!-- 05 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+        <span style="color:#d4af6a">05</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>Deep Dive</span>
+      </div>
+
+      <!-- CASPER ANCHORING -->
+      <section id="casper-anchoring" class="doc-section">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Casper Anchoring</h2>
+        <p class="mt-6">Anchoring writes a compact record to the <code class="inline">memory-anchor</code> Rust/Wasm contract on Casper. Only hashes are submitted — never memory bodies, secrets, or private keys.</p>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-3">anchor_id derivation</h3>
+        <div class="mt-3" data-code data-lang="text" data-file="formula">
+<pre><code>anchor_id = SHA-256(
+  agent_id + ":" + memory_id + ":" + content_hash + ":" + prev_anchor_hash
+)</code></pre>
+        </div>
+        <p class="mt-4">When <code class="inline">prev_anchor_hash</code> is <code class="inline">null</code> (first anchor for an agent), the literal string <code class="inline">"null"</code> is used in the concatenation. This links successive anchors into a tamper-evident chain per agent.</p>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-3">Contract entry point</h3>
+        <div class="mt-3 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="p-1">
+            <table class="schema-table">
+              <thead><tr><th>Arg</th><th>Type</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="field">anchor_id</td><td class="type">String</td><td class="desc">Unique anchor identifier (hex-encoded SHA-256)</td></tr>
+                <tr><td class="field">content_hash</td><td class="type">String</td><td class="desc">SHA-256 of the full envelope (hex)</td></tr>
+                <tr><td class="field">metadata_hash</td><td class="type">String</td><td class="desc">SHA-256 of identity fields (hex)</td></tr>
+                <tr><td class="field">agent_id</td><td class="type">String</td><td class="desc">Agent identifier — stored alongside the anchor</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="mt-4">The contract rejects duplicate <code class="inline">anchor_id</code>s with error code <code class="inline">DuplicateAnchor (0)</code>. All hash strings are validated against <code class="inline">/^(hash-)?[a-f0-9]{64}$/i</code> before being passed to the CLI — no unvalidated input reaches <code class="inline">casper-client spawn()</code>.</p>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-3">Submission modes</h3>
+        <ul class="mt-3 flex flex-col gap-2.5">
+          <li><code class="inline">transaction-package</code> (default) — uses <code class="inline">MEMORY_ANCHOR_PACKAGE_HASH</code></li>
+          <li><code class="inline">deploy-contract-hash</code> — uses <code class="inline">MEMORY_ANCHOR_CONTRACT_HASH</code></li>
+        </ul>
+
+        <h3 class="font-display text-xl text-parchment mt-9 mb-3">Deployed testnet contracts</h3>
+        <div class="mt-3" data-code data-lang="env" data-file=".env">
+<pre><code>MEMORY_ANCHOR_CONTRACT_HASH<span class="tok-punct">=</span><span class="tok-str">hash-9a10301e…</span>
+MEMORY_ANCHOR_PACKAGE_HASH<span class="tok-punct">=</span><span class="tok-str">hash-162da013…</span>
+CASPER_CHAIN_NAME<span class="tok-punct">=</span><span class="tok-str">casper-test</span>
+CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-str">true</span>  <span class="tok-com"># explicit opt-in required</span></code></pre>
+        </div>
+        <p class="mt-4">Full hashes are in the repository README under <em>Casper Contract Status</em>. Block explorer: <a href="https://cspr.live" class="inline-link" target="_blank" rel="noopener">cspr.live</a>.</p>
+      </section>
+
+      <!-- STORAGE BACKENDS -->
+      <section id="storage-backends" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Storage Backends</h2>
+        <p class="mt-6">Both backends implement identical interfaces. The choice is made at startup via <code class="inline">SIGIL_STORAGE_BACKEND</code> — no code changes required to switch.</p>
+
+        <div class="mt-7 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="p-1">
+            <table class="schema-table">
+              <thead><tr><th>·</th><th>File (default)</th><th>Supabase</th></tr></thead>
+              <tbody>
+                <tr><td class="field">Activate</td><td class="desc"><code class="inline">SIGIL_STORAGE_BACKEND=file</code></td><td class="desc"><code class="inline">SIGIL_STORAGE_BACKEND=supabase</code></td></tr>
+                <tr><td class="field">Memory</td><td class="desc"><code class="inline">.sigil/memory.json</code></td><td class="desc"><code class="inline">sigil_memory_entries</code></td></tr>
+                <tr><td class="field">Secrets</td><td class="desc"><code class="inline">.sigil/grimoire-secrets.json</code></td><td class="desc"><code class="inline">sigil_secrets</code></td></tr>
+                <tr><td class="field">Policies</td><td class="desc"><code class="inline">.sigil/grimoire-policies.json</code></td><td class="desc"><code class="inline">sigil_policies</code></td></tr>
+                <tr><td class="field">Payments</td><td class="desc"><code class="inline">.sigil/payments.json</code></td><td class="desc"><code class="inline">sigil_payment_intents</code></td></tr>
+                <tr><td class="field">Audit</td><td class="desc"><code class="inline">.sigil/audit.json</code></td><td class="desc"><code class="inline">sigil_audit_events</code></td></tr>
+                <tr><td class="field">Setup</td><td class="desc">None — auto-created</td><td class="desc">Apply <code class="inline">backend/supabase/schema.sql</code></td></tr>
+                <tr><td class="field">Best for</td><td class="desc">Development, demos, single-agent</td><td class="desc">Production, multi-agent, persistence</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECURITY MODEL -->
+      <section id="security-model" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Security Model</h2>
+
+        <div class="mt-7 grid sm:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-[11px] tracking-[0.25em] uppercase text-parchment/40 mb-3">Never on-chain</div>
+            <ul class="flex flex-col gap-1.5">
+              <li>Memory body content</li>
+              <li>Secret plaintext</li>
+              <li>Rationale text</li>
+              <li>Signed x402 payloads</li>
+              <li>Private keys</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-[11px] tracking-[0.25em] uppercase text-parchment/40 mb-3">Never returned via MCP</div>
+            <ul class="flex flex-col gap-1.5">
+              <li>Secret plaintext values</li>
+              <li>AES-GCM auth tags</li>
+              <li>Signed x402 payloads</li>
+              <li>Raw nonces</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-display text-[11px] tracking-[0.25em] uppercase text-parchment/40 mb-3">Always sanitized</div>
+            <ul class="flex flex-col gap-1.5">
+              <li>Audit event metadata</li>
+              <li>Challenge requirements</li>
+              <li>Policy denial details</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="mt-7">CLI arguments passed to <code class="inline">casper-client</code> are validated against <code class="inline">/^(hash-)?[a-f0-9]{64}$/i</code> before the process is spawned. This prevents command injection via malformed hash strings in any stored data.</p>
+
+        <p class="mt-4">The grimoire master key is intentionally excluded from all storage backends, audit logs, and MCP responses. If <code class="inline">GRIMOIRE_MASTER_KEY</code> is absent at startup, a deterministic dev key is derived — this is flagged clearly and is unsuitable for production.</p>
+      </section>
+
+      <!-- 06 breadcrumb -->
+      <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+        <span style="color:#d4af6a">06</span>
+        <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+        <span>Resources</span>
+      </div>
+
+      <!-- ENVIRONMENT REFERENCE -->
+      <section id="env-reference" class="doc-section">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Environment Reference</h2>
+        <p class="mt-6">Copy <code class="inline">.env.example</code> to <code class="inline">.env</code> — it is loaded first by <code class="inline">loadLocalEnvFile()</code> before <code class="inline">process.env</code>. Required vars are marked ✓ for production use.</p>
+
+        <div class="mt-7 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="env-table">
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Default</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="var">SIGIL_DATA_DIR</td><td class="def">.sigil</td><td class="desc">Root directory for file-based storage.</td></tr>
+                <tr><td class="var">SIGIL_STORAGE_BACKEND</td><td class="def">file</td><td class="desc"><code class="inline">file</code> or <code class="inline">supabase</code>.</td></tr>
+                <tr><td class="var">GRIMOIRE_MASTER_KEY</td><td class="def">(dev hash)</td><td class="desc">Base64-encoded 32-byte AES-256-GCM master key. Generate with <code class="inline">openssl rand -base64 32</code>.</td></tr>
+                <tr><td class="var">PROJECT_URL</td><td class="def">—</td><td class="desc">Supabase project URL (required when backend=supabase).</td></tr>
+                <tr><td class="var">SECRET_KEY</td><td class="def">—</td><td class="desc">Supabase service role key.</td></tr>
+                <tr><td class="var">CASPER_RPC_URL</td><td class="def">—</td><td class="desc">Casper node RPC endpoint for casper-client.</td></tr>
+                <tr><td class="var">CASPER_ACCOUNT_KEY_PATH</td><td class="def">—</td><td class="desc">Path to the account signing key PEM file.</td></tr>
+                <tr><td class="var">CASPER_CHAIN_NAME</td><td class="def">casper-test</td><td class="desc"><code class="inline">casper-test</code> or <code class="inline">casper</code> (mainnet).</td></tr>
+                <tr><td class="var">CASPER_ENABLE_REAL_SUBMISSION</td><td class="def">false</td><td class="desc">Explicit opt-in gate. Must be <code class="inline">true</code> to actually write to chain.</td></tr>
+                <tr><td class="var">MEMORY_ANCHOR_CONTRACT_HASH</td><td class="def">—</td><td class="desc">Deployed contract hash (<code class="inline">hash-&lt;64 hex chars&gt;</code>).</td></tr>
+                <tr><td class="var">MEMORY_ANCHOR_PACKAGE_HASH</td><td class="def">—</td><td class="desc">Deployed package hash. Used in <code class="inline">transaction-package</code> mode.</td></tr>
+                <tr><td class="var">CASPER_SUBMISSION_MODE</td><td class="def">transaction-package</td><td class="desc"><code class="inline">transaction-package</code> or <code class="inline">deploy-contract-hash</code>.</td></tr>
+                <tr><td class="var">X402_ENABLE_REAL_SETTLEMENT</td><td class="def">false</td><td class="desc">Opt-in gate for x402 real settlement. Currently no settlement provider implements it.</td></tr>
+                <tr><td class="var">X402_FACILITATOR_URL</td><td class="def">—</td><td class="desc">x402 facilitator endpoint for future settlement.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="doc-section mt-20">
+        <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">FAQ</h2>
+        <div class="mt-7 flex flex-col gap-px rounded-2xl overflow-hidden border border-parchment/12 bg-parchment/10">
+          <div class="bg-obsidian px-6 py-5">
+            <div class="font-display text-lg text-parchment">Is my memory body stored on-chain?</div>
+            <p class="mt-2 text-[15px]">No. Only a SHA-256 hash of the full envelope is anchored. Body content lives in your local storage (file or Supabase) and never leaves your infrastructure.</p>
+          </div>
+          <div class="bg-obsidian px-6 py-5">
+            <div class="font-display text-lg text-parchment">Can I verify a hash without Mainspring running?</div>
+            <p class="mt-2 text-[15px]">Yes. The hash is deterministic: sort the envelope keys alphabetically, serialize to compact JSON, run SHA-256. Any runtime can recompute and verify against what's on Casper — independently.</p>
+          </div>
+          <div class="bg-obsidian px-6 py-5">
+            <div class="font-display text-lg text-parchment">What happens if anchoring fails?</div>
+            <p class="mt-2 text-[15px]">The memory is still stored locally with <code class="inline">anchor_status: "failed"</code>. No data is lost. You can inspect the audit log for the error detail and retry manually.</p>
+          </div>
+          <div class="bg-obsidian px-6 py-5">
+            <div class="font-display text-lg text-parchment">Is the grimoire master key stored anywhere?</div>
+            <p class="mt-2 text-[15px]">Never. It lives only in your environment. If absent at startup, Mainspring derives a deterministic dev key and logs a clear warning — this is not suitable for production secrets.</p>
+          </div>
+          <div class="bg-obsidian px-6 py-5">
+            <div class="font-display text-lg text-parchment">Is real x402 settlement implemented?</div>
+            <p class="mt-2 text-[15px]">Not yet. The three-stage flow — policy check, HTTP 402 challenge, settlement — is fully wired, but <code class="inline">DisabledX402SettlementProvider</code> always returns <code class="inline">settlement_unavailable</code>. This is intentional and honest; fake receipts are never returned.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- footer nav -->
+      <div class="mt-24 flex flex-col sm:flex-row gap-4">
+        <a href="index.html" class="flex-1 rounded-2xl border border-parchment/12 bg-obsidian-soft px-6 py-5 hover:border-gold/40 transition-colors group">
+          <div class="font-mono text-[10px] tracking-[0.25em] uppercase text-parchment/40">Back</div>
+          <div class="font-display text-xl text-parchment mt-1 group-hover:text-gold transition-colors">← Return to site</div>
+        </a>
+        <a href="https://github.com/Micoh18/SIGIL" target="_blank" rel="noopener" class="flex-1 rounded-2xl border border-parchment/12 bg-obsidian-soft px-6 py-5 hover:border-gold/40 transition-colors group">
+          <div class="font-mono text-[10px] tracking-[0.25em] uppercase text-parchment/40">Source</div>
+          <div class="font-display text-xl text-parchment mt-1 group-hover:text-gold transition-colors">View on GitHub →</div>
+        </a>
+      </div>
+
+      <div class="mt-16 pt-8 border-t border-parchment/10 flex items-center justify-between font-mono text-[11px] tracking-wide text-parchment/40">
+        <span>© 2026 Mainspring · Wound tight, kept honest.</span>
+        <a href="index.html" class="hover:text-parchment transition-colors">← Back to site</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- ───────────── ON THIS PAGE ───────────── -->
+  <aside class="hidden xl:block w-60 shrink-0 py-20 pr-8">
+    <div class="sticky top-24">
+      <div class="font-mono text-[11px] tracking-[0.28em] uppercase text-parchment/40 mb-5">On this page</div>
+      <nav id="toc" class="flex flex-col gap-2 border-l border-parchment/12 pl-4 text-[12.5px]">
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#introduction">Introduction</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#installation">Installation</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#quickstart">Quickstart</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#architecture">Architecture</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#the-loop">The Loop</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#attestations">Attestations</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#memory-envelope">Memory Envelope</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#witnesses">Witnesses</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#memory-write">memory.write</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#memory-read">memory.read/search/verify</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#grimoire">Grimoire</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#payments">Payments</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#audit">Audit</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#casper-anchoring">Casper Anchoring</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#storage-backends">Storage Backends</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#security-model">Security Model</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#env-reference">Environment</a>
+        <a class="toc-link text-parchment/50 hover:text-parchment transition-colors font-mono" href="#faq">FAQ</a>
+      </nav>
+    </div>
+  </aside>
+</div>
+
+<script>
+  // SVG onclick placeholder — no-op
+  function sendPrompt() {}
+
+  // mobile sidebar toggle
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('backdrop');
+  const menuBtn = document.getElementById('menuBtn');
+  function openMenu(open) {
+    sidebar.classList.toggle('-translate-x-full', !open);
+    backdrop.classList.toggle('opacity-0', !open);
+    backdrop.classList.toggle('pointer-events-none', !open);
+  }
+  menuBtn.addEventListener('click', () => openMenu(sidebar.classList.contains('-translate-x-full')));
+  backdrop.addEventListener('click', () => openMenu(false));
+  sidebar.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { if (window.innerWidth < 1024) openMenu(false); }));
+
+  // code block chrome
+  document.querySelectorAll('[data-code]').forEach(block => {
+    const file = block.getAttribute('data-file') || '';
+    const pre = block.querySelector('pre');
+    if (!pre) return;
+    const codeText = pre.textContent;
+    block.classList.add('rounded-2xl','border','border-parchment/15','overflow-hidden','bg-ink/70');
+    const header = document.createElement('div');
+    header.className = 'flex items-center justify-between px-4 py-2.5 border-b border-parchment/12 bg-obsidian-soft';
+    header.innerHTML =
+      '<div class="flex items-center gap-3">' +
+        '<div class="flex items-center gap-1.5">' +
+          '<span style="width:9px;height:9px;border-radius:50%;background:rgba(236,230,214,0.18)"></span>' +
+          '<span style="width:9px;height:9px;border-radius:50%;background:rgba(236,230,214,0.18)"></span>' +
+          '<span style="width:9px;height:9px;border-radius:50%;background:rgba(212,175,106,0.6)"></span>' +
+        '</div>' +
+        '<span class="font-mono text-[11px] tracking-wide text-parchment/55">' + file + '</span>' +
+      '</div>' +
+      '<button class="copy-btn font-mono text-[10px] tracking-[0.2em] uppercase text-parchment/45 hover:text-gold transition-colors">Copy</button>';
+    block.insertBefore(header, pre);
+    pre.classList.add('px-5','py-5','overflow-x-auto','text-[13px]','leading-[1.7]','text-parchment/90');
+    const btn = header.querySelector('.copy-btn');
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(codeText.trim()).catch(()=>{});
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('text-gold');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('text-gold'); }, 1200);
+    });
+  });
+
+  // scroll-spy
+  const sideLinks = [...document.querySelectorAll('.side-link')];
+  const tocLinks = [...document.querySelectorAll('.toc-link')];
+  const sections = [...document.querySelectorAll('.doc-section')];
+  const byId = id => ({
+    side: sideLinks.find(a => a.getAttribute('href') === '#'+id),
+    toc: tocLinks.find(a => a.getAttribute('href') === '#'+id)
+  });
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        sideLinks.forEach(a => a.classList.remove('active'));
+        tocLinks.forEach(a => a.classList.remove('active'));
+        const { side, toc } = byId(e.target.id);
+        if (side) side.classList.add('active');
+        if (toc) toc.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+  sections.forEach(s => io.observe(s));
+</script>
+</body>
+</html>
