@@ -3,6 +3,7 @@ const { useRef: useRefS, useState: useStateS, useEffect: useEffectS } = React;
 
 const useRevealS = window.useReveal;
 const ArrowRightS = window.ArrowRight;
+const REPO_URL = "https://github.com/Micoh18/Mr-Mainspring";
 
 /* ── shared bits ── */
 
@@ -310,7 +311,7 @@ function Repo() {
 
         <div className={"flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 reveal " + (inView ? "is-in" : "")}
           style={{ animationDelay: "0.24s" }}>
-          <a href="#top"
+          <a href={REPO_URL} target="_blank" rel="noreferrer"
             className="flex items-center gap-2 bg-parchment rounded-full pl-6 pr-1 py-1 group hover:gap-3 transition-all duration-300 w-fit">
             <span className="font-mono text-sm font-medium text-obsidian whitespace-nowrap">View the repo</span>
             <span className="bg-obsidian rounded-full w-10 h-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -327,7 +328,7 @@ function Repo() {
 
         <div className={"flex items-center justify-center gap-2 mt-16 reveal " + (inView ? "is-in" : "")} style={{ animationDelay: "0.32s" }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff4d4d", boxShadow: "0 0 8px #ff4d4d", animation: "pulse 2.4s infinite alternate" }} />
-          <span className="font-mono text-[11px] tracking-widest" style={{ color: "#8a8398" }}>LIVE ON CASPER MAINNET</span>
+          <span className="font-mono text-[11px] tracking-widest" style={{ color: "#8a8398" }}>LIVE ON CASPER TESTNET</span>
         </div>
       </div>
     </section>
@@ -338,9 +339,9 @@ function Repo() {
 
 function Footer() {
   const cols = [
-    ["Product", ["The Gap", "Modules", "The Loop", "The Proof"]],
-    ["Develop", ["Documentation", "SDK reference", "Repository", "Changelog"]],
-    ["Network", ["Casper Mainnet", "Block explorer", "Status", "Verify a record"]],
+    ["Product", [["The Gap", "#top"], ["Modules", "#top"], ["The Loop", "#top"], ["The Proof", "#top"]]],
+    ["Develop", [["Documentation", "#top"], ["SDK reference", "#top"], ["Repository", REPO_URL], ["Changelog", "#top"]]],
+    ["Network", [["Casper Mainnet", "#top"], ["Block explorer", "#top"], ["Status", "#top"], ["Verify a record", "#top"]]],
   ];
   return (
     <footer className="bg-obsidian px-6 md:px-12 lg:px-20 pt-20 pb-10 border-t border-parchment/10">
@@ -356,8 +357,17 @@ function Footer() {
             <div key={c[0]} className="col-span-1 md:col-span-2 md:col-start-auto">
               <div className="font-mono text-[11px] tracking-[0.28em] uppercase text-parchment/40 mb-4">{c[0]}</div>
               <ul className="flex flex-col gap-2.5">
-                {c[1].map((l) => (
-                  <li key={l}><a href="#top" className="font-serif text-parchment/70 hover:text-parchment transition-colors">{l}</a></li>
+                {c[1].map(([label, href]) => (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      target={href === REPO_URL ? "_blank" : undefined}
+                      rel={href === REPO_URL ? "noreferrer" : undefined}
+                      className="font-serif text-parchment/70 hover:text-parchment transition-colors"
+                    >
+                      {label}
+                    </a>
+                  </li>
                 ))}
               </ul>
             </div>
