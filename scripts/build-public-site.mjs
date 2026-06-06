@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const distDir = join(root, "dist");
-const frontendProjectDir = join(root, "mainspring-front", "project");
+const frontendProjectDir = join(root, "frontend");
 const docsDistDir = join(root, "docs-site", "docs", ".vitepress", "dist");
 const docsTempDir = join(root, "docs-site", "docs", ".vitepress", ".temp");
 const withDocs = process.argv.includes("--with-docs");
