@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize } from "node:path";
 
 const root = process.cwd();
-const publicDir = join(root, "mainspring-front", "project");
+const publicDir = join(root, "frontend");
 const port = Number(process.env.PORT || 4177);
 const host = process.env.HOST || "127.0.0.1";
 

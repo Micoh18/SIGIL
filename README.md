@@ -14,7 +14,7 @@ Some package names, environment variables, schema versions, and storage paths st
 ```text
 backend/                    TypeScript MCP backend
 contracts/memory-anchor/    Casper memory-anchor hash-only contract source
-mainspring-front/           Coworker-provided landing frontend handoff copied into the repo
+frontend/                   Static landing page and documentation site
 docs-site/                  VitePress documentation site and generated LLM docs
 docs/demo-runbook.md        Local MCP demo guide
 docs/casper-x402-runbook.md Real Casper x402 settlement runbook
@@ -24,7 +24,7 @@ backend-spec.md             Legacy backend product/security spec
 
 ## Run the Frontend
 
-The coworker frontend is copied as-is under `mainspring-front/`. The runnable static page is `mainspring-front/project/index.html`.
+The static frontend lives under `frontend/`. The runnable page is `frontend/index.html`.
 
 ```bash
 npm run front:dev
