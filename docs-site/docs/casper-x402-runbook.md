@@ -58,9 +58,11 @@ npm run build --prefix backend
 casper-client --version
 ```
 
-On Windows, set `CASPER_CLIENT_WSL_DISTRO=Ubuntu` if the facilitator should run
-`casper-client` through WSL. Keep `X402_BUYER_PRIVATE_KEY_PATH` as a host path
-readable by Node. The signer sidecar rejects private keys inside the repository.
+On Windows, the facilitator auto-detects a WSL distro that can run
+`casper-client` when no native Windows binary is available. Keep
+`X402_BUYER_PRIVATE_KEY_PATH` as a host path readable by Node. Set
+`CASPER_CLIENT_WSL_DISTRO` only when you need to force a specific distro. The
+signer sidecar rejects private keys inside the repository.
 
 ## Required `.env`
 

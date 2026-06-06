@@ -48,7 +48,7 @@ CASPER_PRICING_MODE="classic"
 CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES="3000000000"
 ```
 
-On Windows, set `CASPER_CLIENT_WSL_DISTRO="Ubuntu"` when `casper-client` is installed inside WSL instead of Windows. The backend then invokes `wsl -d Ubuntu -- casper-client ...` and converts `CASPER_ACCOUNT_KEY_PATH` to a `/mnt/<drive>/...` path.
+On Windows, Mainspring auto-detects a WSL distro that can run `casper-client` when no native Windows binary is available. The backend then invokes `wsl -d <distro> -- <resolved-casper-client> ...` and converts `CASPER_ACCOUNT_KEY_PATH` to a `/mnt/<drive>/...` path. Set `CASPER_CLIENT_WSL_DISTRO` only when you need to force a specific distro.
 
 ## Anchor Submission
 

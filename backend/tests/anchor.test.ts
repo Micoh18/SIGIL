@@ -19,6 +19,10 @@ import { MemoryService } from "../src/memory/service.js";
 import { FileMemoryStore } from "../src/memory/store.js";
 
 const hex64 = /^[a-f0-9]{64}$/;
+const testConfigEnv = (env: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
+  CASPER_CLIENT_AUTO_DETECT_WSL: "false",
+  ...env
+});
 
 describe("Casper anchor foundation", () => {
   it("computes a deterministic anchor id and hash-only anchor submission", () => {
@@ -83,15 +87,16 @@ describe("Casper anchor foundation", () => {
         stderr: ""
       };
     };
-    const unconfigured = createCasperAnchorClient(loadConfig({}).casper);
-    const configured = createCasperAnchorClient(
-      loadConfig({
+    const unconfigured = createCasperAnchorClient(loadConfig(testConfigEnv()).casper);
+    const configuredConfig = loadConfig(testConfigEnv({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
         MEMORY_ANCHOR_PACKAGE_HASH: `package-${"2".repeat(64)}`,
         CASPER_RPC_URL: "https://node.test/rpc",
         CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem",
         CASPER_ENABLE_REAL_SUBMISSION: "true"
-      }).casper,
+      })).casper;
+    const configured = createCasperAnchorClient(
+      configuredConfig,
       { commandRunner: runner }
     );
 
@@ -110,7 +115,7 @@ describe("Casper anchor foundation", () => {
     expect(configuredResult.casper_transaction_hash).toBe(transactionHash);
     expect(configuredResult.onchain_content_hash).toBeNull();
     expect(calls).toHaveLength(1);
-    expect(calls[0]?.command).toBe("casper-client");
+    expect(calls[0]?.command).toBe(configuredConfig.clientWslDistro ? "wsl" : configuredConfig.clientBin);
     expect(calls[0]?.args).toEqual(
       expect.arrayContaining([
         "put-transaction",
@@ -128,7 +133,7 @@ describe("Casper anchor foundation", () => {
         "--standard-payment",
         "true",
         "--secret-key",
-        "./keys/backend.pem",
+        configuredConfig.accountKeyPath,
         "--session-args-json"
       ])
     );
@@ -149,12 +154,12 @@ describe("Casper anchor foundation", () => {
     });
     const calls: { command: string; args: readonly string[] }[] = [];
     const client = createCasperAnchorClient(
-      loadConfig({
+      loadConfig(testConfigEnv({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
         MEMORY_ANCHOR_PACKAGE_HASH: `package-${"2".repeat(64)}`,
         CASPER_RPC_URL: "https://node.test/rpc",
         CASPER_ACCOUNT_KEY_PATH: "./keys/backend.pem"
-      }).casper,
+      })).casper,
       {
         commandRunner: async (command, args) => {
           calls.push({ command, args });
@@ -357,22 +362,22 @@ describe("Casper anchor foundation", () => {
 
   it("rejects invalid or partial configured Casper anchor config", () => {
     expect(() =>
-      loadConfig({
+      loadConfig(testConfigEnv({
         MEMORY_ANCHOR_CONTRACT_HASH: "not-a-casper-hash"
-      })
+      }))
     ).toThrow(/MEMORY_ANCHOR_CONTRACT_HASH/);
 
     expect(() =>
-      loadConfig({
+      loadConfig(testConfigEnv({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`
-      })
+      }))
     ).toThrow(/MEMORY_ANCHOR_PACKAGE_HASH/);
 
     expect(() =>
-      loadConfig({
+      loadConfig(testConfigEnv({
         MEMORY_ANCHOR_CONTRACT_HASH: `hash-${"1".repeat(64)}`,
         MEMORY_ANCHOR_PACKAGE_HASH: `hash-${"2".repeat(64)}`
-      })
+      }))
     ).toThrow(/CASPER_RPC_URL/);
   });
 

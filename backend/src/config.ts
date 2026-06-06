@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { discoverCasperClient } from "./casper/clientDiscovery.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
 const CASPER_HASH_PATTERN = /^(hash-)?[a-f0-9]{64}$/i;
@@ -64,19 +65,27 @@ export type SigilConfig = {
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
+  const casperClient = discoverCasperClient({
+    clientBin: env.CASPER_CLIENT_BIN,
+    clientWslDistro: env.CASPER_CLIENT_WSL_DISTRO,
+    autoDetectWsl: parseOptionalBoolean(
+      env.CASPER_CLIENT_AUTO_DETECT_WSL,
+      process.env.VITEST !== "true"
+    )
+  });
   const casper = {
     networkName: optionalEnv(env.CASPER_NETWORK_NAME) ?? "casper-test",
     caip2ChainId: optionalEnv(env.CASPER_CAIP2_CHAIN_ID) ?? "casper:casper-test",
     rpcUrl: optionalEnv(env.CASPER_RPC_URL),
     accountKeyPath: normalizeCasperAccountKeyPath(
       optionalEnv(env.CASPER_ACCOUNT_KEY_PATH) ?? "./keys/backend.pem",
-      optionalEnv(env.CASPER_CLIENT_WSL_DISTRO)
+      casperClient.clientWslDistro
     ),
     memoryAnchorContractHash: optionalEnv(env.MEMORY_ANCHOR_CONTRACT_HASH),
     memoryAnchorPackageHash: optionalEnv(env.MEMORY_ANCHOR_PACKAGE_HASH),
     submissionEnabled: parseBoolean(env.CASPER_ENABLE_REAL_SUBMISSION),
-    clientBin: optionalEnv(env.CASPER_CLIENT_BIN) ?? "casper-client",
-    clientWslDistro: process.platform === "win32" ? optionalEnv(env.CASPER_CLIENT_WSL_DISTRO) : null,
+    clientBin: casperClient.clientBin,
+    clientWslDistro: casperClient.clientWslDistro,
     anchorSubmissionMode: parseCasperAnchorSubmissionMode(
       env.CASPER_ANCHOR_SUBMISSION_MODE
     ),
@@ -288,6 +297,12 @@ function parseBoolean(value: string | undefined): boolean {
   const normalized = optionalEnv(value)?.toLowerCase();
 
   return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function parseOptionalBoolean(value: string | undefined, defaultValue: boolean): boolean {
+  const normalized = optionalEnv(value);
+
+  return normalized ? parseBoolean(normalized) : defaultValue;
 }
 
 function parseCasperAnchorSubmissionMode(

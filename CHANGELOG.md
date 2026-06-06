@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-06-06
+- Windows: auto-detect `casper-client` inside WSL when no native Windows binary is available.
+- `mainspring doctor` now reports the resolved WSL distro/path and no longer treats a failed WSL process as available.
+
 ## 0.1.8 — 2026-06-06
 - x402: local Casper signing — no external signer service required
 - Set `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SETTLEMENT_MODE=casper-cli` to activate
