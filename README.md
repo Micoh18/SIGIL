@@ -30,7 +30,7 @@ The static frontend lives under `frontend/`. The runnable page is `frontend/inde
 npm run front:dev
 ```
 
-This serves the copied frontend at `http://127.0.0.1:4177/`.
+This serves the frontend at `http://127.0.0.1:4177/`.
 
 To assemble the deployable public site:
 
@@ -46,26 +46,26 @@ npm run build
 
 ## Install the MCP Server
 
-For user-facing MCP setup, install the published package and point your MCP-compatible client at the `mainspring` command:
+One command — no global install required. Auto-detects and configures Claude Desktop, Cursor, Windsurf, Zed, Claude Code, Continue, and VS Code:
 
 ```bash
-npm install -g mrmainspring
-mainspring setup cursor
+npx -y mrmainspring setup
 ```
 
-Example MCP config:
+Fallback MCP config (if no client is auto-detected):
 
 ```json
 {
   "mcpServers": {
     "mainspring": {
-      "command": "mainspring"
+      "command": "npx",
+      "args": ["-y", "mrmainspring"]
     }
   }
 }
 ```
 
-`mainspring setup` creates the local config, data, and logs directories under the user's standard app config folder. If `GRIMOIRE_MASTER_KEY` is missing, Mainspring generates one automatically for local use. Keep production secrets in a private env file.
+`mainspring setup` creates the local config, data, and logs directories under the user's standard app config folder. `GRIMOIRE_MASTER_KEY` is generated automatically on first run.
 
 ## Backend Development
 
