@@ -80,8 +80,19 @@ export function runCliCommand(args: string[]): boolean {
     if (report) {
       process.stdout.write(report);
     } else {
-      process.stdout.write("\nNo MCP clients detected. Paste this into your client config manually:\n\n");
+      process.stdout.write(
+        "\nNo MCP clients detected automatically.\n" +
+        "Add this to your MCP client config (Claude Desktop, Cursor, Windsurf, Zed, VS Code, Continue, or any MCP host):\n\n"
+      );
       process.stdout.write(`${formatMcpConfig()}\n`);
+      process.stdout.write(
+        "\nConfig file locations:\n" +
+        "  Claude Desktop  ~/Library/Application Support/Claude/claude_desktop_config.json\n" +
+        "  Cursor          ~/.cursor/mcp.json\n" +
+        "  Windsurf        ~/.codeium/windsurf/mcp_config.json\n" +
+        "  Zed             ~/.config/zed/settings.json  (context_servers format)\n" +
+        "  VS Code         ~/.vscode/mcp.json\n\n"
+      );
     }
     return true;
   }
