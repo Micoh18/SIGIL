@@ -76,7 +76,7 @@ function Modules() {
     },
     {
       num: "II", part: "The Barrel", title: "Anchor",
-      body: "Each decision is hashed, sealed into an attestation, and written to Casper mainnet. No edits, no deletions — wound tight and held under tension, forever.",
+      body: "Each decision is hashed, sealed into an attestation, and written to Casper testnet. No edits, no deletions — wound tight and held under tension, forever.",
       meta: "On-chain · immutable",
     },
     {
@@ -252,7 +252,7 @@ function TheProof() {
             </h2>
             <p className={"font-serif text-parchment/65 text-lg leading-[1.55] mt-6 max-w-lg reveal " + (inView ? "is-in" : "")}
               style={{ animationDelay: "0.22s" }}>
-              Every decision your agent makes resolves into a permanent, queryable, independently verifiable record on Casper mainnet. Here is one.
+              Every decision your agent makes resolves into a permanent, queryable, independently verifiable record on Casper testnet. Here is one.
             </p>
 
             <div className={"mt-10 rounded-[2rem] border border-parchment/20 bg-ink/60 overflow-hidden reveal " + (inView ? "is-in" : "")}
@@ -338,7 +338,7 @@ function Repo() {
 
         <div className={"flex items-center justify-center gap-2 mt-16 reveal " + (inView ? "is-in" : "")} style={{ animationDelay: "0.32s" }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ff4d4d", boxShadow: "0 0 8px #ff4d4d", animation: "pulse 2.4s infinite alternate" }} />
-          <span className="font-mono text-[11px] tracking-widest" style={{ color: "#8a8398" }}>LIVE ON CASPER MAINNET</span>
+          <span className="font-mono text-[11px] tracking-widest" style={{ color: "#8a8398" }}>LIVE ON CASPER TESTNET</span>
         </div>
       </div>
     </section>
@@ -351,15 +351,15 @@ const FOOTER_LINKS = {
   "The Gap": "#gap", "Modules": "#modules", "The Loop": "#loop", "The Proof": "#proof",
   "Documentation": "Documentation.html", "SDK reference": "Documentation.html#capture",
   "Repository": "https://github.com/Micoh18/Mr-Mainspring", "Changelog": "#",
-  "Casper Mainnet": "https://cspr.live", "Block explorer": "https://cspr.live",
-  "Status": "#", "Verify a record": "https://cspr.live",
+  "Casper Testnet": "https://testnet.cspr.live", "Block explorer": "https://testnet.cspr.live",
+  "Status": "#", "Verify a record": "https://testnet.cspr.live",
 };
 
 function Footer() {
   const cols = [
     ["Product", ["The Gap", "Modules", "The Loop", "The Proof"]],
     ["Develop", ["Documentation", "SDK reference", "Repository", "Changelog"]],
-    ["Network", ["Casper Mainnet", "Block explorer", "Status", "Verify a record"]],
+    ["Network", ["Casper Testnet", "Block explorer", "Status", "Verify a record"]],
   ];
   return (
     <footer className="bg-obsidian px-6 md:px-12 lg:px-20 pt-20 pb-10 border-t border-parchment/10">
@@ -394,7 +394,7 @@ function Footer() {
             </a>
             <span className="flex items-center gap-2">
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff4d4d", boxShadow: "0 0 8px #ff4d4d" }} />
-              CASPER MAINNET
+              CASPER TESTNET
             </span>
           </div>
         </div>

@@ -77,7 +77,7 @@ function Modules() {
     },
     {
       num: "II", part: "The Barrel", title: "Anchor",
-      body: "Each decision is hashed, sealed into an attestation, and written to Casper mainnet. No edits, no deletions — wound tight and held under tension, forever.",
+      body: "Each decision is hashed, sealed into an attestation, and written to Casper testnet. No edits, no deletions — wound tight and held under tension, forever.",
       meta: "On-chain · immutable",
     },
     {
@@ -252,13 +252,13 @@ function TheProof() {
             </h2>
             <p className={"font-serif text-parchment/65 text-lg leading-[1.55] mt-6 max-w-lg reveal " + (inView ? "is-in" : "")}
               style={{ animationDelay: "0.22s" }}>
-              Every decision your agent makes resolves into a permanent, queryable, independently verifiable record on Casper mainnet. Here is one.
+              Every decision your agent makes resolves into a permanent, queryable, independently verifiable record on Casper testnet. Here is one.
             </p>
 
             <div className={"mt-10 rounded-[2rem] border border-parchment/20 bg-ink/60 overflow-hidden reveal " + (inView ? "is-in" : "")}
               style={{ animationDelay: "0.3s" }}>
               <div className="flex items-center justify-between px-5 py-3 border-b border-parchment/15 bg-obsidian-soft">
-                <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Mainnet</span>
+                <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Testnet</span>
                 <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase" style={{ color: "#7bbf8a" }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#7bbf8a", boxShadow: "0 0 8px #7bbf8a" }} />
                   Immutable

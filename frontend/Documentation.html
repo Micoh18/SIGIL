@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mr Mainspring — Documentation</title>
-<meta name="description" content="Full technical reference for Mr Mainspring — the MCP server that seals AI agent decisions to Casper mainnet. Tools, schemas, environment reference, and deep dives." />
+<meta name="description" content="Full technical reference for Mr Mainspring — the MCP server that seals AI agent decisions to Casper testnet. Tools, schemas, environment reference, and deep dives." />
 <meta name="robots" content="index, follow" />
 <meta name="theme-color" content="#15120d" />
 <link rel="canonical" href="https://mrmainspring.xyz/Documentation.html" />
@@ -242,7 +242,7 @@
       <!-- INTRODUCTION -->
       <section id="introduction" class="doc-section">
         <h1 class="font-display font-medium text-parchment text-[10vw] md:text-6xl leading-[1] tracking-[-0.02em]">Introduction</h1>
-        <p class="mt-7 text-lg">Mainspring is an on-chain witness layer for autonomous agents. Every decision an agent makes — the intent, the inputs it weighed, the action it took — is sealed to Casper mainnet as a permanent, independently verifiable attestation.</p>
+        <p class="mt-7 text-lg">Mainspring is an on-chain witness layer for autonomous agents. Every decision an agent makes — the intent, the inputs it weighed, the action it took — is sealed to Casper testnet as a permanent, independently verifiable attestation.</p>
         <p class="mt-5">Where a log file can be rewritten, a Mainspring attestation cannot. It turns <span class="italic text-parchment">&ldquo;trust me&rdquo;</span> into a receipt anyone — a counterparty, an auditor, a regulator — can verify without your cooperation.</p>
 
         <div class="mt-9 grid sm:grid-cols-3 gap-4">
@@ -252,7 +252,7 @@
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-display text-2xl text-gold">Immutable</div>
-            <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">sealed to Casper mainnet</div>
+            <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">sealed to Casper testnet</div>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-display text-2xl text-gold">Public</div>
@@ -805,7 +805,7 @@ MEMORY_ANCHOR_PACKAGE_HASH<span class="tok-punct">=</span><span class="tok-str">
 CASPER_CHAIN_NAME<span class="tok-punct">=</span><span class="tok-str">casper-test</span>
 CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-str">true</span>  <span class="tok-com"># explicit opt-in required</span></code></pre>
         </div>
-        <p class="mt-4">Full hashes are in the repository README under <em>Casper Contract Status</em>. Block explorer: <a href="https://cspr.live" class="inline-link" target="_blank" rel="noopener">cspr.live</a>.</p>
+        <p class="mt-4">Full hashes are in the repository README under <em>Casper Contract Status</em>. Block explorer: <a href="https://testnet.cspr.live" class="inline-link" target="_blank" rel="noopener">testnet.cspr.live</a>.</p>
       </section>
 
       <!-- STORAGE BACKENDS -->
