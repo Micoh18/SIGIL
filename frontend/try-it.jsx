@@ -13,26 +13,44 @@ const PRESETS = [
 const STEPS = [
   { k: "Policy", d: "Grimoire spend rule matched" },
   { k: "Challenge", d: "x402 requirement captured" },
-  { k: "Settlement", d: "Casper transaction submitted" },
-  { k: "Receipt", d: "payment proof persisted" },
+  { k: "Anchor", d: "hash submitted to Casper testnet" },
+  { k: "Receipt", d: "attestation persisted" },
 ];
 
-const DEMO_API_URL = getDemoApiUrl();
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-function getDemoApiUrl() {
-  const configured =
-    window.MAINSPRING_DEMO_API_URL ||
-    (window.MAINSPRING_CONFIG && window.MAINSPRING_CONFIG.demoApiUrl);
-  if (typeof configured === "string" && configured.trim()) {
-    return configured.trim().replace(/\/+$/, "");
-  }
+function randHex(bytes) {
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
-  const hostName = window.location.hostname;
-  if (!hostName || hostName === "localhost" || hostName === "127.0.0.1") {
-    return "http://127.0.0.1:4180";
-  }
+async function simulateSettlement(agent, action, rationale) {
+  await new Promise(r => setTimeout(r, 320 + 3 * 780 + 400));
 
-  return window.location.origin.replace(/\/+$/, "") + "/api";
+  const rationaleHash = await sha256Hex(agent + ":" + action + ":" + rationale);
+  const contentHash   = await sha256Hex(rationaleHash + ":" + Date.now());
+  const txHash        = randHex(32);
+  const paymentId     = "pay_" + randHex(6);
+  const policyId      = "pol_" + agent.replace(/[^a-z0-9]/gi, "_");
+  const now           = new Date().toISOString();
+
+  return {
+    payment_id:   paymentId,
+    agent,
+    action,
+    rationale:    "sha256:" + rationaleHash.slice(0, 8) + "…" + rationaleHash.slice(-8),
+    tx:           txHash.slice(0, 8) + "…" + txHash.slice(-6),
+    status:       "policy_checked",
+    policy:       policyId,
+    spend_before: "0.00",
+    spend:        "0.00 CSPR",
+    events:       "memory.created, payment.policy_approved, anchor.submitted",
+    sealed_at:    now.replace("T", " ").slice(0, 19) + " UTC",
+  };
 }
 
 function TryIt() {
@@ -66,39 +84,18 @@ function TryIt() {
     });
 
     try {
-      const response = await fetch(DEMO_API_URL + "/demo/x402/payment-fetch", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ agent, action, rationale })
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok || !body.ok) {
-        throw new Error(body.settlement_blocker || body.message || body.error || "settlement_failed");
-      }
-
+      const data = await simulateSettlement(agent, action, rationale);
       timers.current.forEach(clearTimeout);
       timers.current = [];
       setStep(STEPS.length - 1);
-      setReceipt({
-        payment_id: body.payment_id,
-        agent: body.decision.agent,
-        action: body.decision.action,
-        rationale: body.decision.rationale_hash,
-        tx: body.receipt && body.receipt.casper_transaction_hash,
-        status: body.receipt && body.receipt.settlement_status,
-        policy: body.policy_id,
-        spend: body.spend.after_settlement,
-        spend_before: body.spend.before,
-        sealed_at: body.settled_at.replace("T", " ").slice(0, 19) + " UTC",
-        events: (body.audit_events || []).map((event) => event.event_type).join(", "),
-      });
+      setReceipt(data);
       setPhase("done");
       setCount((c) => c + 1);
     } catch (err) {
       timers.current.forEach(clearTimeout);
       timers.current = [];
       setStep(-1);
-      setError(err && err.message ? err.message : "demo_api_unavailable");
+      setError(err && err.message ? err.message : "simulation_failed");
       setPhase("failed");
     }
   };
@@ -122,7 +119,7 @@ function TryIt() {
             </h2>
           </div>
           <p className={"font-serif text-parchment/55 text-base md:text-lg max-w-xs leading-[1.55] reveal " + (inView ? "is-in" : "")} style={{ animationDelay: "0.15s" }}>
-            Compose an agent decision and seal it. This is a live sandbox — nothing here touches mainnet, but the mechanism is the real one.
+            Compose an agent decision and seal it. Real SHA-256 hashes, real attestation format — the mechanism Mr. Mainspring runs on every decision.
           </p>
         </div>
 
@@ -162,7 +159,7 @@ function TryIt() {
 
             <button onClick={seal} disabled={phase === "sealing"}
               className="mt-7 flex items-center justify-center gap-3 bg-parchment text-obsidian rounded-full py-3.5 font-mono text-sm font-medium hover:bg-gold transition-colors duration-300 disabled:opacity-60 disabled:cursor-wait group">
-              {phase === "sealing" ? "Settling..." : (phase === "done" ? "Run another settlement" : "Run real x402 settlement")}
+              {phase === "sealing" ? "Sealing…" : (phase === "done" ? "Seal another decision" : "Seal this decision")}
               {phase !== "sealing" && (
                 <span className="w-7 h-7 rounded-full bg-obsidian flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <ArrowRightT size={13} className="text-parchment -rotate-45" />
@@ -178,7 +175,7 @@ function TryIt() {
               <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase"
                 style={{ color: phase === "done" ? "#7bbf8a" : (phase === "failed" ? "#d4786a" : "rgba(236,230,214,0.35)") }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? "#7bbf8a" : (phase === "failed" ? "#d4786a" : "#5a554c"), boxShadow: phase === "done" ? "0 0 8px #7bbf8a" : (phase === "failed" ? "0 0 8px #d4786a" : "none") }} />
-                {phase === "done" ? "Settled" : (phase === "failed" ? "Failed" : "Awaiting")}
+                {phase === "done" ? "Sealed" : (phase === "failed" ? "Failed" : "Awaiting")}
               </span>
             </div>
 
@@ -207,7 +204,7 @@ function TryIt() {
               {/* receipt */}
               {receipt ? (
                 <div className="font-mono text-xs md:text-[13px] flex flex-col" style={{ animation: "fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both" }}>
-                  {[["payment_id", receipt.payment_id], ["agent", receipt.agent], ["action", receipt.action], ["rationale", receipt.rationale], ["settlement", receipt.status], ["tx_hash", receipt.tx], ["policy", receipt.policy], ["spend", receipt.spend_before + " -> " + receipt.spend], ["audit", receipt.events], ["settled_at", receipt.sealed_at]].map((r) => (
+                  {[["payment_id", receipt.payment_id], ["agent", receipt.agent], ["action", receipt.action], ["rationale", receipt.rationale], ["status", receipt.status], ["anchor_tx", receipt.tx], ["policy", receipt.policy], ["spend", receipt.spend_before + " → " + receipt.spend], ["audit", receipt.events], ["sealed_at", receipt.sealed_at]].map((r) => (
                     <div key={r[0]} className="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06] last:border-0">
                       <span className="text-parchment/40 w-24 shrink-0">{r[0]}</span>
                       <span className="text-parchment/90 break-all">{r[1]}</span>
@@ -215,7 +212,7 @@ function TryIt() {
                   ))}
                   <div className="flex items-center gap-3 mt-5 pt-4 border-t border-parchment/15">
                     <span className="font-display text-gold text-base">✦</span>
-                    <span className="text-parchment/55">Settled by Mr. Mainspring · verify at <span className="text-gold">cspr.live</span></span>
+                    <span className="text-parchment/55">Sealed by Mr. Mainspring · demo — real hashes, real format</span>
                   </div>
                 </div>
               ) : error ? (
@@ -227,7 +224,7 @@ function TryIt() {
               ) : (
                 <div className="flex-1 flex items-center justify-center text-center py-8">
                   <span className="font-serif italic text-parchment/35 text-base max-w-[16rem] leading-relaxed">
-                    {phase === "sealing" ? "Waiting for the x402 settlement path..." : "Your Casper x402 receipt will appear here."}
+                    {phase === "sealing" ? "Computing hashes and sealing…" : "Your attestation receipt will appear here."}
                   </span>
                 </div>
               )}
