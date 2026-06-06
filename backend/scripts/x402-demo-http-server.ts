@@ -40,9 +40,11 @@ type StartedServer = {
 
 const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const repoRoot = dirname(backendRoot);
-const host = optionalEnv(process.env.X402_DEMO_HTTP_HOST) ?? "127.0.0.1";
-const port = parsePort(process.env.X402_DEMO_HTTP_PORT, 4180);
+const isRender = parseBoolean(process.env.RENDER, false);
+const host = optionalEnv(process.env.X402_DEMO_HTTP_HOST) ?? (isRender ? "0.0.0.0" : "127.0.0.1");
+const port = parsePort(process.env.X402_DEMO_HTTP_PORT ?? process.env.PORT, 4180);
 const startedServers: StartedServer[] = [];
+let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
 
 loadLocalEnvFile();
 
@@ -117,8 +119,10 @@ const server = createServer(async (request, response) => {
 
 server.listen(port, host);
 await once(server, "listening");
-console.log(`Mr Mainspring x402 demo API: http://${host}:${port}`);
-console.log(`POST http://${host}:${port}/demo/x402/payment-fetch`);
+const publicDemoUrl = demoPublicUrl();
+console.log(`Mr Mainspring x402 demo API: ${publicDemoUrl}`);
+console.log(`POST ${publicDemoUrl}/demo/x402/payment-fetch`);
+startRenderKeepalive();
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, async () => {
@@ -338,6 +342,11 @@ async function listenAtUrl(server: Server, url: string, label: string): Promise<
 }
 
 async function shutdown(): Promise<void> {
+  if (keepaliveTimer) {
+    clearInterval(keepaliveTimer);
+    keepaliveTimer = null;
+  }
+
   if (server.listening) {
     server.close();
     await once(server, "close");
@@ -454,6 +463,66 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
     return fallback;
   }
   return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function demoPublicUrl(): string {
+  const renderExternalUrl = optionalEnv(process.env.RENDER_EXTERNAL_URL);
+  if (renderExternalUrl) {
+    return renderExternalUrl.replace(/\/+$/, "");
+  }
+
+  return `http://${host}:${port}`;
+}
+
+function startRenderKeepalive(): void {
+  const enabled = parseBoolean(process.env.RENDER_KEEPALIVE_ENABLED, isRender);
+  if (!enabled) {
+    return;
+  }
+
+  const target = keepaliveUrl();
+  if (!target) {
+    console.warn("Render keepalive disabled: set RENDER_EXTERNAL_URL or RENDER_KEEPALIVE_URL");
+    return;
+  }
+
+  const intervalMs = parsePositiveInteger(
+    process.env.RENDER_KEEPALIVE_INTERVAL_MS,
+    14 * 60 * 1000
+  );
+  keepaliveTimer = setInterval(() => {
+    void pingKeepalive(target);
+  }, intervalMs);
+  keepaliveTimer.unref?.();
+  console.log(`Render keepalive: GET ${target} every ${Math.round(intervalMs / 1000)}s`);
+}
+
+function keepaliveUrl(): string | null {
+  const configured = optionalEnv(process.env.RENDER_KEEPALIVE_URL);
+  if (configured) {
+    return configured;
+  }
+
+  const renderExternalUrl = optionalEnv(process.env.RENDER_EXTERNAL_URL);
+  if (!renderExternalUrl) {
+    return null;
+  }
+
+  return `${renderExternalUrl.replace(/\/+$/, "")}/health`;
+}
+
+async function pingKeepalive(target: string): Promise<void> {
+  try {
+    const response = await fetch(target, {
+      method: "GET",
+      signal: AbortSignal.timeout(10_000)
+    });
+    if (!response.ok) {
+      console.warn(`Render keepalive returned HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.warn(`Render keepalive failed: ${errorMessage(error)}`);
+  }
 }
 
 function hashLike(value: string): string {

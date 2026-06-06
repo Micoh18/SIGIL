@@ -1,0 +1,79 @@
+services:
+  - type: web
+    name: mainspring-x402-demo-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: X402_DEMO_HTTP_HOST
+        value: 0.0.0.0
+      - key: X402_DEMO_START_SIDECARS
+        value: "true"
+      - key: RENDER_KEEPALIVE_ENABLED
+        value: "true"
+      - key: RENDER_KEEPALIVE_INTERVAL_MS
+        value: "840000"
+      - key: SIGIL_DATA_DIR
+        value: /tmp/mainspring-sigil
+      - key: GRIMOIRE_MASTER_KEY
+        generateValue: true
+      - key: SIGIL_STORAGE_BACKEND
+        value: file
+      - key: CASPER_NETWORK_NAME
+        value: casper-test
+      - key: CASPER_CAIP2_CHAIN_ID
+        value: casper:casper-test
+      - key: CASPER_RPC_URL
+        sync: false
+      - key: CASPER_ACCOUNT_KEY_PATH
+        value: /etc/secrets/backend.pem
+      - key: CASPER_ENABLE_REAL_SUBMISSION
+        value: "true"
+      - key: CASPER_CLIENT_BIN
+        value: casper-client
+      - key: CASPER_GAS_PRICE_TOLERANCE
+        value: "10"
+      - key: CASPER_PRICING_MODE
+        value: classic
+      - key: X402_FACILITATOR_URL
+        value: http://127.0.0.1:4022
+      - key: X402_RESOURCE_DEMO_URL
+        value: http://127.0.0.1:4021/weather
+      - key: X402_ASSET_ID
+        value: casper-native-cspr
+      - key: X402_ASSET_NAME
+        value: CSPR
+      - key: X402_RESOURCE_AMOUNT
+        value: "2500000000"
+      - key: X402_RESOURCE_TIMEOUT_SECONDS
+        value: "60"
+      - key: X402_ENABLE_REAL_SETTLEMENT
+        value: "true"
+      - key: X402_SETTLEMENT_MODE
+        value: resource-retry
+      - key: X402_SIGNER_URL
+        value: http://127.0.0.1:4030/sign
+      - key: X402_SIGNER_AUTH_TOKEN
+        generateValue: true
+      - key: X402_SIGNER_TIMEOUT_MS
+        value: "10000"
+      - key: X402_SIGNER_MAX_VALIDITY_SECONDS
+        value: "900"
+      - key: X402_BUYER_PRIVATE_KEY_PATH
+        value: /etc/secrets/backend.pem
+      - key: X402_BUYER_ACCOUNT_HASH
+        sync: false
+      - key: X402_PAY_TO
+        sync: false
+      - key: X402_PAYMENT_HEADER_NAME
+        value: PAYMENT-SIGNATURE
+      - key: X402_CASPER_SETTLEMENT_PAYMENT_AMOUNT_MOTES
+        value: "7000000000"
+      - key: X402_CASPER_CONFIRMATION_POLL_INTERVAL_MS
+        value: "2000"
+      - key: X402_CASPER_CONFIRMATION_TIMEOUT_MS
+        value: "120000"

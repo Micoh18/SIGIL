@@ -18,7 +18,7 @@ export default async function handler(request, response) {
     response.status(503).json({
       ok: false,
       error: "demo_api_not_configured",
-      message: "Set MAINSPRING_DEMO_API_URL in Vercel to the public x402 demo API origin."
+      message: "Set MAINSPRING_DEMO_API_URL to the public x402 demo API origin."
     });
     return;
   }

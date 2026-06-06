@@ -177,6 +177,43 @@ Do not point Vercel at `127.0.0.1`; Vercel can proxy the request, but the Casper
 x402 sidecars and signer must run on a public backend service outside the static
 frontend deployment.
 
+### Render demo API
+
+This repository includes `render.yaml` and `Dockerfile.render` for the public
+x402 demo API. Create a Render Blueprint from the repo; it provisions one Docker
+web service named `mainspring-x402-demo-api` and runs:
+
+```bash
+npm run demo:x402-http --prefix backend
+```
+
+The Docker image installs Node dependencies and `casper-client`, then the demo
+server binds to Render's `PORT` on `0.0.0.0`. Render health checks use `/health`.
+
+Before the first deploy, provide the Blueprint variables marked `sync: false`:
+
+```text
+CASPER_RPC_URL=<casper testnet rpc url>
+X402_BUYER_ACCOUNT_HASH=<buyer account-hash-...>
+X402_PAY_TO=<payee public key or account-hash-...>
+```
+
+Upload the buyer/facilitator private key as a Render Secret File named
+`backend.pem`. Render mounts it at `/etc/secrets/backend.pem`, which is already
+wired to both `CASPER_ACCOUNT_KEY_PATH` and `X402_BUYER_PRIVATE_KEY_PATH` in the
+Blueprint.
+
+After Render deploys, set Vercel's `MAINSPRING_DEMO_API_URL` to the Render web
+service origin, for example:
+
+```text
+MAINSPRING_DEMO_API_URL=https://mainspring-x402-demo-api.onrender.com
+```
+
+The Render service keeps itself warm by calling `GET /health` every 14 minutes
+when `RENDER_KEEPALIVE_ENABLED=true`. Override the target with
+`RENDER_KEEPALIVE_URL` or the interval with `RENDER_KEEPALIVE_INTERVAL_MS`.
+
 Expected success transcript:
 
 ```text

@@ -36,10 +36,13 @@ Local development calls the backend demo API at `http://127.0.0.1:4180`.
 
 On Vercel, the frontend calls the same-origin proxy route
 `/api/demo/x402/payment-fetch`. Configure the Vercel environment variable
-`MAINSPRING_DEMO_API_URL` to the public origin of an always-on backend running:
+`MAINSPRING_DEMO_API_URL` to the public origin of a backend running:
 
 ```bash
 npm run demo:x402-http --prefix backend
 ```
 
-That backend cannot be `127.0.0.1`; it must be reachable from Vercel.
+That backend cannot be `127.0.0.1`; it must be reachable from Vercel. For Render,
+use the included `render.yaml` Blueprint. It deploys the demo API as a Docker web
+service, binds to Render's `PORT`, and pings its own `/health` endpoint every 14
+minutes via `RENDER_EXTERNAL_URL` so the free web service stays warm.
