@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
+import { setupAllClients, formatClientSetupReport } from "./client-setup.js";
 import { ensureGrimoireMasterKey, loadLocalEnvFile, resolveEnvPath } from "./env-file.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
@@ -73,8 +74,15 @@ export function runCliCommand(args: string[]): boolean {
   if (command === "setup") {
     const result = initializeLocalSetup();
     process.stdout.write(formatInitResult(result));
-    process.stdout.write(`\nPaste this into ${formatClientName(target)} MCP config:\n\n`);
-    process.stdout.write(`${formatMcpConfig()}\n`);
+
+    const clientResults = setupAllClients();
+    const report = formatClientSetupReport(clientResults);
+    if (report) {
+      process.stdout.write(report);
+    } else {
+      process.stdout.write("\nNo MCP clients detected. Paste this into your client config manually:\n\n");
+      process.stdout.write(`${formatMcpConfig()}\n`);
+    }
     return true;
   }
 
