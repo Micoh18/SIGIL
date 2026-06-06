@@ -3,16 +3,6 @@ const { useState: useStateT, useRef: useRefT, useEffect: useEffectT } = React;
 const useRevealT = window.useReveal;
 const ArrowRightT = window.ArrowRight;
 
-/* deterministic pseudo-hash → hex string */
-function pseudoHash(str, len) {
-  let h = 0x811c9dc5 >>> 0;
-  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-  let x = (h ^ 0x9e3779b9) >>> 0;
-  let out = "";
-  for (let i = 0; i < (len || 16); i++) { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; out += (x & 15).toString(16); }
-  return out;
-}
-
 const PRESETS = [
   { agent: "atlas-treasury-02", action: "TRANSFER 12,400 CSPR", rationale: "Rebalance to maintain 30% stable reserve after weekly inflow." },
   { agent: "scout-procure-07", action: "APPROVE invoice #4471", rationale: "Vendor verified, amount within budget envelope, SLA met." },
@@ -21,20 +11,39 @@ const PRESETS = [
 ];
 
 const STEPS = [
-  { k: "Captured", d: "decision metered at source" },
-  { k: "Hashed", d: "sealed into an attestation" },
-  { k: "Anchored", d: "written to Casper mainnet" },
-  { k: "Verifiable", d: "public, permanent, replayable" },
+  { k: "Policy", d: "Grimoire spend rule matched" },
+  { k: "Challenge", d: "x402 requirement captured" },
+  { k: "Settlement", d: "Casper transaction submitted" },
+  { k: "Receipt", d: "payment proof persisted" },
 ];
+
+const DEMO_API_URL = getDemoApiUrl();
+
+function getDemoApiUrl() {
+  const configured =
+    window.MAINSPRING_DEMO_API_URL ||
+    (window.MAINSPRING_CONFIG && window.MAINSPRING_CONFIG.demoApiUrl);
+  if (typeof configured === "string" && configured.trim()) {
+    return configured.trim().replace(/\/+$/, "");
+  }
+
+  const hostName = window.location.hostname;
+  if (!hostName || hostName === "localhost" || hostName === "127.0.0.1") {
+    return "http://127.0.0.1:4180";
+  }
+
+  return window.location.origin.replace(/\/+$/, "") + "/api";
+}
 
 function TryIt() {
   const [ref, inView] = useRevealT({ threshold: 0.15 });
   const [agent, setAgent] = useStateT(PRESETS[0].agent);
   const [action, setAction] = useStateT(PRESETS[0].action);
   const [rationale, setRationale] = useStateT(PRESETS[0].rationale);
-  const [phase, setPhase] = useStateT("idle"); // idle | sealing | done
+  const [phase, setPhase] = useStateT("idle"); // idle | sealing | done | failed
   const [step, setStep] = useStateT(-1);
   const [receipt, setReceipt] = useStateT(null);
+  const [error, setError] = useStateT("");
   const [count, setCount] = useStateT(0);
   const timers = useRefT([]);
 
@@ -43,35 +52,55 @@ function TryIt() {
   const usePreset = (p) => {
     if (phase === "sealing") return;
     setAgent(p.agent); setAction(p.action); setRationale(p.rationale);
-    setPhase("idle"); setReceipt(null); setStep(-1);
+    setPhase("idle"); setReceipt(null); setError(""); setStep(-1);
   };
 
-  const seal = () => {
+  const seal = async () => {
     if (phase === "sealing") return;
     timers.current.forEach(clearTimeout);
     timers.current = [];
-    setPhase("sealing"); setReceipt(null); setStep(-1);
-
-    const seed = agent + "|" + action + "|" + rationale + "|" + Date.now();
-    const rid = pseudoHash(seed, 12);
-    const rhash = pseudoHash(rationale + rid, 16);
-    const block = 4180000 + (parseInt(rid.slice(0, 6), 16) % 60000);
+    setPhase("sealing"); setReceipt(null); setError(""); setStep(-1);
 
     STEPS.forEach((_, i) => {
-      timers.current.push(setTimeout(() => setStep(i), 400 + i * 520));
+      timers.current.push(setTimeout(() => setStep(i), 320 + i * 780));
     });
-    timers.current.push(setTimeout(() => {
-      const now = new Date();
+
+    try {
+      const response = await fetch(DEMO_API_URL + "/demo/x402/payment-fetch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ agent, action, rationale })
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) {
+        throw new Error(body.settlement_blocker || body.message || body.error || "settlement_failed");
+      }
+
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      setStep(STEPS.length - 1);
       setReceipt({
-        id: "0x" + rid.slice(0, 8) + "\u2026" + rid.slice(8),
-        agent, action,
-        rationale: "sha256:" + rhash.slice(0, 4) + "\u2026" + rhash.slice(-4),
-        block: "#" + block.toLocaleString(),
-        sealed_at: now.toISOString().slice(0, 19).replace("T", " ") + " UTC",
+        payment_id: body.payment_id,
+        agent: body.decision.agent,
+        action: body.decision.action,
+        rationale: body.decision.rationale_hash,
+        tx: body.receipt && body.receipt.casper_transaction_hash,
+        status: body.receipt && body.receipt.settlement_status,
+        policy: body.policy_id,
+        spend: body.spend.after_settlement,
+        spend_before: body.spend.before,
+        sealed_at: body.settled_at.replace("T", " ").slice(0, 19) + " UTC",
+        events: (body.audit_events || []).map((event) => event.event_type).join(", "),
       });
       setPhase("done");
       setCount((c) => c + 1);
-    }, 400 + STEPS.length * 520 + 200));
+    } catch (err) {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      setStep(-1);
+      setError(err && err.message ? err.message : "demo_api_unavailable");
+      setPhase("failed");
+    }
   };
 
   const fieldBase = "w-full bg-ink/70 border border-parchment/15 rounded-lg px-4 py-3 font-mono text-sm text-parchment placeholder-parchment/30 focus:outline-none focus:border-gold/60 transition-colors";
@@ -133,7 +162,7 @@ function TryIt() {
 
             <button onClick={seal} disabled={phase === "sealing"}
               className="mt-7 flex items-center justify-center gap-3 bg-parchment text-obsidian rounded-full py-3.5 font-mono text-sm font-medium hover:bg-gold transition-colors duration-300 disabled:opacity-60 disabled:cursor-wait group">
-              {phase === "sealing" ? "Sealing\u2026" : (phase === "done" ? "Seal another decision" : "Seal to Casper")}
+              {phase === "sealing" ? "Settling..." : (phase === "done" ? "Run another settlement" : "Run real x402 settlement")}
               {phase !== "sealing" && (
                 <span className="w-7 h-7 rounded-full bg-obsidian flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <ArrowRightT size={13} className="text-parchment -rotate-45" />
@@ -147,9 +176,9 @@ function TryIt() {
             <div className="flex items-center justify-between px-6 py-4 border-b border-parchment/15 bg-obsidian-soft">
               <span className="font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/55">Attestation</span>
               <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase"
-                style={{ color: phase === "done" ? "#7bbf8a" : "rgba(236,230,214,0.35)" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? "#7bbf8a" : "#5a554c", boxShadow: phase === "done" ? "0 0 8px #7bbf8a" : "none" }} />
-                {phase === "done" ? "Immutable" : "Awaiting"}
+                style={{ color: phase === "done" ? "#7bbf8a" : (phase === "failed" ? "#d4786a" : "rgba(236,230,214,0.35)") }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: phase === "done" ? "#7bbf8a" : (phase === "failed" ? "#d4786a" : "#5a554c"), boxShadow: phase === "done" ? "0 0 8px #7bbf8a" : (phase === "failed" ? "0 0 8px #d4786a" : "none") }} />
+                {phase === "done" ? "Settled" : (phase === "failed" ? "Failed" : "Awaiting")}
               </span>
             </div>
 
@@ -163,7 +192,7 @@ function TryIt() {
                     <div key={s.k} className="flex items-center gap-3 transition-opacity duration-300" style={{ opacity: active ? 1 : 0.3 }}>
                       <span className="flex items-center justify-center w-5 h-5 rounded-full border text-[9px] font-mono shrink-0 transition-colors duration-300"
                         style={{ borderColor: active ? "#d4af6a" : "rgba(236,230,214,0.25)", color: active ? "#d4af6a" : "rgba(236,230,214,0.4)", background: active ? "rgba(212,175,106,0.12)" : "transparent" }}>
-                        {active ? "\u2713" : i + 1}
+                        {active ? "✓" : i + 1}
                       </span>
                       <span className="font-mono text-xs text-parchment/85 w-24 shrink-0">{s.k}</span>
                       <span className="font-mono text-[11px] text-parchment/40 truncate">{s.d}</span>
@@ -178,7 +207,7 @@ function TryIt() {
               {/* receipt */}
               {receipt ? (
                 <div className="font-mono text-xs md:text-[13px] flex flex-col" style={{ animation: "fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) both" }}>
-                  {[["decision_id", receipt.id], ["agent", receipt.agent], ["action", receipt.action], ["rationale", receipt.rationale], ["block", receipt.block], ["sealed_at", receipt.sealed_at]].map((r) => (
+                  {[["payment_id", receipt.payment_id], ["agent", receipt.agent], ["action", receipt.action], ["rationale", receipt.rationale], ["settlement", receipt.status], ["tx_hash", receipt.tx], ["policy", receipt.policy], ["spend", receipt.spend_before + " -> " + receipt.spend], ["audit", receipt.events], ["settled_at", receipt.sealed_at]].map((r) => (
                     <div key={r[0]} className="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06] last:border-0">
                       <span className="text-parchment/40 w-24 shrink-0">{r[0]}</span>
                       <span className="text-parchment/90 break-all">{r[1]}</span>
@@ -186,13 +215,19 @@ function TryIt() {
                   ))}
                   <div className="flex items-center gap-3 mt-5 pt-4 border-t border-parchment/15">
                     <span className="font-display text-gold text-base">✦</span>
-                    <span className="text-parchment/55">Sealed by Mr. Mainspring · verify at <span className="text-gold">cspr.live</span></span>
+                    <span className="text-parchment/55">Settled by Mr. Mainspring · verify at <span className="text-gold">cspr.live</span></span>
                   </div>
+                </div>
+              ) : error ? (
+                <div className="flex-1 flex items-center justify-center text-center py-8">
+                  <span className="font-mono text-[12px] text-parchment/55 max-w-[22rem] leading-relaxed break-words">
+                    {error}
+                  </span>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-center py-8">
                   <span className="font-serif italic text-parchment/35 text-base max-w-[16rem] leading-relaxed">
-                    {phase === "sealing" ? "Winding the mechanism\u2026" : "Your sealed receipt will appear here \u2014 tamper-evident and yours to share."}
+                    {phase === "sealing" ? "Waiting for the x402 settlement path..." : "Your Casper x402 receipt will appear here."}
                   </span>
                 </div>
               )}
