@@ -276,15 +276,18 @@
       <!-- INSTALLATION -->
       <section id="installation" class="doc-section mt-20">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Installation</h2>
-        <p class="mt-6">Mainspring runs as an MCP server over stdio. Install the published npm package, then wire the <code class="inline">mainspring</code> command into your agent's MCP config.</p>
+        <p class="mt-6">Mainspring runs as a local MCP server over stdio. The normal user path is the npm package: install the CLI, let it create local config/data/log folders, then point your MCP client at the <code class="inline">mainspring</code> command.</p>
 
         <div class="mt-7" data-code data-lang="bash" data-file="terminal">
-<pre><code><span class="tok-com"># install the MCP server CLI</span>
+<pre><code><span class="tok-com"># 1. Install the MCP server CLI</span>
 npm install -g mrmainspring
-mainspring setup cursor</code></pre>
+
+<span class="tok-com"># 2. Create local config and print the MCP snippet</span>
+mainspring setup claude
+<span class="tok-com"># or: mainspring setup cursor</span></code></pre>
         </div>
 
-        <p class="mt-7">Add it to your MCP client configuration (Claude Desktop, Cursor, or any MCP-compatible host):</p>
+        <p class="mt-7">Paste the printed JSON into your MCP client configuration. The same command works for Claude Desktop, Cursor, or any MCP-compatible host:</p>
 
         <div class="mt-5" data-code data-lang="json" data-file="claude_desktop_config.json">
 <pre><code><span class="tok-punct">{</span>
@@ -296,14 +299,35 @@ mainspring setup cursor</code></pre>
 <span class="tok-punct">}</span></code></pre>
         </div>
 
+        <div class="mt-8 grid md:grid-cols-3 gap-4">
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 1</div>
+            <div class="font-display text-xl text-parchment">Install</div>
+            <p class="!text-parchment/65 text-[14px] mt-2">Node.js 20+ and <code class="inline">npm install -g mrmainspring</code> put the <code class="inline">mainspring</code> command on PATH.</p>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 2</div>
+            <div class="font-display text-xl text-parchment">Connect</div>
+            <p class="!text-parchment/65 text-[14px] mt-2"><code class="inline">mainspring setup claude</code> or <code class="inline">mainspring setup cursor</code> creates local files and prints the MCP config.</p>
+          </div>
+          <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+            <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 3</div>
+            <div class="font-display text-xl text-parchment">Verify</div>
+            <p class="!text-parchment/65 text-[14px] mt-2">Restart the MCP client, then run <code class="inline">mainspring doctor</code> if the server does not appear.</p>
+          </div>
+        </div>
+
         <div class="mt-8 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
           <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Local env</div>
           <div data-code data-lang="bash" data-file="terminal">
-<pre><code><span class="tok-com"># optional advanced setup</span>
+<pre><code><span class="tok-com"># Check what Mainspring will use locally</span>
+mainspring doctor
+
+<span class="tok-com"># Optional advanced setup</span>
 mainspring init
-mainspring doctor</code></pre>
+mainspring config</code></pre>
           </div>
-          <p class="!text-parchment/75 text-[14px] mt-3">No environment variables are required for local memory, Grimoire, audit, or payment preflight tools. Mainspring creates a private config, data, and logs directory under the user's app config folder.</p>
+          <p class="!text-parchment/75 text-[14px] mt-3">No wallet, hosted account, or environment variable is required for local memory, Grimoire, audit, or payment preflight tools. Mainspring stores its default config under the user's app config folder and data under that local namespace.</p>
         </div>
 
         <p class="mt-7">For Casper anchoring during development, use the testnet — anchors are free and the contract behavior is identical to mainnet.</p>
@@ -312,7 +336,7 @@ mainspring doctor</code></pre>
       <!-- QUICKSTART -->
       <section id="quickstart" class="doc-section mt-20">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Quickstart</h2>
-        <p class="mt-6">Once the MCP server is connected, your agent has access to all 9 Mainspring tools. Here is the minimal path: write a memory, request an anchor, verify the hash.</p>
+        <p class="mt-6">Once the MCP server is connected, your agent can call Mainspring tools directly. The local user path is: write a memory, get a deterministic receipt, then verify the hash. Casper submission stays pending unless you explicitly configure real testnet anchoring.</p>
 
         <div class="mt-7" data-code data-lang="json" data-file="memory.write — input">
 <pre><code><span class="tok-punct">{</span>
@@ -332,12 +356,12 @@ mainspring doctor</code></pre>
   <span class="tok-str">"memory_id"</span><span class="tok-punct">:</span>     <span class="tok-str">"mem_4f2c8e1a-..."</span><span class="tok-punct">,</span>
   <span class="tok-str">"content_hash"</span><span class="tok-punct">:</span>  <span class="tok-str">"9f3c4a71e0b2..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of full envelope</span>
   <span class="tok-str">"metadata_hash"</span><span class="tok-punct">:</span> <span class="tok-str">"b8e109d2fa31..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of identity fields</span>
-  <span class="tok-str">"anchor_status"</span><span class="tok-punct">:</span> <span class="tok-str">"pending"</span><span class="tok-punct">,</span>           <span class="tok-com">// → "anchored" once chain confirms</span>
+  <span class="tok-str">"anchor_status"</span><span class="tok-punct">:</span> <span class="tok-str">"pending"</span><span class="tok-punct">,</span>           <span class="tok-com">// local default until Casper is configured</span>
   <span class="tok-str">"anchor_id"</span><span class="tok-punct">:</span>    <span class="tok-str">"c7f8a0e3..."</span>
 <span class="tok-punct">}</span></code></pre>
         </div>
 
-        <p class="mt-6">That receipt is a verifiable handle. Hand the <code class="inline">content_hash</code> to any counterparty — they can recompute it independently and confirm it on Casper without trusting you or Mainspring's uptime.</p>
+        <p class="mt-6">That receipt is a verifiable handle. Hand the <code class="inline">content_hash</code> to any counterparty; they can recompute it independently from the same envelope. With Casper testnet anchoring configured, the same hash-only proof can also be checked against the transaction record.</p>
       </section>
 
       <!-- 02 breadcrumb -->
