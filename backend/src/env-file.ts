@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,6 +53,20 @@ function parseEnv(raw: string): Array<[string, string]> {
   }
 
   return entries;
+}
+
+export function ensureGrimoireMasterKey(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.GRIMOIRE_MASTER_KEY) return;
+
+  const key = randomBytes(32).toString("base64");
+  const targetPath = resolveEnvPath(env) ?? join(process.cwd(), ".env");
+
+  appendFileSync(targetPath, `\nGRIMOIRE_MASTER_KEY=${key}\n`, "utf8");
+  env.GRIMOIRE_MASTER_KEY = key;
+
+  process.stderr.write(
+    `[mr-mainspring] Generated GRIMOIRE_MASTER_KEY → ${targetPath}\n`
+  );
 }
 
 function unquote(value: string): string {

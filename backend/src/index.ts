@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
-import { loadLocalEnvFile } from "./env-file.js";
+import { ensureGrimoireMasterKey, loadLocalEnvFile } from "./env-file.js";
 import { createSigilServer } from "./server.js";
 
 async function main() {
   loadLocalEnvFile();
+  ensureGrimoireMasterKey();
   const config = loadConfig();
   const server = createSigilServer(config);
   const transport = new StdioServerTransport();
