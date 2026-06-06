@@ -95,6 +95,9 @@ export type X402PaymentPayloadRejectionReason =
   | "valid_after_missing"
   | "valid_until_missing"
   | "validity_window_invalid"
+  | "payment_not_yet_valid"
+  | "payment_expired"
+  | "validity_window_too_long"
   | "selected_requirement_hash_missing"
   | "selected_requirement_hash_mismatch";
 
@@ -110,6 +113,12 @@ export type X402PaymentPayloadApproval =
 export type X402SettlementResponseExpectation = {
   selectedRequirement?: JsonObject;
   signedPayload?: JsonObject;
+};
+
+export type X402PaymentPayloadValidationOptions = {
+  now?: Date;
+  clockSkewSeconds?: number;
+  maxValiditySeconds?: number | null;
 };
 
 export function approveX402Requirements(
@@ -182,7 +191,8 @@ export function approveX402Requirements(
 
 export function validateX402PaymentPayload(
   paymentPayload: unknown,
-  selectedRequirementHash: string
+  selectedRequirementHash: string,
+  options: X402PaymentPayloadValidationOptions = {}
 ): X402PaymentPayloadApproval {
   const payload = asRecord(paymentPayload);
   if (!payload) {
@@ -226,6 +236,25 @@ export function validateX402PaymentPayload(
     validUntilMs <= validAfterMs
   ) {
     return { approved: false, reason: "validity_window_invalid" };
+  }
+
+  if (options.now) {
+    const skewMs = Math.max(0, options.clockSkewSeconds ?? 0) * 1000;
+    const nowMs = options.now.getTime();
+    if (validAfterMs > nowMs + skewMs) {
+      return { approved: false, reason: "payment_not_yet_valid" };
+    }
+    if (validUntilMs <= nowMs - skewMs) {
+      return { approved: false, reason: "payment_expired" };
+    }
+  }
+
+  if (
+    options.maxValiditySeconds !== null &&
+    options.maxValiditySeconds !== undefined &&
+    validUntilMs - validAfterMs > options.maxValiditySeconds * 1000
+  ) {
+    return { approved: false, reason: "validity_window_too_long" };
   }
 
   const payloadHash = firstString(payload, [

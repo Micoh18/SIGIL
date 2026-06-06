@@ -102,10 +102,14 @@ export type X402HttpSigningProviderConfig = {
   signerUrl: string | null;
   authToken?: string | null;
   timeoutMs?: number;
+  now?: () => Date;
+  maxValiditySeconds?: number | null;
 };
 
 export type X402ResourceRetrySettlementConfig = {
   paymentHeaderName?: string;
+  now?: () => Date;
+  maxValiditySeconds?: number | null;
 };
 
 export type X402ResourceFetchResult = {
@@ -135,6 +139,8 @@ export type X402CasperCliSettlementConfig = {
   paymentAmountMotes: string;
   confirmationPollIntervalMs?: number;
   confirmationTimeoutMs?: number;
+  now?: () => Date;
+  maxValiditySeconds?: number | null;
 };
 
 export type ValidatedX402CasperCliSettlementConfig = X402CasperCliSettlementConfig & {
@@ -246,7 +252,11 @@ export class HttpX402SigningProvider implements X402SignedPaymentProvider {
     }
     const payloadApproval = validateX402PaymentPayload(
       signedPayload,
-      input.selected_requirement_hash
+      input.selected_requirement_hash,
+      {
+        now: this.config.now?.() ?? new Date(),
+        maxValiditySeconds: this.config.maxValiditySeconds ?? null
+      }
     );
     if (!payloadApproval.approved) {
       return {
@@ -326,7 +336,11 @@ export class CasperCliX402SettlementProvider implements X402SettlementProvider {
 
     const payloadApproval = validateX402PaymentPayload(
       signed.signed_payload,
-      input.selected_requirement_hash
+      input.selected_requirement_hash,
+      {
+        now: config.now?.() ?? new Date(),
+        maxValiditySeconds: config.maxValiditySeconds ?? null
+      }
     );
     if (!payloadApproval.approved) {
       return casperSettlementFailedOutcome({
@@ -513,7 +527,11 @@ export class CasperCliX402SettlementProvider implements X402SettlementProvider {
 export class FacilitatorX402SettlementProvider implements X402SettlementProvider {
   constructor(
     private readonly signer: X402SignedPaymentProvider,
-    private readonly postJson: X402JsonPoster = postJsonWithFetch
+    private readonly postJson: X402JsonPoster = postJsonWithFetch,
+    private readonly config: {
+      now?: () => Date;
+      maxValiditySeconds?: number | null;
+    } = {}
   ) {}
 
   async settle(input: X402SettlementInput): Promise<X402SettlementOutcome> {
@@ -536,7 +554,11 @@ export class FacilitatorX402SettlementProvider implements X402SettlementProvider
     }
     const payloadApproval = validateX402PaymentPayload(
       signed.signed_payload,
-      input.selected_requirement_hash
+      input.selected_requirement_hash,
+      {
+        now: this.config.now?.() ?? new Date(),
+        maxValiditySeconds: this.config.maxValiditySeconds ?? null
+      }
     );
     if (!payloadApproval.approved) {
       return signerPayloadInvalidOutcome(input);
@@ -627,6 +649,8 @@ export class FacilitatorX402SettlementProvider implements X402SettlementProvider
 
 export class ResourceRetryX402SettlementProvider implements X402SettlementProvider {
   private readonly paymentHeaderName: string;
+  private readonly now: () => Date;
+  private readonly maxValiditySeconds: number | null;
 
   constructor(
     private readonly signer: X402SignedPaymentProvider,
@@ -634,6 +658,8 @@ export class ResourceRetryX402SettlementProvider implements X402SettlementProvid
     config: X402ResourceRetrySettlementConfig = {}
   ) {
     this.paymentHeaderName = config.paymentHeaderName ?? "PAYMENT-SIGNATURE";
+    this.now = config.now ?? (() => new Date());
+    this.maxValiditySeconds = config.maxValiditySeconds ?? null;
   }
 
   async settle(input: X402SettlementInput): Promise<X402SettlementOutcome> {
@@ -656,7 +682,11 @@ export class ResourceRetryX402SettlementProvider implements X402SettlementProvid
     }
     const payloadApproval = validateX402PaymentPayload(
       signed.signed_payload,
-      input.selected_requirement_hash
+      input.selected_requirement_hash,
+      {
+        now: this.now(),
+        maxValiditySeconds: this.maxValiditySeconds
+      }
     );
     if (!payloadApproval.approved) {
       return signerPayloadInvalidOutcome(input);
@@ -1077,7 +1107,10 @@ function extractCasperSettlementPayment(
     return null;
   }
 
-  const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
+  const nowSeconds = BigInt(Math.floor((config.now?.() ?? new Date()).getTime() / 1000));
+  if (BigInt(validAfter) > nowSeconds) {
+    return null;
+  }
   if (BigInt(validBefore) <= nowSeconds) {
     return null;
   }
@@ -1178,9 +1211,35 @@ function commandReceipt(invocation: CasperCommandInvocation): JsonObject {
   return {
     command: invocation.command,
     args: invocation.args.map((arg, index) =>
-      invocation.args[index - 1] === "--secret-key" ? "<redacted>" : arg
+      redactCommandArg(arg, invocation.args[index - 1] ?? null)
     )
   };
+}
+
+function redactCommandArg(arg: string, previousArg: string | null): string {
+  if (previousArg === "--secret-key") {
+    return "<redacted>";
+  }
+
+  if (previousArg !== "--session-arg") {
+    return arg;
+  }
+
+  const sessionArgMatch = arg.match(/^([^:]+):([^=]+)='(.*)'$/);
+  if (!sessionArgMatch) {
+    return arg;
+  }
+
+  const [, name, type, value] = sessionArgMatch;
+  if (!name || !type) {
+    return arg;
+  }
+
+  if (/signature|public_key|private_key|secret|authorization|nonce/i.test(name)) {
+    return `${name}:${type}='<redacted:${sha256Hex(value ?? "")}>'`;
+  }
+
+  return arg;
 }
 
 function commandResultReceipt(result: CasperCommandResult): JsonObject {
