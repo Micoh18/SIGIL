@@ -822,7 +822,7 @@ mainspring config</code></pre>
         <div class="mt-3" data-code data-lang="env" data-file=".env">
 <pre><code>MEMORY_ANCHOR_CONTRACT_HASH<span class="tok-punct">=</span><span class="tok-str">hash-9a10301e…</span>
 MEMORY_ANCHOR_PACKAGE_HASH<span class="tok-punct">=</span><span class="tok-str">hash-162da013…</span>
-CASPER_CHAIN_NAME<span class="tok-punct">=</span><span class="tok-str">casper-test</span>
+CASPER_NETWORK_NAME<span class="tok-punct">=</span><span class="tok-str">casper-test</span>
 CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-str">true</span>  <span class="tok-com"># explicit opt-in required</span></code></pre>
         </div>
         <p class="mt-4">Full hashes are in the repository README under <em>Casper Contract Status</em>. Block explorer: <a href="https://testnet.cspr.live" class="inline-link" target="_blank" rel="noopener">testnet.cspr.live</a>.</p>
@@ -901,7 +901,12 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
       <!-- ENVIRONMENT REFERENCE -->
       <section id="env-reference" class="doc-section">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Environment Reference</h2>
-        <p class="mt-6">Copy <code class="inline">.env.example</code> to <code class="inline">.env</code> — it is loaded first by <code class="inline">loadLocalEnvFile()</code> before <code class="inline">process.env</code>. Required vars are marked ✓ for production use.</p>
+        <p class="mt-6">Normal npm users do not need to copy <code class="inline">.env.example</code> or create a repo-local <code class="inline">.env</code>. Run <code class="inline">mainspring setup</code>; it creates the local config, data, and logs directories automatically. The variables below are advanced overrides for Supabase, real Casper testnet anchoring, x402 settlement sidecars, or repository development.</p>
+
+        <div class="mt-6 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
+          <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Advanced env</div>
+          <p class="!text-parchment/75 text-[14px]">Use <code class="inline">mainspring doctor</code> to see the active config path. If you need custom values, put them in the user config file created by <code class="inline">mainspring init</code>, or point <code class="inline">SIGIL_ENV_FILE</code> at a private env file. Copying <code class="inline">.env.example</code> is only for local development from this repository.</p>
+        </div>
 
         <div class="mt-7 rounded-2xl border border-parchment/12 bg-ink/60 overflow-hidden">
           <div class="overflow-x-auto">
@@ -914,6 +919,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
                 </tr>
               </thead>
               <tbody>
+                <tr><td class="var">SIGIL_ENV_FILE</td><td class="def">(user config)</td><td class="desc">Optional path to a private env file. If unset, Mainspring checks the user's app config first, then repo-local env files for development.</td></tr>
                 <tr><td class="var">SIGIL_DATA_DIR</td><td class="def">(user data)</td><td class="desc">Root directory for file-based storage. Defaults to the user's Mr Mainspring app data directory.</td></tr>
                 <tr><td class="var">SIGIL_STORAGE_BACKEND</td><td class="def">file</td><td class="desc"><code class="inline">file</code> or <code class="inline">supabase</code>.</td></tr>
                 <tr><td class="var">GRIMOIRE_MASTER_KEY</td><td class="def">(auto)</td><td class="desc">Base64-encoded 32-byte AES-256-GCM master key. Generated automatically for local use when omitted.</td></tr>
@@ -921,13 +927,14 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
                 <tr><td class="var">SECRET_KEY</td><td class="def">—</td><td class="desc">Supabase service role key.</td></tr>
                 <tr><td class="var">CASPER_RPC_URL</td><td class="def">—</td><td class="desc">Casper node RPC endpoint for casper-client.</td></tr>
                 <tr><td class="var">CASPER_ACCOUNT_KEY_PATH</td><td class="def">—</td><td class="desc">Path to the account signing key PEM file.</td></tr>
-                <tr><td class="var">CASPER_CHAIN_NAME</td><td class="def">casper-test</td><td class="desc"><code class="inline">casper-test</code> or <code class="inline">casper</code> (mainnet).</td></tr>
+                <tr><td class="var">CASPER_NETWORK_NAME</td><td class="def">casper-test</td><td class="desc"><code class="inline">casper-test</code> or <code class="inline">casper</code> (mainnet).</td></tr>
                 <tr><td class="var">CASPER_ENABLE_REAL_SUBMISSION</td><td class="def">false</td><td class="desc">Explicit opt-in gate. Must be <code class="inline">true</code> to actually write to chain.</td></tr>
                 <tr><td class="var">MEMORY_ANCHOR_CONTRACT_HASH</td><td class="def">—</td><td class="desc">Deployed contract hash (<code class="inline">hash-&lt;64 hex chars&gt;</code>).</td></tr>
                 <tr><td class="var">MEMORY_ANCHOR_PACKAGE_HASH</td><td class="def">—</td><td class="desc">Deployed package hash. Used in <code class="inline">transaction-package</code> mode.</td></tr>
-                <tr><td class="var">CASPER_SUBMISSION_MODE</td><td class="def">transaction-package</td><td class="desc"><code class="inline">transaction-package</code> or <code class="inline">deploy-contract-hash</code>.</td></tr>
-                <tr><td class="var">X402_ENABLE_REAL_SETTLEMENT</td><td class="def">false</td><td class="desc">Opt-in gate for x402 real settlement. Currently no settlement provider implements it.</td></tr>
-                <tr><td class="var">X402_FACILITATOR_URL</td><td class="def">—</td><td class="desc">x402 facilitator endpoint for future settlement.</td></tr>
+                <tr><td class="var">CASPER_ANCHOR_SUBMISSION_MODE</td><td class="def">transaction-package</td><td class="desc"><code class="inline">transaction-package</code> or <code class="inline">deploy-contract-hash</code>.</td></tr>
+                <tr><td class="var">X402_ENABLE_REAL_SETTLEMENT</td><td class="def">false</td><td class="desc">Opt-in gate for real x402 settlement. Requires a configured signer/facilitator/resource path.</td></tr>
+                <tr><td class="var">X402_SIGNER_URL</td><td class="def">—</td><td class="desc">External signer sidecar URL. Required for real paid retries.</td></tr>
+                <tr><td class="var">X402_FACILITATOR_URL</td><td class="def">http://localhost:4022</td><td class="desc">x402 facilitator endpoint for challenge verification and settlement tests.</td></tr>
               </tbody>
             </table>
           </div>
