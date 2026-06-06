@@ -17,6 +17,7 @@ The generated machine-readable tool schema file is available at:
 It covers:
 
 ```text
+agent.whoami
 memory.write
 memory.read
 memory.search
@@ -108,7 +109,7 @@ error
   "status": "pre-settlement",
   "input": {
     "type": "object",
-    "required": ["agent_id", "policy_id", "method", "url"],
+    "required": ["policy_id", "method", "url"],
     "properties": {
       "agent_id": { "type": "string", "minLength": 1 },
       "policy_id": { "type": "string", "minLength": 1 },

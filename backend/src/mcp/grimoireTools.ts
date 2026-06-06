@@ -1,5 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import type { AgentIdentityContext } from "../agent/identity.js";
+import { resolveAgentId } from "../agent/identity.js";
 import type { GrimoireService } from "../grimoire/service.js";
 import { jsonResult } from "./jsonResult.js";
 
@@ -20,8 +22,11 @@ const decimalAmountSchema = z
 
 export function registerGrimoireTools(
   server: McpServer,
-  grimoireService: GrimoireService
+  grimoireService: GrimoireService,
+  identity?: AgentIdentityContext
 ): void {
+  const agentIdSchema = identity ? nonEmptyStringSchema.optional() : nonEmptyStringSchema;
+
   server.registerTool(
     "grimoire.secret.put",
     {
@@ -29,7 +34,7 @@ export function registerGrimoireTools(
       description:
         "Encrypt and store a scoped Mr Mainspring secret. The plaintext is never returned.",
       inputSchema: {
-        agent_id: nonEmptyStringSchema,
+        agent_id: agentIdSchema,
         name: nonEmptyStringSchema,
         type: secretTypeSchema,
         value: nonEmptyStringSchema,
@@ -37,7 +42,10 @@ export function registerGrimoireTools(
       }
     },
     async (input) => {
-      const secret = await grimoireService.putSecret(input);
+      const secret = await grimoireService.putSecret({
+        ...input,
+        agent_id: resolveAgentId(input.agent_id, identity)
+      });
 
       return jsonResult({
         status: "stored",
@@ -53,14 +61,15 @@ export function registerGrimoireTools(
       description:
         "List Mr Mainspring secret metadata for an agent without exposing secret values.",
       inputSchema: {
-        agent_id: nonEmptyStringSchema
+        agent_id: agentIdSchema
       }
     },
     async ({ agent_id }) => {
-      const secrets = await grimoireService.listSecrets(agent_id);
+      const resolvedAgentId = resolveAgentId(agent_id, identity);
+      const secrets = await grimoireService.listSecrets(resolvedAgentId);
 
       return jsonResult({
-        agent_id,
+        agent_id: resolvedAgentId,
         count: secrets.length,
         secrets
       });
@@ -73,7 +82,7 @@ export function registerGrimoireTools(
       title: "Set Policy",
       description: "Create or update a Mr Mainspring spending/access policy commitment.",
       inputSchema: {
-        agent_id: nonEmptyStringSchema,
+        agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema,
         enabled: z.boolean().optional(),
         allowed_urls: z.array(urlSchema).min(1),
@@ -86,7 +95,10 @@ export function registerGrimoireTools(
       }
     },
     async (input) => {
-      const policy = await grimoireService.setPolicy(input);
+      const policy = await grimoireService.setPolicy({
+        ...input,
+        agent_id: resolveAgentId(input.agent_id, identity)
+      });
 
       return jsonResult({
         status: "stored",
@@ -101,17 +113,18 @@ export function registerGrimoireTools(
       title: "Get Policy",
       description: "Read one Mr Mainspring policy and current local spend metadata.",
       inputSchema: {
-        agent_id: nonEmptyStringSchema,
+        agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema
       }
     },
     async ({ agent_id, policy_id }) => {
-      const policy = await grimoireService.getPolicy(agent_id, policy_id);
+      const resolvedAgentId = resolveAgentId(agent_id, identity);
+      const policy = await grimoireService.getPolicy(resolvedAgentId, policy_id);
 
       if (!policy) {
         return jsonResult({
           found: false,
-          agent_id,
+          agent_id: resolvedAgentId,
           policy_id
         });
       }

@@ -65,7 +65,7 @@ Fallback MCP config (if no client is auto-detected):
 }
 ```
 
-`mainspring setup` creates the local config, data, and logs directories under the user's standard app config folder. `GRIMOIRE_MASTER_KEY` is generated automatically on first run.
+`mainspring setup` creates the local config, data, logs, and a stable local `agent_id` under the user's standard app config folder. `GRIMOIRE_MASTER_KEY` is generated automatically on first run.
 
 ## Backend Development
 
@@ -302,7 +302,7 @@ Important values:
 - `CASPER_ACCOUNT_KEY_PATH`: secret key path required for real anchoring.
 - `CASPER_ENABLE_REAL_SUBMISSION`: must be `true` before the backend shells out to `casper-client`.
 - `CASPER_CLIENT_BIN`: Casper CLI executable name or path. Defaults to `casper-client`.
-- `CASPER_CLIENT_WSL_DISTRO`: optional Windows helper. Set to `Ubuntu` to run `wsl -d Ubuntu -- casper-client ...`.
+- `CASPER_CLIENT_WSL_DISTRO`: optional Windows override. By default Mainspring auto-detects a WSL distro that can run `casper-client` when no native Windows binary is available.
 - `CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES`: standard payment amount for anchor calls. Defaults to `3000000000`.
 - `MEMORY_ANCHOR_CONTRACT_HASH`: deployed memory-anchor contract hash.
 - `MEMORY_ANCHOR_PACKAGE_HASH`: deployed memory-anchor package hash.
@@ -332,7 +332,7 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 ## Current MCP Tools
 
 - `memory.write`: store a memory envelope, content hash, metadata hash, and optional local Casper anchor metadata.
-- `memory.read`: read one memory by `agent_id` and `memory_id`.
+- `memory.read`: read one memory by `memory_id` under the local default agent unless `agent_id` is supplied.
 - `memory.search`: search stored memories for an agent in the local store.
 - `memory.verify`: recompute local hashes and report stored anchor metadata.
 - `grimoire.secret.put`: encrypt and store a scoped secret. Plaintext is never returned.
@@ -342,10 +342,12 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 - `payment.fetch`: create a durable x402 payment intent after policy checks. Without challenge, it returns `status: policy_checked`, `next_state: challenge_received`, and `settlement: not_started`. With `request_challenge: true`, it makes the first HTTP request, persists any 402 requirements, validates them against policy, and either stops with `settlement_unavailable` or, when real settlement is enabled and a signer sidecar is configured, retries the paid resource with `PAYMENT-SIGNATURE` and persists only verified settlement receipts.
 - `payment.receipt`: read persisted payment intent and receipt metadata.
 - `audit.tail`: tail recent audit events.
+- `agent.whoami`: return the generated local default `agent_id`.
 
 ## Real Today
 
 - TypeScript MCP backend with stdio transport.
+- Local generated agent identity in `agent.json`; tools use it by default when `agent_id` is omitted.
 - File-backed JSON stores for memory, Grimoire secrets/policies, payments, and audit.
 - Optional Supabase persistence through PostgREST-compatible tables in `backend/supabase/schema.sql`.
 - Deterministic JSON canonicalization and SHA-256 memory hashing.

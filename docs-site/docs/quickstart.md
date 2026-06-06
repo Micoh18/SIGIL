@@ -48,7 +48,7 @@ Paste the printed JSON into your MCP client configuration:
 
 ## Configure Local Environment
 
-No wallet, hosted account, or environment variable is required for local memory, Grimoire, audit, or payment preflight tools. `mainspring setup` creates a private config file, data directory, and logs directory under the user's standard app config folder.
+No wallet, hosted account, or environment variable is required for local memory, Grimoire, audit, or payment preflight tools. `mainspring setup` creates a private config file, data directory, logs directory, and stable local `agent_id` under the user's standard app config folder.
 
 Useful local checks:
 
@@ -56,6 +56,8 @@ Useful local checks:
 mainspring doctor
 mainspring config
 ```
+
+Inside an MCP client, call `agent.whoami` to see the generated local identity. Tools that accept `agent_id` use that identity by default when `agent_id` is omitted.
 
 For local development from this repository, you can still copy the root template:
 
@@ -89,7 +91,7 @@ Important local defaults:
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
 | `CASPER_ENABLE_REAL_SUBMISSION` | Must be `true` before the backend shells out to `casper-client`. Defaults to disabled. |
 | `CASPER_CLIENT_BIN` | CLI executable name/path. Defaults to `casper-client`. |
-| `CASPER_CLIENT_WSL_DISTRO` | Optional Windows helper. Set to `Ubuntu` to run `wsl -d Ubuntu -- casper-client ...` while the backend runs on Windows. |
+| `CASPER_CLIENT_WSL_DISTRO` | Optional Windows override. Mainspring auto-detects WSL when no native Windows `casper-client` is available. |
 | `CASPER_GAS_PRICE_TOLERANCE` | Casper transaction gas price tolerance. Defaults to `10`. |
 | `CASPER_PRICING_MODE` | Casper transaction pricing mode. Defaults to `classic`. |
 | `CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES` | Standard payment amount used for anchor transactions. Defaults to `3000000000`. |
@@ -151,12 +153,13 @@ The generated files should describe implemented tools, current real capabilities
 
 Use an MCP client connected to the `mainspring` command and run:
 
-1. `grimoire.secret.put` to store a local signing/API secret reference.
-2. `grimoire.policy.set` to allow a demo URL, method, amount, asset, and secret scope.
-3. `payment.fetch` with the policy id to create a durable payment intent.
-4. `memory.write` to store a result or decision.
-5. `memory.verify` to confirm local canonical hash integrity.
-6. `audit.tail` to inspect the story.
+1. `agent.whoami` to confirm the generated local agent identity.
+2. `grimoire.secret.put` to store a local signing/API secret reference.
+3. `grimoire.policy.set` to allow a demo URL, method, amount, asset, and secret scope.
+4. `payment.fetch` with the policy id to create a durable payment intent.
+5. `memory.write` to store a result or decision.
+6. `memory.verify` to confirm local canonical hash integrity.
+7. `audit.tail` to inspect the story.
 
 ::: tip Current x402 behavior
 Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. By default Mr Mainspring stops before settlement. With `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SIGNER_URL`, `CASPER_ENABLE_REAL_SUBMISSION=true`, a funded key, and the sidecars from [Casper x402 Runbook](/casper-x402-runbook), it retries the resource with `PAYMENT-SIGNATURE` and persists a settled receipt only when `PAYMENT-RESPONSE` verifies with a Casper transaction hash.

@@ -1,11 +1,23 @@
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 import { describe, expect, it } from "vitest";
 import { setupAllClients, formatClientSetupReport } from "../src/client-setup.js";
 
 async function makeTmpHome(): Promise<string> {
   return mkdtemp(join(tmpdir(), "mainspring-client-setup-"));
+}
+
+function claudeConfigPath(home: string): string {
+  if (process.platform === "win32") {
+    return join(home, "appdata", "Claude", "claude_desktop_config.json");
+  }
+
+  if (process.platform === "linux") {
+    return join(home, ".config", "Claude", "claude_desktop_config.json");
+  }
+
+  return join(home, "Library", "Application Support", "Claude", "claude_desktop_config.json");
 }
 
 describe("setupAllClients", () => {
@@ -18,9 +30,8 @@ describe("setupAllClients", () => {
 
   it("writes standard MCP config when Claude Desktop dir exists but file absent", async () => {
     const home = await makeTmpHome();
-    const claudeDir = join(home, "Library", "Application Support", "Claude");
-    await mkdir(claudeDir, { recursive: true });
-    const configPath = join(claudeDir, "claude_desktop_config.json");
+    const configPath = claudeConfigPath(home);
+    await mkdir(dirname(configPath), { recursive: true });
 
     const env: NodeJS.ProcessEnv = {
       HOME: home,
@@ -29,7 +40,9 @@ describe("setupAllClients", () => {
     };
 
     const results = setupAllClients(env);
-    const claude = results.find(r => r.name === "Claude Desktop" && r.configPath === configPath);
+    const claude = results.find(
+      r => r.name === "Claude Desktop" && normalize(r.configPath) === normalize(configPath)
+    );
     expect(claude?.status).toBe("written");
 
     const { readFileSync } = await import("node:fs");
@@ -40,9 +53,8 @@ describe("setupAllClients", () => {
 
   it("merges into existing config without overwriting other servers", async () => {
     const home = await makeTmpHome();
-    const claudeDir = join(home, "Library", "Application Support", "Claude");
-    await mkdir(claudeDir, { recursive: true });
-    const configPath = join(claudeDir, "claude_desktop_config.json");
+    const configPath = claudeConfigPath(home);
+    await mkdir(dirname(configPath), { recursive: true });
     await writeFile(configPath, JSON.stringify({
       mcpServers: { "other-server": { command: "other" } }
     }, null, 2), "utf8");
@@ -58,20 +70,25 @@ describe("setupAllClients", () => {
 
   it("reports already-set when mainspring entry already exists", async () => {
     const home = await makeTmpHome();
-    const claudeDir = join(home, "Library", "Application Support", "Claude");
-    await mkdir(claudeDir, { recursive: true });
-    const configPath = join(claudeDir, "claude_desktop_config.json");
+    const configPath = claudeConfigPath(home);
+    await mkdir(dirname(configPath), { recursive: true });
     await writeFile(configPath, JSON.stringify({
       mcpServers: { mainspring: { command: "npx", args: ["-y", "mrmainspring"] } }
     }, null, 2), "utf8");
 
     const env: NodeJS.ProcessEnv = { HOME: home, APPDATA: join(home, "appdata"), USERPROFILE: home };
     const results = setupAllClients(env);
-    const claude = results.find(r => r.name === "Claude Desktop" && r.configPath === configPath);
+    const claude = results.find(
+      r => r.name === "Claude Desktop" && normalize(r.configPath) === normalize(configPath)
+    );
     expect(claude?.status).toBe("already-set");
   });
 
   it("writes Zed context_servers format", async () => {
+    if (process.platform === "win32") {
+      return;
+    }
+
     const home = await makeTmpHome();
     const zedDir = join(home, ".config", "zed");
     await mkdir(zedDir, { recursive: true });

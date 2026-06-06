@@ -1,8 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ensureLocalAgentIdentity } from "./agent/identity.js";
 import { AuditService } from "./audit/service.js";
 import { createCasperAnchorClient } from "./casper/anchorClient.js";
 import type { SigilConfig } from "./config.js";
 import { GrimoireService } from "./grimoire/service.js";
+import { registerAgentTools } from "./mcp/agentTools.js";
 import { registerAuditTools } from "./mcp/auditTools.js";
 import { registerGrimoireTools } from "./mcp/grimoireTools.js";
 import { registerMemoryTools } from "./mcp/memoryTools.js";
@@ -27,6 +29,8 @@ export function createSigilServer(config: SigilConfig): McpServer {
     version: config.serverVersion
   });
 
+  const agentIdentity = ensureLocalAgentIdentity(config.dataDir);
+  const agentContext = { defaultAgentId: agentIdentity.agent_id };
   const stores = createBackendStores(config);
   const auditService = new AuditService(stores.audit);
   const anchorClient = createCasperAnchorClient(config.casper);
@@ -51,10 +55,11 @@ export function createSigilServer(config: SigilConfig): McpServer {
     createX402SettlementProvider(config)
   );
 
-  registerMemoryTools(server, memoryService);
-  registerGrimoireTools(server, grimoireService);
-  registerPaymentTools(server, paymentService);
-  registerAuditTools(server, auditService);
+  registerAgentTools(server, agentIdentity);
+  registerMemoryTools(server, memoryService, agentContext);
+  registerGrimoireTools(server, grimoireService, agentContext);
+  registerPaymentTools(server, paymentService, agentContext);
+  registerAuditTools(server, auditService, agentContext);
 
   return server;
 }

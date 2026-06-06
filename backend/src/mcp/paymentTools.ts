@@ -1,5 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import type { AgentIdentityContext } from "../agent/identity.js";
+import { resolveAgentId } from "../agent/identity.js";
 import type { PaymentService } from "../payments/service.js";
 import { jsonResult } from "./jsonResult.js";
 
@@ -12,8 +14,11 @@ const decimalAmountSchema = z
 
 export function registerPaymentTools(
   server: McpServer,
-  paymentService: PaymentService
+  paymentService: PaymentService,
+  identity?: AgentIdentityContext
 ): void {
+  const agentIdSchema = identity ? nonEmptyStringSchema.optional() : nonEmptyStringSchema;
+
   server.registerTool(
     "payment.fetch",
     {
@@ -21,7 +26,7 @@ export function registerPaymentTools(
       description:
         "Create a durable x402 payment record after checking a Grimoire policy. With request_challenge=true, make the first x402 HTTP request, persist and approve 402 requirements, then either persist a disabled/failed receipt or, when real settlement is configured, retry the paid resource with PAYMENT-SIGNATURE and return verified settlement without exposing signed payloads.",
       inputSchema: {
-        agent_id: nonEmptyStringSchema,
+        agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema,
         method: nonEmptyStringSchema.default("GET"),
         url: urlSchema,
@@ -31,7 +36,10 @@ export function registerPaymentTools(
       }
     },
     async (input) => {
-      const result = await paymentService.fetch(input);
+      const result = await paymentService.fetch({
+        ...input,
+        agent_id: resolveAgentId(input.agent_id, identity)
+      });
       return jsonResult(result);
     }
   );

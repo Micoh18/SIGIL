@@ -1,8 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as clack from "@clack/prompts";
+import { discoverCasperClient } from "./casper/clientDiscovery.js";
+import {
+  agentIdentityPath,
+  ensureLocalAgentIdentity,
+  readLocalAgentIdentity
+} from "./agent/identity.js";
 import { loadConfig } from "./config.js";
 import {
   detectClients,
@@ -48,6 +53,8 @@ type InitResult = {
   envFile: string;
   dataDir: string;
   logsDir: string;
+  agentId: string;
+  agentFile: string;
 };
 
 export async function runCliCommand(args: string[]): Promise<boolean> {
@@ -131,7 +138,13 @@ async function runInteractiveSetup(): Promise<void> {
   clack.intro("Mr Mainspring — setup");
 
   const result = initializeLocalSetup();
-  clack.log.success(`Local files ready\n   Config: ${result.envFile}\n   Data:   ${result.dataDir}`);
+  clack.log.success(
+      `Local files ready\n` +
+      `   Agent: ${result.agentId}\n` +
+      `   Agent file: ${result.agentFile}\n` +
+      `   Config: ${result.envFile}\n` +
+      `   Data:   ${result.dataDir}`
+  );
 
   const clients = detectClients();
   const installed = clients.filter(c => c.installed);
@@ -259,11 +272,14 @@ export function initializeLocalSetup(env: NodeJS.ProcessEnv = process.env): Init
   const setupEnv = { ...env, SIGIL_ENV_FILE: envFile };
   loadLocalEnvFile(setupEnv);
   ensureGrimoireMasterKey(setupEnv, { announce: false });
+  const agentIdentity = ensureLocalAgentIdentity(paths.dataDir);
 
   return {
     envFile,
     dataDir: paths.dataDir,
-    logsDir: paths.logsDir
+    logsDir: paths.logsDir,
+    agentId: agentIdentity.agent_id,
+    agentFile: agentIdentityPath(paths.dataDir)
   };
 }
 
@@ -296,6 +312,8 @@ export function formatMcpConfig(target?: string): string {
 function formatInitResult(result: InitResult): string {
   return [
     "Mr Mainspring local setup is ready.",
+    `Agent: ${result.agentId}`,
+    `Agent file: ${result.agentFile}`,
     `Config: ${result.envFile}`,
     `Data:   ${result.dataDir}`,
     `Logs:   ${result.logsDir}`,
@@ -315,13 +333,23 @@ function formatDoctorReport(env: NodeJS.ProcessEnv = process.env): string {
   lines.push(formatCheck(existsSync(envFile), `Config file: ${envFile}`, "Config file missing; run mainspring init"));
   lines.push(formatCheck(existsSync(paths.dataDir), `Data dir: ${paths.dataDir}`, "Data dir missing; run mainspring init"));
   lines.push(formatCheck(existsSync(paths.logsDir), `Logs dir: ${paths.logsDir}`, "Logs dir missing; run mainspring init"));
+  const identity = readLocalAgentIdentity(paths.dataDir);
+  lines.push(
+    formatCheck(
+      Boolean(identity),
+      `Agent identity: ${identity?.agent_id}`,
+      "Agent identity missing; run mainspring init"
+    )
+  );
 
-  const casperBin = envCopy.CASPER_CLIENT_BIN ?? "casper-client";
-  const casperProbe = spawnSync(casperBin, ["--version"], { stdio: "pipe" });
+  const casperProbe = discoverCasperClient({
+    clientBin: envCopy.CASPER_CLIENT_BIN,
+    clientWslDistro: envCopy.CASPER_CLIENT_WSL_DISTRO
+  });
   lines.push(formatCheck(
-    !casperProbe.error,
-    `casper-client: ${casperBin}`,
-    `casper-client not found at "${casperBin}" — optional, needed for on-chain anchoring (cargo install casper-client)`
+    casperProbe.found,
+    casperProbe.success,
+    casperProbe.failure
   ));
 
   try {

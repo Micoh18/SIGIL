@@ -46,6 +46,7 @@ describe("MCP stdio server", () => {
 
       expect(toolNames).toEqual(
         expect.arrayContaining([
+          "agent.whoami",
           "memory.write",
           "memory.read",
           "memory.search",
@@ -59,6 +60,15 @@ describe("MCP stdio server", () => {
           "audit.tail"
         ])
       );
+
+      const whoamiResult = await callJsonTool<{
+        agent_id: string;
+        created_at: string;
+        updated_at: string;
+      }>(client, "agent.whoami", {});
+      expect(whoamiResult.agent_id).toMatch(/^agent_[a-f0-9]{32}$/);
+      expect(whoamiResult.created_at).toBeTruthy();
+      expect(whoamiResult.updated_at).toBeTruthy();
 
       const agentId = "agent-mcp-stdio-1";
       const policyId = "pol-mcp-stdio";

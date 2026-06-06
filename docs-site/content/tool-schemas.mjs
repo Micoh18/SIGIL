@@ -2,13 +2,24 @@ export const lastVerified = "2026-06-05";
 
 export const toolSchemas = [
   {
+    name: "agent.whoami",
+    title: "Current Agent Identity",
+    status: "implemented",
+    description: "Return the generated local default agent identity for this installation.",
+    input: {
+      type: "object",
+      properties: {}
+    },
+    outputSummary: ["agent_id", "created_at", "updated_at"]
+  },
+  {
     name: "memory.write",
     title: "Write Memory",
     status: "implemented",
-    description: "Store a Mr Mainspring agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata.",
+    description: "Store a Mr Mainspring agent memory, canonicalize it, compute hashes, and optionally submit local anchor metadata. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id", "type", "body"],
+      required: ["type", "body"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         type: {
@@ -28,10 +39,10 @@ export const toolSchemas = [
     name: "memory.read",
     title: "Read Memory",
     status: "implemented",
-    description: "Read one stored memory by agent and memory id.",
+    description: "Read one stored memory by memory id. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id", "memory_id"],
+      required: ["memory_id"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         memory_id: { type: "string", minLength: 1 }
@@ -43,10 +54,10 @@ export const toolSchemas = [
     name: "memory.search",
     title: "Search Memory",
     status: "implemented",
-    description: "Search stored memories for an agent using the current local JSON-file store.",
+    description: "Search stored memories for an agent using the current local JSON-file store. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id"],
+      required: [],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         query: { type: "string", default: "" },
@@ -59,10 +70,10 @@ export const toolSchemas = [
     name: "memory.verify",
     title: "Verify Memory",
     status: "implemented",
-    description: "Recompute local memory hashes and report local integrity plus anchor metadata.",
+    description: "Recompute local memory hashes and report local integrity plus anchor metadata. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id", "memory_id"],
+      required: ["memory_id"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         memory_id: { type: "string", minLength: 1 }
@@ -74,10 +85,10 @@ export const toolSchemas = [
     name: "grimoire.secret.put",
     title: "Store Secret",
     status: "implemented",
-    description: "Encrypt and store a scoped secret. The plaintext value is never returned.",
+    description: "Encrypt and store a scoped secret. The plaintext value is never returned. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id", "name", "type", "value", "scopes"],
+      required: ["name", "type", "value", "scopes"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         name: { type: "string", minLength: 1 },
@@ -95,10 +106,10 @@ export const toolSchemas = [
     name: "grimoire.secret.list",
     title: "List Secrets",
     status: "implemented",
-    description: "List secret metadata for an agent without exposing secret values.",
+    description: "List secret metadata for an agent without exposing secret values. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id"],
+      required: [],
       properties: {
         agent_id: { type: "string", minLength: 1 }
       }
@@ -109,11 +120,10 @@ export const toolSchemas = [
     name: "grimoire.policy.set",
     title: "Set Policy",
     status: "implemented",
-    description: "Create or update an allowlisted spending/access policy and deterministic policy hash.",
+    description: "Create or update an allowlisted spending/access policy and deterministic policy hash. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
       required: [
-        "agent_id",
         "policy_id",
         "allowed_urls",
         "allowed_methods",
@@ -141,10 +151,10 @@ export const toolSchemas = [
     name: "grimoire.policy.get",
     title: "Get Policy",
     status: "implemented",
-    description: "Read one policy plus current local spend metadata.",
+    description: "Read one policy plus current local spend metadata. If agent_id is omitted, the generated local default agent id is used.",
     input: {
       type: "object",
-      required: ["agent_id", "policy_id"],
+      required: ["policy_id"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         policy_id: { type: "string", minLength: 1 }
@@ -156,10 +166,10 @@ export const toolSchemas = [
     name: "payment.fetch",
     title: "x402 Payment Fetch",
     status: "settlement-ready",
-    description: "Create a durable x402 payment intent after policy approval. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy, and either persist disabled/failed receipts or, when real settlement is configured, retry the resource with PAYMENT-SIGNATURE and persist only verified settlement receipts without exposing signed payloads.",
+    description: "Create a durable x402 payment intent after policy approval. If agent_id is omitted, the generated local default agent id is used. With request_challenge=true, make the first HTTP request, redact and persist any 402 requirements, validate them against policy, and either persist disabled/failed receipts or, when real settlement is configured, retry the resource with PAYMENT-SIGNATURE and persist only verified settlement receipts without exposing signed payloads.",
     input: {
       type: "object",
-      required: ["agent_id", "policy_id", "method", "url"],
+      required: ["policy_id", "method", "url"],
       properties: {
         agent_id: { type: "string", minLength: 1 },
         policy_id: { type: "string", minLength: 1 },
@@ -199,12 +209,13 @@ export const toolSchemas = [
     name: "audit.tail",
     title: "Tail Audit Events",
     status: "implemented",
-    description: "Return recent audit events for memory, Grimoire, payment, and anchor activity.",
+    description: "Return recent audit events for memory, Grimoire, payment, and anchor activity. If agent_id is omitted, the generated local default agent id is used unless all_agents is true.",
     input: {
       type: "object",
       properties: {
         agent_id: { type: "string", minLength: 1 },
         event_type: { type: "string", minLength: 1 },
+        all_agents: { type: "boolean" },
         limit: { type: "integer", minimum: 1, maximum: 200 }
       }
     },

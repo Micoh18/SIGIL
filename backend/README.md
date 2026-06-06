@@ -28,7 +28,7 @@ npm run mcp:stdio
 
 No environment variables are required for local memory, Grimoire, audit, or
 payment preflight tools. `mainspring setup` creates the local config, data, and
-logs directories under the user's standard app config folder. Use
+logs directories plus a generated stable `agent_id` under the user's standard app config folder. Use
 `SIGIL_ENV_FILE` to point at a specific env file for advanced setups.
 
 Important package boundaries:

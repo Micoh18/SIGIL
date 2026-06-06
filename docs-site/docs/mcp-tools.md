@@ -10,12 +10,20 @@ last_verified: 2026-06-05
 
 Mr Mainspring exposes tools through `backend/src/mcp/*`. Machine-readable summaries are generated at [/api/tool-schemas.json](/api/tool-schemas.json).
 
+`mainspring setup` creates a stable local default `agent_id`. Tools that accept `agent_id` use that local identity when the field is omitted. Pass `agent_id` explicitly only when operating on a different agent namespace.
+
+## Agent Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `agent.whoami` | Return the generated local default agent identity for this installation. |
+
 ## Memory Tools
 
 | Tool | Purpose |
 | --- | --- |
 | `memory.write` | Store a memory envelope, compute deterministic hashes, and optionally request anchor metadata. |
-| `memory.read` | Read a stored memory by `agent_id` and `memory_id`. |
+| `memory.read` | Read a stored memory by `memory_id` under the local default agent unless `agent_id` is supplied. |
 | `memory.search` | Search stored memory summaries for an agent. |
 | `memory.verify` | Recompute local hashes and report integrity plus anchor metadata. |
 
@@ -60,7 +68,6 @@ settled
 {
   "tool": "grimoire.policy.set",
   "arguments": {
-    "agent_id": "agent-demo-1",
     "policy_id": "pol_demo_weather",
     "allowed_urls": ["http://localhost:4021/weather"],
     "allowed_methods": ["GET"],
@@ -80,7 +87,6 @@ settled
 {
   "tool": "payment.fetch",
   "arguments": {
-    "agent_id": "agent-demo-1",
     "policy_id": "pol_demo_weather",
     "method": "GET",
     "url": "http://localhost:4021/weather",

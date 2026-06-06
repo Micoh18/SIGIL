@@ -21,6 +21,7 @@ const resourceUrl = "http://localhost:4021/weather";
 const secretValue = "local-evaluator-demo-secret-do-not-use";
 
 const requiredTools = [
+  "agent.whoami",
   "memory.write",
   "memory.read",
   "memory.search",
@@ -76,6 +77,15 @@ async function main() {
     steps.push({
       name: "tools/list",
       detail: `${requiredTools.length} required tools available`
+    });
+
+    const whoamiResult = await callJsonTool<{
+      agent_id: string;
+    }>(client, "agent.whoami", {});
+    assert(whoamiResult.agent_id.startsWith("agent_"), "agent.whoami returned an invalid agent_id");
+    steps.push({
+      name: "agent.whoami",
+      detail: `agent_id=${whoamiResult.agent_id}`
     });
 
     const writeResult = await callJsonTool<{
