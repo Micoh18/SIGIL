@@ -18,7 +18,7 @@ type ClientDef = {
   name: string;
   path: string;
   platforms: string[];
-  format: "standard" | "zed";
+  format: "standard" | "zed" | "continue";
 };
 
 const CLIENTS: ClientDef[] = [
@@ -33,15 +33,22 @@ const CLIENTS: ClientDef[] = [
   { name: "Cursor", path: "%USERPROFILE%/.cursor/mcp.json", platforms: ["win32"], format: "standard" },
   // Windsurf
   { name: "Windsurf", path: "~/.codeium/windsurf/mcp_config.json", platforms: ["darwin", "linux", "win32"], format: "standard" },
+  // Windsurf (also on Windows via AppData)
+  { name: "Windsurf", path: "%APPDATA%/Windsurf/User/globalStorage/codeium.windsurf/mcp_config.json", platforms: ["win32"], format: "standard" },
   // Zed
   { name: "Zed", path: "~/.config/zed/settings.json", platforms: ["darwin", "linux"], format: "zed" },
+  // Continue.dev
+  { name: "Continue", path: "~/.continue/config.json", platforms: ["darwin", "linux", "win32"], format: "continue" },
+  // VS Code (workspace-agnostic user MCP config — requires MCP extension)
+  { name: "VS Code", path: "~/.vscode/mcp.json", platforms: ["darwin", "linux", "win32"], format: "standard" },
 ];
 
 function expandPath(p: string, env: NodeJS.ProcessEnv): string {
+  const home = env.HOME ?? env.USERPROFILE ?? homedir();
   return p
-    .replace(/^~/, homedir())
+    .replace(/^~/, home)
     .replace(/%APPDATA%/gi, env.APPDATA ?? "")
-    .replace(/%USERPROFILE%/gi, env.USERPROFILE ?? homedir());
+    .replace(/%USERPROFILE%/gi, env.USERPROFILE ?? home);
 }
 
 function isInstalled(configPath: string): boolean {
@@ -53,14 +60,18 @@ function readJson(path: string): Record<string, unknown> {
   try { return JSON.parse(readFileSync(path, "utf8")); } catch { return {}; }
 }
 
-function alreadySet(json: Record<string, unknown>, format: "standard" | "zed"): boolean {
+function alreadySet(json: Record<string, unknown>, format: "standard" | "zed" | "continue"): boolean {
   if (format === "zed") {
     return !!(json.context_servers as Record<string, unknown> | undefined)?.mainspring;
+  }
+  if (format === "continue") {
+    const servers = json.mcpServers as Array<{ name?: string }> | undefined;
+    return !!servers?.some(s => s.name === "mainspring");
   }
   return !!(json.mcpServers as Record<string, unknown> | undefined)?.mainspring;
 }
 
-function mergeConfig(json: Record<string, unknown>, format: "standard" | "zed"): Record<string, unknown> {
+function mergeConfig(json: Record<string, unknown>, format: "standard" | "zed" | "continue"): Record<string, unknown> {
   if (format === "zed") {
     return {
       ...json,
@@ -68,6 +79,14 @@ function mergeConfig(json: Record<string, unknown>, format: "standard" | "zed"):
         ...(json.context_servers as Record<string, unknown> | undefined ?? {}),
         mainspring: { command: { path: "npx", args: ["-y", "mrmainspring"] } }
       }
+    };
+  }
+  if (format === "continue") {
+    const existing = (json.mcpServers as Array<Record<string, unknown>> | undefined ?? [])
+      .filter((s: Record<string, unknown>) => s.name !== "mainspring");
+    return {
+      ...json,
+      mcpServers: [...existing, { name: "mainspring", command: "npx", args: ["-y", "mrmainspring"] }]
     };
   }
   return {

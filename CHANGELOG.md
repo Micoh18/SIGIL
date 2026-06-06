@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.6 — 2026-06-06
+- Demo: verify hash integrity and simulate tamper attack in the browser
+- Demo: 5 diverse presets (Treasury, Invoice, Code PR, Halt, Research)
+- Demo: copyable full SHA-256 hashes on every receipt field
+- Auto-detect and configure Claude Desktop, Cursor, Windsurf, Zed, Claude Code, Continue.dev, VS Code on `mainspring setup`
+- `@micoh/mainspring` deprecated on npm — use `mrmainspring`
+
+## 0.1.5 — 2026-06-06
+- Remove client-specific `setup cursor` arg — works with any MCP host
+- Doc: Installation section updated to reflect auto-configure flow
+
+## 0.1.4 — 2026-06-06
+- Read VERSION from `package.json` at runtime — never drifts from npm version
+
 ## 0.1.3 — 2026-06-06
 - `mainspring doctor` now checks whether `casper-client` is available
 - Add `mainspring update` command
