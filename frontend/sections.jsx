@@ -317,6 +317,13 @@ function Repo() {
               <ArrowRightS size={16} className="text-parchment -rotate-45" />
             </span>
           </a>
+          <a href="Documentation.html"
+            className="flex items-center gap-2 rounded-full border border-parchment/30 pl-6 pr-1 py-1 group hover:border-gold/60 transition-all duration-300 w-fit">
+            <span className="font-mono text-sm font-medium text-parchment/85 whitespace-nowrap">Read the docs</span>
+            <span className="bg-obsidian rounded-full w-10 h-10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+              <ArrowRightS size={16} className="text-parchment -rotate-45" />
+            </span>
+          </a>
           <button onClick={copy}
             className="flex items-center gap-3 rounded-full border border-parchment/30 px-6 py-3 font-mono text-sm text-parchment/85 hover:border-parchment/60 transition-colors duration-200">
             <span className="text-parchment/40">$</span>
@@ -335,6 +342,14 @@ function Repo() {
 }
 
 /* ── FOOTER ── */
+
+const FOOTER_LINKS = {
+  "The Gap": "#gap", "Modules": "#modules", "The Loop": "#loop", "The Proof": "#proof",
+  "Documentation": "Documentation.html", "SDK reference": "Documentation.html#capture",
+  "Repository": "https://github.com/Micoh18/SIGIL", "Changelog": "#",
+  "Casper Mainnet": "https://cspr.live", "Block explorer": "https://cspr.live",
+  "Status": "#", "Verify a record": "https://cspr.live",
+};
 
 function Footer() {
   const cols = [
@@ -357,7 +372,7 @@ function Footer() {
               <div className="font-mono text-[11px] tracking-[0.28em] uppercase text-parchment/40 mb-4">{c[0]}</div>
               <ul className="flex flex-col gap-2.5">
                 {c[1].map((l) => (
-                  <li key={l}><a href="#top" className="font-serif text-parchment/70 hover:text-parchment transition-colors">{l}</a></li>
+                  <li key={l}><a href={FOOTER_LINKS[l] || "#"} className="font-serif text-parchment/70 hover:text-parchment transition-colors">{l}</a></li>
                 ))}
               </ul>
             </div>

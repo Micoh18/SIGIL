@@ -98,6 +98,7 @@ const NAV_LINKS = [
   { label: "The Loop", href: "#loop" },
   { label: "Try It", href: "#try" },
   { label: "The Proof", href: "#proof" },
+  { label: "Docs", href: "Documentation.html" },
 ];
 
 function Navbar() {
