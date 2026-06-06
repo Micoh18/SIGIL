@@ -75,7 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     memoryAnchorPackageHash: optionalEnv(env.MEMORY_ANCHOR_PACKAGE_HASH),
     submissionEnabled: parseBoolean(env.CASPER_ENABLE_REAL_SUBMISSION),
     clientBin: optionalEnv(env.CASPER_CLIENT_BIN) ?? "casper-client",
-    clientWslDistro: optionalEnv(env.CASPER_CLIENT_WSL_DISTRO),
+    clientWslDistro: process.platform === "win32" ? optionalEnv(env.CASPER_CLIENT_WSL_DISTRO) : null,
     anchorSubmissionMode: parseCasperAnchorSubmissionMode(
       env.CASPER_ANCHOR_SUBMISSION_MODE
     ),
