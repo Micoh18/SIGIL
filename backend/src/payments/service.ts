@@ -376,6 +376,32 @@ export class PaymentService {
       );
     }
 
+    const selectedAmount = amountFromRequirement(selectedRequirement) ?? intent.amount;
+    if (selectedAmount) {
+      const periodCheck = await this.checkCurrentPeriodSpend(intent, selectedAmount);
+      if (!periodCheck.allowed) {
+        const unavailable = await this.markSettlementUnavailable(
+          intent,
+          periodCheck.reason
+        );
+        await this.audit?.record({
+          agent_id: unavailable.agent_id,
+          event_type: "payment.settlement_unavailable",
+          subject_type: "payment",
+          subject_id: unavailable.id,
+          severity: "warn",
+          metadata: {
+            policy_id: unavailable.policy_id,
+            method: unavailable.method,
+            url: unavailable.url,
+            selected_requirement_hash: selectedRequirementHash,
+            reason: periodCheck.reason
+          }
+        });
+        return this.resultFromIntent(unavailable, challenge, periodCheck.reason);
+      }
+    }
+
     const settlement = await this.settlementProvider.settle({
       payment_id: intent.id,
       facilitator_url: challenge.facilitator_url,
@@ -396,12 +422,11 @@ export class PaymentService {
       };
       await this.store.saveIntent(settledIntent);
       await this.persistSettlementReceipt(settledIntent, settlement, challenge.facilitator_url);
-      const settledAmount = amountFromRequirement(selectedRequirement) ?? settledIntent.amount;
-      if (settledAmount) {
+      if (selectedAmount) {
         await this.grimoireService.recordPolicySpend(
           settledIntent.agent_id,
           settledIntent.policy_id,
-          settledAmount
+          selectedAmount
         );
       }
       await this.audit?.record({
@@ -447,6 +472,37 @@ export class PaymentService {
     });
 
     return this.resultFromIntent(unavailable, challenge, settlement.blocker);
+  }
+
+  private async checkCurrentPeriodSpend(
+    intent: PaymentIntentRecord,
+    amount: string
+  ): Promise<
+    | {
+        allowed: true;
+      }
+    | {
+        allowed: false;
+        reason: "policy_period_limit_exceeded" | "policy_period_amount_invalid";
+      }
+  > {
+    const policy = await this.grimoireService.getPolicy(intent.agent_id, intent.policy_id);
+    if (!policy) {
+      return { allowed: false, reason: "policy_period_amount_invalid" };
+    }
+
+    const amountParts = parseDecimalAmount(amount);
+    const maxPeriod = parseDecimalAmount(policy.max_amount_per_period);
+    const currentSpend = parseDecimalAmount(currentPeriodSpend(policy));
+    if (!amountParts || !maxPeriod || !currentSpend) {
+      return { allowed: false, reason: "policy_period_amount_invalid" };
+    }
+
+    if (compareDecimal(addDecimalParts(currentSpend, amountParts), maxPeriod) > 0) {
+      return { allowed: false, reason: "policy_period_limit_exceeded" };
+    }
+
+    return { allowed: true };
   }
 
   private async persistSettlementReceipt(
@@ -676,6 +732,18 @@ function validatePolicy(
     return "amount_over_limit";
   }
 
+  if (expectedAmount) {
+    const maxPeriod = parseDecimalAmount(policy.max_amount_per_period);
+    const currentSpend = parseDecimalAmount(currentPeriodSpend(policy));
+    if (!maxPeriod || !currentSpend) {
+      return "invalid_amount";
+    }
+
+    if (compareDecimal(addDecimalParts(currentSpend, expectedAmount), maxPeriod) > 0) {
+      return "period_limit_exceeded";
+    }
+  }
+
   return null;
 }
 
@@ -703,6 +771,17 @@ function compareDecimal(leftParts: DecimalAmount, rightParts: DecimalAmount): nu
   return leftValue > rightValue ? 1 : -1;
 }
 
+function addDecimalParts(leftParts: DecimalAmount, rightParts: DecimalAmount): DecimalAmount {
+  const scale = Math.max(leftParts.scale, rightParts.scale);
+  const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
+  const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
+
+  return {
+    value: leftValue + rightValue,
+    scale
+  };
+}
+
 function parseDecimalAmount(value: string): DecimalAmount | null {
   if (!/^\d+(\.\d+)?$/.test(value)) {
     return null;
@@ -713,4 +792,16 @@ function parseDecimalAmount(value: string): DecimalAmount | null {
     value: BigInt(`${whole}${fraction}`),
     scale: fraction.length
   };
+}
+
+function currentPeriodSpend(policy: PolicyLike, now: Date = new Date()): string {
+  const periodStartedAt = Date.parse(policy.period_started_at);
+  if (
+    Number.isNaN(periodStartedAt) ||
+    now.getTime() - periodStartedAt >= policy.period_seconds * 1000
+  ) {
+    return "0";
+  }
+
+  return policy.current_period_spend;
 }

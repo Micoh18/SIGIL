@@ -454,11 +454,13 @@ export function validateX402FacilitatorPayment(
   }
 
   const payloadHash = createSignedPayloadHash(paymentPayload);
-  const replayKey = [
-    requirement.value.network.toLowerCase(),
-    payer.toLowerCase(),
-    nonce
-  ].join(":");
+  const replayKey = sha256Hex(
+    [
+      requirement.value.network.toLowerCase(),
+      payer.toLowerCase(),
+      nonce
+    ].join(":")
+  );
 
   return {
     ok: true,
@@ -601,7 +603,10 @@ async function settleValidatedPayment(
   };
   const provider = new CasperCliX402SettlementProvider(
     signer,
-    config.settlementConfig,
+    {
+      ...config.settlementConfig,
+      now: config.settlementConfig.now ?? config.now
+    },
     config.commandRunner
   );
 

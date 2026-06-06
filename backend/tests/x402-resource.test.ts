@@ -98,6 +98,54 @@ describe("Casper x402 paid resource server", () => {
     });
   });
 
+  it("does not return the resource twice for a duplicate payment payload", async () => {
+    const transactionHash = "d".repeat(64);
+    const calls: string[] = [];
+    const facilitator = await listenFacilitator({
+      commandRunner: async (_command, args) => {
+        calls.push(String(args[0]));
+        if (args[0] === "put-transaction") {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({
+              result: {
+                transaction_hash: {
+                  Version1: transactionHash
+                }
+              }
+            }),
+            stderr: ""
+          };
+        }
+
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            result: {
+              execution_info: [{ error_message: null }]
+            }
+          }),
+          stderr: ""
+        };
+      }
+    });
+    const resource = await listenResource({
+      facilitatorUrl: facilitatorUrl(facilitator)
+    });
+    const url = resourceUrl(resource);
+    const payload = signedPaymentPayload(url, validRequirement(url));
+
+    const first = await paidFetchWithPayload(resource, payload);
+    const second = await paidFetchWithPayload(resource, payload);
+    const secondBody = await second.text();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(409);
+    expect(secondBody).toContain("payment_replayed");
+    expect(secondBody).not.toContain("sunny");
+    expect(calls).toEqual(["put-transaction", "get-transaction"]);
+  });
+
   it("rejects failed verification without leaking the resource", async () => {
     const facilitator = await listenFacilitator();
     const resource = await listenResource({
@@ -218,6 +266,11 @@ async function paidFetch(resource: Server): Promise<Response> {
   const url = resourceUrl(resource);
   const requirement = validRequirement(url);
   const payload = signedPaymentPayload(url, requirement);
+  return paidFetchWithPayload(resource, payload);
+}
+
+async function paidFetchWithPayload(resource: Server, payload: JsonObject): Promise<Response> {
+  const url = resourceUrl(resource);
   return fetch(url, {
     headers: {
       "PAYMENT-SIGNATURE": encodeBase64Json(payload)

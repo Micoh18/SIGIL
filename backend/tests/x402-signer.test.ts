@@ -255,7 +255,8 @@ async function createPaymentFixture(server: Server): Promise<{
 
   const signer = new HttpX402SigningProvider({
     signerUrl: signerUrl(server),
-    authToken: "test-signer-token"
+    authToken: "test-signer-token",
+    now: fixedNow
   });
   const settlement = new ResourceRetryX402SettlementProvider(
     signer,
@@ -281,7 +282,8 @@ async function createPaymentFixture(server: Server): Promise<{
         }),
         bodyText: JSON.stringify({ weather: "sunny" })
       };
-    }
+    },
+    { now: fixedNow }
   );
 
   return {
@@ -406,7 +408,7 @@ function payloadHash(value: unknown): string {
 }
 
 function fixedNow(): Date {
-  return new Date("2026-06-05T00:00:00.000Z");
+  return new Date("2026-06-05T00:00:30.000Z");
 }
 
 function assertNoPrivateKeyMaterial(output: string, privatePem: string): void {

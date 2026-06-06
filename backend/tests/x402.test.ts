@@ -293,6 +293,24 @@ describe("x402 foundation", () => {
     });
   });
 
+  it("rejects stale signed payloads when a validation clock is supplied", () => {
+    const selectedRequirementHash = "a".repeat(64);
+    const stale = {
+      ...validSignedPayload(selectedRequirementHash),
+      validAfter: "2026-06-05T00:00:00.000Z",
+      validUntil: "2026-06-05T00:01:00.000Z"
+    };
+
+    const result = validateX402PaymentPayload(stale, selectedRequirementHash, {
+      now: new Date("2026-06-05T00:02:00.000Z")
+    });
+
+    expect(result).toEqual({
+      approved: false,
+      reason: "payment_expired"
+    });
+  });
+
   it("does not treat facilitator verify output as settlement", () => {
     const verifyOnly = verifyX402SettlementResponse({ valid: true });
     const settleWithoutHash = verifyX402SettlementResponse({ success: true });
@@ -615,6 +633,46 @@ describe("x402 foundation", () => {
     }
   });
 
+  it("redacts Casper transfer-with-authorization command key material from receipts", async () => {
+    const selectedRequirementHash = "a".repeat(64);
+    const signedPayload = validCep18SignedPayload(selectedRequirementHash);
+    const publicKey = String((signedPayload.authorization as JsonObject).publicKey);
+    const signature = String((signedPayload.authorization as JsonObject).signature);
+    const provider = new CasperCliX402SettlementProvider(
+      {
+        async sign() {
+          return {
+            signed: true,
+            signed_payload: signedPayload,
+            signed_payload_hash: createSignedPayloadHash(signedPayload)
+          };
+        }
+      },
+      casperCliConfig(),
+      async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: "node rejected transaction"
+      })
+    );
+
+    const result = await provider.settle({
+      payment_id: "pay_demo",
+      facilitator_url: "http://localhost:4022",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      selected_requirement: validCep18Requirement(),
+      selected_requirement_hash: selectedRequirementHash,
+      policy_hash: "policy-hash"
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.receipt_json).not.toContain(signature);
+    expect(result.receipt_json).not.toContain(publicKey);
+    expect(result.receipt_json).not.toContain("./keys/facilitator.pem");
+    expect(result.receipt_json).toContain("redacted");
+  });
+
   it("rejects Casper settlement when get-transaction reports failed execution", async () => {
     const selectedRequirementHash = "a".repeat(64);
     const transactionHash = "e".repeat(64);
@@ -851,14 +909,16 @@ function validRequirement(): JsonObject {
 }
 
 function validSignedPayload(selectedRequirementHash: string): JsonObject {
+  const validity = activeValidityWindow(60);
+
   return {
     x402Version: 2,
     scheme: "exact",
     network: "casper:casper-test",
     payer: "account-hash-casper-payer",
     nonce: "nonce-demo-001",
-    validAfter: "2026-06-05T00:00:00.000Z",
-    validUntil: "2026-06-05T00:01:00.000Z",
+    validAfter: validity.validAfter,
+    validUntil: validity.validUntil,
     selectedRequirementHash,
     authorization: {
       type: "casper-signature",
@@ -929,6 +989,7 @@ function validCasperRequirement(selectedRequirementHash: string): JsonObject {
 
 function validCasperSignedPayload(selectedRequirementHash: string): JsonObject {
   const payment = casperSettlementPayment();
+  const validity = activeValidityWindow(900);
 
   return {
     x402Version: 2,
@@ -936,13 +997,65 @@ function validCasperSignedPayload(selectedRequirementHash: string): JsonObject {
     network: payment.network,
     payer: "account-hash-1111111111111111111111111111111111111111111111111111111111111111",
     nonce: payment.nonce,
-    validAfter: "2026-06-05T00:00:00.000Z",
-    validUntil: "2026-06-05T00:15:00.000Z",
+    validAfter: validity.validAfter,
+    validUntil: validity.validUntil,
     selectedRequirementHash,
     authorization: {
       type: "casper-native-transfer",
       signature: "signature-local-demo"
     }
+  };
+}
+
+function validCep18Requirement(): JsonObject {
+  return {
+    scheme: "exact",
+    network: "casper:casper-test",
+    maxAmountRequired: "2500000000",
+    amount: "2500000000",
+    resource: "http://localhost:4021/weather",
+    method: "GET",
+    assetPackage: "hash-3333333333333333333333333333333333333333333333333333333333333333",
+    payTo: "account-hash-2222222222222222222222222222222222222222222222222222222222222222",
+    maxTimeoutSeconds: 900
+  };
+}
+
+function validCep18SignedPayload(selectedRequirementHash: string): JsonObject {
+  const validity = activeValidityWindow(900);
+  const nonce = "a".repeat(64);
+  const publicKey = `01${"1".repeat(64)}`;
+  const signature = `01${"2".repeat(128)}`;
+
+  return {
+    x402Version: 2,
+    scheme: "exact",
+    network: "casper:casper-test",
+    payer: "002222222222222222222222222222222222222222222222222222222222222222",
+    nonce,
+    validAfter: validity.validAfter,
+    validUntil: validity.validUntil,
+    selectedRequirementHash,
+    authorization: {
+      type: "casper-cep18-transfer-with-authorization",
+      from: "002222222222222222222222222222222222222222222222222222222222222222",
+      to: "002222222222222222222222222222222222222222222222222222222222222222",
+      amount: "2500000000",
+      value: "2500000000",
+      validAfter: validity.validAfter,
+      validBefore: validity.validUntil,
+      nonce,
+      publicKey,
+      signature
+    }
+  };
+}
+
+function activeValidityWindow(seconds: number): { validAfter: string; validUntil: string } {
+  const now = Date.now();
+  return {
+    validAfter: new Date(now - 1000).toISOString(),
+    validUntil: new Date(now + seconds * 1000).toISOString()
   };
 }
 

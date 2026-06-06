@@ -156,6 +156,85 @@ describe("Casper x402 facilitator sidecar", () => {
     });
   });
 
+  it("rejects stale payloads before settlement", async () => {
+    const signedPayload = signedPaymentPayload({
+      now: () => new Date("2026-06-04T23:58:00.000Z")
+    });
+    const server = await listenFacilitator();
+
+    const response = await postJson(facilitatorUrl(server, "/verify"), {
+      paymentPayload: signedPayload,
+      paymentRequirements: validRequirement()
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(422);
+    expect(body).toMatchObject({
+      valid: false,
+      success: false,
+      reason: "payment_expired"
+    });
+  });
+
+  it.each([
+    {
+      name: "wrong payee",
+      mutate(payload: JsonObject) {
+        payload.payTo = `02${"3".repeat(66)}`;
+      },
+      reason: "payee_mismatch"
+    },
+    {
+      name: "wrong amount",
+      mutate(payload: JsonObject) {
+        payload.amount = "9999999999";
+      },
+      reason: "amount_mismatch"
+    },
+    {
+      name: "wrong asset",
+      mutate(payload: JsonObject) {
+        payload.asset = "other-asset";
+      },
+      reason: "asset_mismatch"
+    },
+    {
+      name: "wrong network",
+      mutate(payload: JsonObject) {
+        payload.network = "casper:casper-main";
+      },
+      reason: "network_mismatch"
+    },
+    {
+      name: "wrong resource",
+      mutate(payload: JsonObject) {
+        payload.resource = "http://localhost:4021/other";
+      },
+      reason: "resource_mismatch"
+    }
+  ])("rejects $name before settlement", async ({ mutate, reason }) => {
+    const signedPayload = signedPaymentPayload();
+    mutate(signedPayload);
+    const server = await listenFacilitator({
+      commandRunner: async () => {
+        throw new Error("settlement must not be called");
+      }
+    });
+
+    const response = await postJson(facilitatorUrl(server, "/verify"), {
+      paymentPayload: signedPayload,
+      paymentRequirements: validRequirement()
+    });
+    const body = (await response.json()) as Record<string, unknown>;
+
+    expect(response.status).toBe(422);
+    expect(body).toMatchObject({
+      valid: false,
+      success: false,
+      reason
+    });
+  });
+
   it("returns failed settlement when Casper execution fails", async () => {
     const signedPayload = signedPaymentPayload();
     const transactionHash = "e".repeat(64);
@@ -247,7 +326,11 @@ async function closeServer(server: Server): Promise<void> {
   await once(server, "close");
 }
 
-function signedPaymentPayload(): JsonObject {
+function signedPaymentPayload(
+  options: {
+    now?: () => Date;
+  } = {}
+): JsonObject {
   const { signingKey } = createEd25519SigningKey();
   const requirement = validRequirement();
   const result = signX402PaymentPayload(
@@ -263,7 +346,7 @@ function signedPaymentPayload(): JsonObject {
     {
       signingKey,
       buyerAccountHash: BUYER_ACCOUNT_HASH,
-      now: fixedNow
+      now: options.now ?? fixedNow
     }
   );
 

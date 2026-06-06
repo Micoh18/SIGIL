@@ -16,6 +16,7 @@ export type PaymentDenialReason =
   | "url_not_allowed"
   | "method_not_allowed"
   | "amount_over_limit"
+  | "period_limit_exceeded"
   | "invalid_amount";
 
 export type PaymentStatus =

@@ -31,5 +31,9 @@ export function redactX402Value(value: unknown, depth = 0): unknown {
 }
 
 function isSensitiveKey(key: string): boolean {
-  return /secret|token|key|password|private|payload|credential|authorization|value/i.test(key);
+  if (/(_hash|Hash|hash)$/.test(key)) {
+    return false;
+  }
+
+  return /secret|token|key|password|private|payload|credential|authorization|signature|value/i.test(key);
 }

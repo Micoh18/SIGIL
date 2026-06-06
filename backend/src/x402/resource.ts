@@ -13,6 +13,30 @@ export type X402PaidResourceLogger = {
   error?(message: string): void;
 };
 
+export type X402PaidResourceReplayState = "settling" | "settled";
+
+export type X402PaidResourceReplayRecord = {
+  replayKey: string;
+  payloadHash: string;
+  state: X402PaidResourceReplayState;
+  updatedAt: string;
+};
+
+export type X402PaidResourceReplayReservation =
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      reason: "payment_payload_replayed" | "nonce_replayed" | "payment_settlement_in_progress";
+    };
+
+export type X402PaidResourceReplayStore = {
+  reserve(input: { replayKey: string; payloadHash: string }): X402PaidResourceReplayReservation;
+  complete(input: { replayKey: string; payloadHash: string }): void;
+  release(input: { replayKey: string; payloadHash: string }): void;
+};
+
 export type X402PaidResourceBodyFactory = (input: {
   paymentPayload: JsonObject;
   settlementResponse: JsonObject;
@@ -35,21 +59,57 @@ export type X402PaidResourceHttpServerConfig = {
   paymentHeaderName?: string;
   resourceBody?: JsonObject | X402PaidResourceBodyFactory;
   postJson?: X402PaidResourceFacilitatorPoster;
+  replayStore?: X402PaidResourceReplayStore;
   logger?: X402PaidResourceLogger;
 };
+
+export class InMemoryX402PaidResourceReplayStore implements X402PaidResourceReplayStore {
+  private readonly records = new Map<string, X402PaidResourceReplayRecord>();
+
+  reserve(input: { replayKey: string; payloadHash: string }): X402PaidResourceReplayReservation {
+    const existing = this.records.get(input.replayKey);
+    if (!existing) {
+      this.records.set(input.replayKey, replayRecord(input, "settling"));
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      reason:
+        existing.state === "settling"
+          ? "payment_settlement_in_progress"
+          : existing.payloadHash === input.payloadHash
+            ? "payment_payload_replayed"
+            : "nonce_replayed"
+    };
+  }
+
+  complete(input: { replayKey: string; payloadHash: string }): void {
+    this.records.set(input.replayKey, replayRecord(input, "settled"));
+  }
+
+  release(input: { replayKey: string; payloadHash: string }): void {
+    const existing = this.records.get(input.replayKey);
+    if (existing?.payloadHash === input.payloadHash && existing.state === "settling") {
+      this.records.delete(input.replayKey);
+    }
+  }
+}
 
 export function createX402PaidResourceHttpServer(
   config: X402PaidResourceHttpServerConfig
 ): Server {
   const paymentHeaderName = config.paymentHeaderName ?? DEFAULT_PAYMENT_HEADER_NAME;
   const postJson = config.postJson ?? postJsonWithFetch;
+  const replayStore = config.replayStore ?? new InMemoryX402PaidResourceReplayStore();
 
   return createServer(async (request, response) => {
     try {
       await handleX402PaidResourceRequest(request, response, {
         ...config,
         paymentHeaderName,
-        postJson
+        postJson,
+        replayStore
       });
     } catch (error) {
       config.logger?.error?.(`x402 paid resource failed: ${errorMessage(error)}`);
@@ -91,6 +151,9 @@ async function handleX402PaidResourceRequest(
     return;
   }
 
+  const payloadHash = sha256Hex(canonicalizeJson(paymentPayload));
+  const replayKey = replayKeyForPayload(paymentPayload, payloadHash);
+
   const selectedRequirement = selectedRequirementForPayload(
     config.paymentRequirements,
     paymentPayload
@@ -101,12 +164,26 @@ async function handleX402PaidResourceRequest(
     return;
   }
 
+  const replayReservation = config.replayStore?.reserve({ replayKey, payloadHash });
+  if (replayReservation && !replayReservation.ok) {
+    config.logger?.warn?.(
+      `x402 paid resource replay rejected reason=${replayReservation.reason} payload_hash=${payloadHash}`
+    );
+    sendJson(response, 409, {
+      error: "payment_replayed",
+      reason: replayReservation.reason,
+      payload_hash: payloadHash
+    });
+    return;
+  }
+
   const facilitatorRequest = {
     paymentPayload,
     paymentRequirements: config.paymentRequirements
   };
   const verify = await postFacilitator(config, "verify", facilitatorRequest);
   if (!verify.ok || !facilitatorVerifyAccepted(verify.body)) {
+    config.replayStore?.release({ replayKey, payloadHash });
     config.logger?.warn?.(
       `x402 paid resource rejected verify status=${verify.status} reason=${facilitatorReason(
         verify.body
@@ -122,6 +199,7 @@ async function handleX402PaidResourceRequest(
 
   const settle = await postFacilitator(config, "settle", facilitatorRequest);
   if (!settle.ok) {
+    config.replayStore?.release({ replayKey, payloadHash });
     sendJson(response, 502, {
       error: "payment_settle_failed",
       reason: facilitatorReason(settle.body),
@@ -130,12 +208,24 @@ async function handleX402PaidResourceRequest(
     return;
   }
 
-  const settlementBody = toJsonObject(settle.body, "settlement_response");
+  let settlementBody: JsonObject;
+  try {
+    settlementBody = toJsonObject(settle.body, "settlement_response");
+  } catch {
+    config.replayStore?.release({ replayKey, payloadHash });
+    sendJson(response, 502, {
+      error: "payment_settlement_not_verified",
+      reason: "settlement_response_not_object",
+      facilitator_status: settle.status
+    });
+    return;
+  }
   const settlement = verifyX402SettlementResponse(settlementBody, {
     selectedRequirement,
     signedPayload: paymentPayload
   });
   if (!settlement.settled) {
+    config.replayStore?.release({ replayKey, payloadHash });
     config.logger?.warn?.(
       `x402 paid resource settlement not verified reason=${settlement.reason}`
     );
@@ -149,6 +239,7 @@ async function handleX402PaidResourceRequest(
 
   response.setHeader("PAYMENT-RESPONSE", encodeBase64Json(settlementBody));
   response.setHeader("X-PAYMENT-RESPONSE", encodeBase64Json(settlementBody));
+  config.replayStore?.complete({ replayKey, payloadHash });
   sendJson(response, 200, await resourceBody(config, paymentPayload, settlementBody));
 }
 
@@ -231,6 +322,26 @@ function selectedRequirementForPayload(
   }
 
   return null;
+}
+
+function replayKeyForPayload(paymentPayload: JsonObject, fallbackHash: string): string {
+  const authorization = asRecord(paymentPayload.authorization) ?? {};
+  const network =
+    firstString(paymentPayload, ["network", "networkId", "network_id"]) ??
+    firstString(authorization, ["network", "networkId", "network_id"]) ??
+    "unknown-network";
+  const payer =
+    firstString(paymentPayload, ["payer", "payerAccount", "payer_account"]) ??
+    firstString(authorization, ["payer", "from"]) ??
+    "unknown-payer";
+  const nonce =
+    firstString(paymentPayload, ["nonce"]) ??
+    firstString(authorization, ["nonce"]) ??
+    fallbackHash;
+
+  return sha256Hex(
+    [network.toLowerCase(), payer.toLowerCase(), nonce.toLowerCase()].join(":")
+  );
 }
 
 function sendPaymentRequired(
@@ -340,6 +451,18 @@ function facilitatorReason(value: unknown): string | null {
   }
 
   return firstString(body, ["reason", "error", "message"]);
+}
+
+function replayRecord(
+  input: { replayKey: string; payloadHash: string },
+  state: X402PaidResourceReplayState
+): X402PaidResourceReplayRecord {
+  return {
+    replayKey: input.replayKey,
+    payloadHash: input.payloadHash,
+    state,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

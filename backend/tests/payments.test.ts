@@ -62,6 +62,23 @@ describe("PaymentService", () => {
     expect(rawStore).toContain("policy_denied");
   });
 
+  it("denies and persists a fetch preflight when current period spend would exceed the policy", async () => {
+    const { service, grimoire } = await createService();
+    await grimoire.recordPolicySpend("agent-demo-1", "pol-demo", "0.99");
+
+    const result = await service.preflightFetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-demo",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expected_amount: "0.02"
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.status).toBe("policy_denied");
+    expect(result.reason).toBe("period_limit_exceeded");
+  });
+
   it("reuses the same payment intent for the same idempotency key", async () => {
     const { service } = await createService();
 
@@ -435,6 +452,65 @@ describe("PaymentService", () => {
         "policy.spend_recorded"
       ])
     );
+  });
+
+  it("checks current period spend before calling the settlement provider for signing", async () => {
+    const requirements = {
+      x402Version: 1,
+      accepts: [
+        {
+          scheme: "exact",
+          network: "casper:casper-test",
+          maxAmountRequired: "0.02",
+          amount: "0.02",
+          resource: "http://localhost:4021/weather",
+          method: "GET",
+          asset: "asset-package-hash",
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
+        }
+      ]
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify(requirements), {
+          status: 402,
+          headers: { "content-type": "application/json" }
+        })
+      )
+    );
+    const settlementProvider = {
+      settle: vi.fn(async () => ({
+        status: "settled" as const,
+        signed_payload_hash: "b".repeat(64),
+        response_status: 200,
+        casper_transaction_hash: "c".repeat(64),
+        receipt_json: "{}"
+      }))
+    };
+    const { service, grimoire } = await createService({
+      withChallengeClient: true,
+      settlementProvider
+    });
+    await grimoire.recordPolicySpend("agent-demo-1", "pol-demo", "0.99");
+
+    const result = await service.fetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-demo",
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      request_challenge: true
+    });
+    const policy = await grimoire.getPolicy("agent-demo-1", "pol-demo");
+
+    expect(result.allowed).toBe(true);
+    if (result.allowed) {
+      expect(result.status).toBe("settlement_unavailable");
+      expect(result.settlement_blocker).toBe("policy_period_limit_exceeded");
+    }
+    expect(settlementProvider.settle).not.toHaveBeenCalled();
+    expect(policy?.current_period_spend).toBe("0.99");
   });
 
   it("returns a durable payment receipt view even before settlement exists", async () => {
