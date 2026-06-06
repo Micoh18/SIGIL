@@ -7,13 +7,13 @@ boundaries, and x402 settlement-provider wiring.
 ## Install
 
 ```bash
-npm install -g mr-mainspring
+npm install -g mainspring
 ```
 
 Run the stdio MCP server:
 
 ```bash
-mr-mainspring
+mainspring
 ```
 
 For local development from this repository:
@@ -40,8 +40,8 @@ Important package boundaries:
 ## Library Entry
 
 ```ts
-import { createSigilServer } from "mr-mainspring";
+import { createSigilServer } from "mainspring";
 ```
 
-The CLI entry is also exported as `mr-mainspring/mcp`, but importing it starts
+The CLI entry is also exported as `mainspring/mcp`, but importing it starts
 the stdio server; use the package bin for normal MCP client configuration.

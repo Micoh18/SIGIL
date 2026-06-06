@@ -1,11 +1,11 @@
 {
-  "name": "mr-mainspring",
+  "name": "mainspring",
   "version": "0.1.0",
   "description": "Mr Mainspring MCP backend with memory, Grimoire policies, audit, Casper anchoring, and x402 settlement boundaries.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "mr-mainspring": "./dist/index.js"
+    "mainspring": "./dist/index.js"
   },
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",
@@ -23,6 +23,7 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
+    "LICENSE",
     "README.md",
     "package.json"
   ],
