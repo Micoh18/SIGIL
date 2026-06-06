@@ -16,6 +16,7 @@ import {
   DisabledX402SettlementProvider,
   FacilitatorX402SettlementProvider,
   HttpX402SigningProvider,
+  LocalCasperX402SigningProvider,
   ResourceRetryX402SettlementProvider,
   type X402SettlementProvider
 } from "./x402/settlement.js";
@@ -61,6 +62,27 @@ export function createSigilServer(config: SigilConfig): McpServer {
 export function createX402SettlementProvider(config: SigilConfig): X402SettlementProvider {
   if (!config.x402.settlementEnabled) {
     return new DisabledX402SettlementProvider("x402_settlement_disabled");
+  }
+
+  if (config.x402.settlementMode === "casper-cli" && !config.x402.signerUrl) {
+    const localSigner = new LocalCasperX402SigningProvider({
+      accountKeyPath: config.casper.accountKeyPath ?? "",
+      buyerAccountHash: config.x402.buyerAccountHash
+    });
+    return new CasperCliX402SettlementProvider(localSigner, {
+      networkName: config.casper.networkName,
+      caip2ChainId: config.casper.caip2ChainId,
+      rpcUrl: config.casper.rpcUrl,
+      accountKeyPath: config.casper.accountKeyPath,
+      submissionEnabled: config.casper.submissionEnabled,
+      clientBin: config.casper.clientBin,
+      clientWslDistro: config.casper.clientWslDistro,
+      gasPriceTolerance: config.casper.gasPriceTolerance,
+      pricingMode: config.casper.pricingMode,
+      paymentAmountMotes: config.x402.casperSettlementPaymentAmountMotes,
+      confirmationPollIntervalMs: config.x402.casperConfirmationPollIntervalMs,
+      confirmationTimeoutMs: config.x402.casperConfirmationTimeoutMs
+    });
   }
 
   if (!config.x402.signerUrl) {

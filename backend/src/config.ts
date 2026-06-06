@@ -32,6 +32,7 @@ export type X402Config = {
   signerUrl: string | null;
   signerAuthToken: string | null;
   signerTimeoutMs: number;
+  buyerAccountHash: string | null;
   paymentHeaderName: string;
   casperSettlementPaymentAmountMotes: string;
   casperConfirmationPollIntervalMs: number;
@@ -100,6 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
       "X402_SIGNER_TIMEOUT_MS",
       10_000
     ),
+    buyerAccountHash: optionalEnv(env.X402_BUYER_ACCOUNT_HASH),
     paymentHeaderName: optionalEnv(env.X402_PAYMENT_HEADER_NAME) ?? "PAYMENT-SIGNATURE",
     casperSettlementPaymentAmountMotes:
       optionalEnv(env.X402_CASPER_SETTLEMENT_PAYMENT_AMOUNT_MOTES) ?? "7000000000",

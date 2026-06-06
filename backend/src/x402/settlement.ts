@@ -10,6 +10,10 @@ import type { JsonObject } from "../memory/types.js";
 import { sha256Hex } from "../memory/hash.js";
 import { redactX402Value } from "./redaction.js";
 import { validateX402PaymentPayload, verifyX402SettlementResponse } from "./readiness.js";
+import {
+  loadCasperSigningKeyFromFile,
+  signX402PaymentPayload
+} from "./signer.js";
 
 export type X402SettlementBlocker =
   | "x402_settlement_disabled"
@@ -201,6 +205,56 @@ export class DisabledX402SigningProvider implements X402SignedPaymentProvider {
     return {
       signed: false,
       blocker: "x402_signing_provider_not_configured"
+    };
+  }
+}
+
+export type LocalCasperX402SigningProviderConfig = {
+  accountKeyPath: string;
+  buyerAccountHash: string | null;
+};
+
+export class LocalCasperX402SigningProvider implements X402SignedPaymentProvider {
+  constructor(private readonly config: LocalCasperX402SigningProviderConfig) {}
+
+  async sign(input: X402SigningInput): Promise<X402SigningResult> {
+    let signingKey: ReturnType<typeof loadCasperSigningKeyFromFile>;
+    try {
+      signingKey = loadCasperSigningKeyFromFile(this.config.accountKeyPath);
+    } catch {
+      return { signed: false, blocker: "x402_signing_provider_not_configured" };
+    }
+
+    // Ed25519 publicKey is `01<32-byte-hex>` — accepted directly as account identifier
+    const buyerAccountHash =
+      this.config.buyerAccountHash ??
+      (signingKey.algorithm === "ed25519" ? signingKey.publicKey : null);
+
+    if (!buyerAccountHash) {
+      return { signed: false, blocker: "x402_signing_provider_not_configured" };
+    }
+
+    const result = signX402PaymentPayload(
+      {
+        payment_id: input.payment_id,
+        facilitator_url: input.facilitator_url,
+        method: input.method,
+        url: input.url,
+        selected_requirement: input.selected_requirement,
+        selected_requirement_hash: input.selected_requirement_hash,
+        policy_hash: input.policy_hash
+      },
+      { signingKey, buyerAccountHash }
+    );
+
+    if (!result.signed) {
+      return { signed: false, blocker: "x402_signer_response_invalid" };
+    }
+
+    return {
+      signed: true,
+      signed_payload: result.signed_payload,
+      signed_payload_hash: createSignedPayloadHash(result.signed_payload)
     };
   }
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8 — 2026-06-06
+- x402: local Casper signing — no external signer service required
+- Set `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SETTLEMENT_MODE=casper-cli` to activate
+- `CASPER_ACCOUNT_KEY_PATH` PEM key used directly for payment authorization signing
+- Optional `X402_BUYER_ACCOUNT_HASH` override for secp256k1 keys
+
 ## 0.1.6 — 2026-06-06
 - Demo: verify hash integrity and simulate tamper attack in the browser
 - Demo: 5 diverse presets (Treasury, Invoice, Code PR, Halt, Research)
