@@ -154,7 +154,7 @@
       </a>
     </div>
     <div class="flex items-center gap-2 sm:gap-3">
-      <div class="hidden md:flex items-center gap-2 rounded-full border border-parchment/15 bg-ink/50 px-3.5 py-2 text-parchment/40">
+      <div id="search-trigger" class="hidden md:flex items-center gap-2 rounded-full border border-parchment/15 bg-ink/50 px-3.5 py-2 text-parchment/40 cursor-pointer hover:border-parchment/30 hover:text-parchment/60 transition-colors">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <span class="font-mono text-[11px] tracking-wide">Search the manual</span>
         <span class="font-mono text-[10px] border border-parchment/20 rounded px-1.5 py-0.5 ml-2">⌘K</span>
@@ -989,6 +989,22 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
   </aside>
 </div>
 
+<!-- ───── SEARCH MODAL ───── -->
+<div id="search-modal" style="display:none;position:fixed;inset:0;z-index:9999;">
+  <div id="search-bd" style="position:absolute;inset:0;background:rgba(12,10,7,0.88);backdrop-filter:blur(5px)"></div>
+  <div style="position:relative;margin:80px auto 0;max-width:640px;padding:0 16px;">
+    <div style="background:#1d1913;border:1px solid rgba(212,175,106,0.22);border-radius:16px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,0.7)">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(236,230,214,0.1)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(236,230,214,0.35)" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="search-input" type="text" placeholder="Search the manual…" autocomplete="off" spellcheck="false"
+          style="flex:1;background:none;border:none;outline:none;color:#ece6d6;font-family:'Space Mono',monospace;font-size:14px;letter-spacing:0.01em;caret-color:#d4af6a">
+        <kbd style="font-family:'Space Mono',monospace;font-size:10px;border:1px solid rgba(236,230,214,0.18);border-radius:4px;padding:2px 7px;color:rgba(236,230,214,0.3);flex-shrink:0">Esc</kbd>
+      </div>
+      <div id="search-results" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <script>
   // SVG onclick placeholder — no-op
   function sendPrompt() {}
@@ -1035,6 +1051,91 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
       setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('text-gold'); }, 1200);
     });
   });
+
+  // ── SEARCH ──
+  (function() {
+    const modal   = document.getElementById('search-modal');
+    const input   = document.getElementById('search-input');
+    const results = document.getElementById('search-results');
+
+    // Build index from sections
+    const idx = [];
+    document.querySelectorAll('.doc-section').forEach(sec => {
+      const id      = sec.id;
+      const heading = sec.querySelector('h2,h3')?.textContent?.trim() || id;
+      const desc    = sec.querySelector('p')?.textContent?.trim().slice(0, 130) || '';
+      const sideEl  = document.querySelector(`.side-link[href="#${id}"]`);
+      const group   = sideEl?.closest('ul')?.previousElementSibling?.textContent?.trim() || '';
+      idx.push({ id, heading, desc, group });
+    });
+
+    function hl(text, q) {
+      if (!q) return text;
+      const i = text.toLowerCase().indexOf(q.toLowerCase());
+      if (i === -1) return text;
+      return text.slice(0,i) +
+        '<mark style="background:rgba(212,175,106,0.22);color:#d4af6a;border-radius:2px">' +
+        text.slice(i, i+q.length) + '</mark>' +
+        text.slice(i+q.length);
+    }
+
+    let activeEl = null;
+    function setActive(el) {
+      if (activeEl) activeEl.style.background = '';
+      activeEl = el;
+      if (activeEl) { activeEl.style.background = 'rgba(212,175,106,0.09)'; activeEl.scrollIntoView({ block:'nearest' }); }
+    }
+
+    function render(q) {
+      const qq = q.trim().toLowerCase();
+      const hits = qq
+        ? idx.filter(it => it.heading.toLowerCase().includes(qq) || it.desc.toLowerCase().includes(qq) || it.group.toLowerCase().includes(qq))
+        : idx;
+      activeEl = null;
+      if (!hits.length) {
+        results.innerHTML = '<div style="padding:28px;text-align:center;font-family:Space Mono,monospace;font-size:12px;color:rgba(236,230,214,0.28)">No results for "' + q + '"</div>';
+        return;
+      }
+      results.innerHTML = hits.map((it, i) =>
+        '<a href="#' + it.id + '" data-i="' + i + '" class="sr-item" style="display:flex;flex-direction:column;gap:3px;padding:13px 20px;text-decoration:none;border-bottom:1px solid rgba(236,230,214,0.05)">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            (it.group ? '<span style="font-family:Space Mono,monospace;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:rgba(212,175,106,0.55);flex-shrink:0">' + it.group + '</span>' : '') +
+            '<span style="font-family:Space Mono,monospace;font-size:13px;color:#ece6d6">' + hl(it.heading, q) + '</span>' +
+          '</div>' +
+          (it.desc ? '<span style="font-size:12px;color:rgba(236,230,214,0.38);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + hl(it.desc, q) + '</span>' : '') +
+        '</a>'
+      ).join('');
+      results.querySelectorAll('.sr-item').forEach(el => {
+        el.addEventListener('mouseenter', () => setActive(el));
+        el.addEventListener('click', close);
+      });
+    }
+
+    function open() {
+      modal.style.display = 'block';
+      input.value = '';
+      render('');
+      setTimeout(() => input.focus(), 30);
+    }
+    function close() { modal.style.display = 'none'; }
+
+    input.addEventListener('input', () => render(input.value));
+    input.addEventListener('keydown', e => {
+      const items = [...results.querySelectorAll('.sr-item')];
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(items[Math.min((activeEl ? items.indexOf(activeEl)+1 : 0), items.length-1)]); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(items[Math.max((activeEl ? items.indexOf(activeEl)-1 : 0), 0)]); }
+      if (e.key === 'Enter') { (activeEl || items[0])?.click(); }
+      if (e.key === 'Escape') close();
+    });
+
+    document.getElementById('search-bd').addEventListener('click', close);
+    document.getElementById('search-trigger').addEventListener('click', open);
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); open(); }
+      if (e.key === 'Escape' && modal.style.display !== 'none') close();
+    });
+  })();
 
   // scroll-spy
   const sideLinks = [...document.querySelectorAll('.side-link')];
