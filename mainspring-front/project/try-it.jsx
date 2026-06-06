@@ -18,7 +18,23 @@ const STEPS = [
   { k: "Receipt", d: "payment proof persisted" },
 ];
 
-const DEMO_API_URL = (window.MAINSPRING_DEMO_API_URL || "http://127.0.0.1:4180").replace(/\/+$/, "");
+const DEMO_API_URL = getDemoApiUrl();
+
+function getDemoApiUrl() {
+  const configured =
+    window.MAINSPRING_DEMO_API_URL ||
+    (window.MAINSPRING_CONFIG && window.MAINSPRING_CONFIG.demoApiUrl);
+  if (typeof configured === "string" && configured.trim()) {
+    return configured.trim().replace(/\/+$/, "");
+  }
+
+  const hostName = window.location.hostname;
+  if (!hostName || hostName === "localhost" || hostName === "127.0.0.1") {
+    return "http://127.0.0.1:4180";
+  }
+
+  return window.location.origin.replace(/\/+$/, "") + "/api";
+}
 
 function TryIt() {
   const [ref, inView] = useRevealT({ threshold: 0.15 });
@@ -56,7 +72,7 @@ function TryIt() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ agent, action, rationale })
       });
-      const body = await response.json();
+      const body = await response.json().catch(() => ({}));
       if (!response.ok || !body.ok) {
         throw new Error(body.settlement_blocker || body.message || body.error || "settlement_failed");
       }

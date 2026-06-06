@@ -167,7 +167,15 @@ npm run demo:x402-http --prefix backend
 npm run front:dev
 ```
 
-The button posts to `http://127.0.0.1:4180/demo/x402/payment-fetch` and renders the returned x402 receipt.
+Locally, the button posts to `http://127.0.0.1:4180/demo/x402/payment-fetch`
+and renders the returned x402 receipt.
+
+On Vercel, the browser posts to `/api/demo/x402/payment-fetch`. The Vercel
+function proxies that request to the real always-on demo API configured with
+`MAINSPRING_DEMO_API_URL`, for example `https://mainspring-x402-api.example.com`.
+Do not point Vercel at `127.0.0.1`; Vercel can proxy the request, but the Casper
+x402 sidecars and signer must run on a public backend service outside the static
+frontend deployment.
 
 Expected success transcript:
 
