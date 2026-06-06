@@ -32,7 +32,7 @@ Mr Mainspring exposes tools through `backend/src/mcp/*`. Machine-readable summar
 
 | Tool | Purpose |
 | --- | --- |
-| `payment.fetch` | Check policy, persist an intent, and optionally capture the first x402 challenge. |
+| `payment.fetch` | Check policy, persist an intent, optionally capture the first x402 challenge, and when configured retry the resource with `PAYMENT-SIGNATURE`. |
 | `payment.receipt` | Read persisted payment intent and receipt metadata. |
 
 Current payment states are:
@@ -46,7 +46,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable` receipts instead of settled receipts.
+`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable` receipts. With `X402_ENABLE_REAL_SETTLEMENT=true` and `X402_SIGNER_URL`, `payment.fetch` can retry the resource and accept settlement only when `PAYMENT-RESPONSE` contains a verified transaction hash.
 
 ## Audit Tools
 

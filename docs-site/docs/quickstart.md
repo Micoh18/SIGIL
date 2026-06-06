@@ -73,6 +73,10 @@ Important local defaults:
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Omitted values use a deterministic development key only. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
+| `X402_ENABLE_REAL_SETTLEMENT` | Enables the real settlement provider only when set to `true`. Defaults to disabled. |
+| `X402_SETTLEMENT_MODE` | `resource-retry` by default. Use `facilitator` only for direct facilitator tests. |
+| `X402_SIGNER_URL` | External signer sidecar URL. Required for real paid retry. |
+| `X402_PAYMENT_HEADER_NAME` | Header used for paid retry. Defaults to `PAYMENT-SIGNATURE`. |
 | `CASPER_NETWORK_NAME` | Casper chain name, defaulting to `casper-test`. |
 | `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
 | `CASPER_RPC_URL` | Casper node RPC address required for real anchoring. |
@@ -149,9 +153,9 @@ Use an MCP client connected to the stdio command and run:
 6. `audit.tail` to inspect the story.
 
 ::: tip Current x402 behavior
-Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. Mr Mainspring still stops before signed payment payload creation and settlement.
+Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. By default Mr Mainspring stops before settlement. With `X402_ENABLE_REAL_SETTLEMENT=true` and a real `X402_SIGNER_URL`, it can retry the resource with `PAYMENT-SIGNATURE` and persist a settled receipt only when `PAYMENT-RESPONSE` verifies.
 :::
 
 ## Expected Boundary
 
-A successful default quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, verified Casper execution, or real x402 settlement. Real Casper submission requires the deployed contract hashes, `casper-client`, and the Casper env described in [Casper Anchoring](/casper-anchoring).
+A successful default quickstart demonstrates local backend correctness, deterministic records, and readable generated docs. It does not demonstrate production persistence, remote transport, verified Casper execution, or real x402 settlement unless you configure a signer/resource/facilitator path. Real Casper submission requires the deployed contract hashes, `casper-client`, and the Casper env described in [Casper Anchoring](/casper-anchoring).

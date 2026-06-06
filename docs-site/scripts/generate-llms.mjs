@@ -116,27 +116,27 @@ function renderLlmsTxt(pages) {
     .filter((tool) => tool.status === "implemented")
     .map((tool) => tool.name)
     .join(", ");
-  const preSettlementTools = toolSchemas
-    .filter((tool) => tool.status === "pre-settlement")
+  const settlementReadyTools = toolSchemas
+    .filter((tool) => tool.status === "settlement-ready")
     .map((tool) => tool.name)
     .join(", ");
 
   const lines = [
     "# Mr Mainspring",
     "",
-    "> Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment pre-settlement flows.",
+    "> Mr Mainspring is an MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring, and x402 payment flows.",
     "",
     `Last verified: ${lastVerified}`,
     "",
     "## Current Real Capabilities",
     "",
     `- Implemented MCP tools: ${implementedTools}.`,
-    `- Pre-settlement MCP tools: ${preSettlementTools}.`,
+    `- Settlement-ready MCP tools: ${settlementReadyTools}.`,
     "- Local JSON-file stores are used under SIGIL_DATA_DIR for memory, Grimoire, payments, and audit.",
     "- Optional Supabase persistence is available after applying backend/supabase/schema.sql and setting SIGIL_STORAGE_BACKEND=supabase with PROJECT_URL plus SECRET_KEY or PUBLISHABLE_KEY.",
     "- Memory records are canonicalized and verified with SHA-256 hashes.",
     "- Grimoire secrets are encrypted locally and returned as metadata only.",
-    "- payment.fetch can policy-check, persist an intent, and optionally capture the first HTTP 402 challenge.",
+    "- payment.fetch can policy-check, persist an intent, capture the first HTTP 402 challenge, and when configured call an external signer sidecar before retrying the paid resource with PAYMENT-SIGNATURE.",
     "",
     "## Verify Locally",
     "",
@@ -164,7 +164,7 @@ function renderLlmsTxt(pages) {
     "## Critical Current Limits",
     "",
     "- Real Casper settlement is not implemented until verified.",
-    "- Real x402 settlement is not implemented until verified.",
+    "- Real x402 settlement requires X402_ENABLE_REAL_SETTLEMENT=true, X402_SIGNER_URL, and a resource/facilitator path that returns a verifiable PAYMENT-RESPONSE.",
     "- The memory-anchor contract builds locally to Wasm, but testnet deploy/query verification is not complete.",
     "- Supabase persistence is a JSONB bridge, not the final normalized production database schema.",
     "- Remote HTTP MCP transport, production database migrations, and KMS/HSM integrations are not implemented."

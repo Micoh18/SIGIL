@@ -1,14 +1,14 @@
 ---
 title: Overview
-description: Mr Mainspring is a local-first MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring metadata, and x402 pre-settlement workflows.
+description: Mr Mainspring is a local-first MCP backend for agent memory, Grimoire policies/secrets, Casper anchoring metadata, and x402 payment workflows.
 section: Start
 status: current
 last_verified: 2026-06-05
 layout: home
 hero:
   name: Mr Mainspring
-  text: Verifiable memory, Grimoire controls, and x402 preflight for local agents.
-  tagline: Run a TypeScript stdio MCP server that stores canonical memory records, encrypts Grimoire secrets, enforces allowlisted x402 policies, captures first 402 challenges, and can submit hash-only Casper memory anchors when explicitly enabled.
+  text: Verifiable memory, Grimoire controls, and x402 payment flow for local agents.
+  tagline: Run a TypeScript stdio MCP server that stores canonical memory records, encrypts Grimoire secrets, enforces allowlisted x402 policies, captures 402 challenges, retries paid resources with a signer sidecar when enabled, and can submit hash-only Casper memory anchors when explicitly enabled.
   actions:
     - theme: brand
       text: Verify Locally
@@ -30,7 +30,7 @@ features:
   - title: Inspect
     details: Read generated /llms.txt, /llms-full.txt, and /api/tool-schemas.json files for machine-readable status and schema context.
   - title: Boundaries
-    details: Casper transaction submission is real behind an explicit env gate; automatic finality checks, real x402 settlement, remote HTTP MCP transport, and production databases remain explicit limitations.
+    details: Casper transaction submission and x402 paid retry are behind explicit env gates; automatic finality checks, native Casper x402 signing, remote HTTP MCP transport, and production databases remain explicit limitations.
 ---
 
 ## Evaluator Snapshot
@@ -39,12 +39,12 @@ Mr Mainspring is a TypeScript MCP backend for local agent demos. It is currently
 
 - Memory write/read/search/verify.
 - Grimoire encrypted secrets and deterministic spending/access policies.
-- x402 payment intent preflight, idempotency, and optional 402 challenge capture.
+- x402 payment intent preflight, idempotency, optional 402 challenge capture, and signer-backed paid retry when configured.
 - Audit event tailing.
 - Casper anchor metadata through a replaceable client interface, including a verified testnet submission path when configured.
 
 ::: warning Honest status
-The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled until a real facilitator flow is verified.
+The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled by default and requires a real signer/resource/facilitator path before `settled` can be returned.
 :::
 
 ## First 10 Minutes
@@ -54,7 +54,7 @@ The memory-anchor contract is deployed on Casper testnet and real anchor submiss
 | Can the docs and generated LLM files build? | [Quickstart](/quickstart) | `npm.cmd run build --prefix docs-site` completes and regenerates public LLM files. |
 | What should an evaluator run? | [Local Demo](/local-demo) | Secret metadata, policy hash, payment intent state, memory hash, and audit events appear in sequence. |
 | What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores under `SIGIL_DATA_DIR`. |
-| What is not proven yet? | [Current Limitations](/current-limitations) | Casper and x402 settlement remain intentionally unavailable until real external verification exists. |
+| What is not proven yet? | [Current Limitations](/current-limitations) | Casper finality checks and Casper-native x402 support still require real external verification. |
 
 ## Documentation Map
 
