@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MAINSPRING — Documentation</title>
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Spectral:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          obsidian: '#15120d',
+          'obsidian-soft': '#1d1913',
+          parchment: '#ece6d6',
+          gold: '#d4af6a',
+          ink: '#0c0a07',
+        },
+        fontFamily: {
+          display: ['Cinzel', 'serif'],
+          mono: ['"Space Mono"', 'ui-monospace', 'monospace'],
+          serif: ['Spectral', 'Georgia', 'serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background-color: #15120d; }
+  ::selection { background: #d4af6a; color: #15120d; }
+
+  /* scroll offset for anchored headings under the sticky top bar */
+  .doc-section { scroll-margin-top: 96px; }
+
+  .paper-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  /* prose */
+  .prose-doc p { color: rgba(236,230,214,0.72); line-height: 1.7; }
+  .prose-doc a.inline-link { color: #d4af6a; text-decoration: none; border-bottom: 1px solid rgba(212,175,106,0.35); }
+  .prose-doc a.inline-link:hover { border-bottom-color: #d4af6a; }
+  .prose-doc code.inline {
+    font-family: "Space Mono", monospace; font-size: 0.85em;
+    background: #0c0a07; color: #d8c89c; border: 1px solid rgba(236,230,214,0.10);
+    padding: 0.1em 0.4em; border-radius: 6px; white-space: nowrap;
+  }
+  .prose-doc ul { list-style: none; padding: 0; margin: 0; }
+  .prose-doc li { color: rgba(236,230,214,0.72); line-height: 1.6; padding-left: 1.4rem; position: relative; }
+  .prose-doc li::before { content: "✦"; color: #d4af6a; position: absolute; left: 0; font-size: 0.7em; top: 0.35em; }
+
+  /* sidebar active link */
+  .side-link.active { color: #ece6d6; }
+  .side-link.active::before { opacity: 1; }
+  .side-link::before {
+    content: ""; position: absolute; left: -13px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: #d4af6a; opacity: 0; transition: opacity .2s;
+  }
+
+  /* TOC active */
+  .toc-link.active { color: #d4af6a; }
+
+  pre { margin: 0; }
+  pre code { font-family: "Space Mono", monospace; }
+
+  /* token coloring for code */
+  .tok-key { color: #c9a8e9; }
+  .tok-str { color: #9ccf9c; }
+  .tok-com { color: rgba(236,230,214,0.35); font-style: italic; }
+  .tok-fn  { color: #d4af6a; }
+  .tok-num { color: #e0a86a; }
+  .tok-punct { color: rgba(236,230,214,0.6); }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(236,230,214,0.12); border-radius: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body class="bg-obsidian font-serif text-parchment antialiased">
+
+  <!-- ───────────── TOP BAR ───────────── -->
+  <header class="sticky top-0 z-40 border-b border-parchment/10 bg-obsidian/85 backdrop-blur-md">
+    <div class="max-w-[1500px] mx-auto flex items-center justify-between gap-4 px-5 md:px-8 h-16">
+      <div class="flex items-center gap-4">
+        <button id="menuBtn" class="lg:hidden -ml-1 p-2 text-parchment/70 hover:text-parchment" aria-label="Toggle menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <a href="index.html" class="flex items-center gap-2.5 select-none">
+          <span class="block" style="width:6px;height:6px;border-radius:50%;background:#d4af6a;box-shadow:0 0 8px rgba(212,175,106,0.7)"></span>
+          <span class="font-display" style="font-size:13px;letter-spacing:0.4em;color:#ece6d6">MAINSPRING</span>
+          <span class="hidden sm:inline font-mono text-[11px] tracking-[0.25em] uppercase text-parchment/40 border-l border-parchment/15 pl-3 ml-1">Docs</span>
+        </a>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="hidden md:flex items-center gap-2 rounded-full border border-parchment/15 bg-ink/50 px-3.5 py-2 text-parchment/40">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span class="font-mono text-[11px] tracking-wide">Search the manual</span>
+          <span class="font-mono text-[10px] border border-parchment/20 rounded px-1.5 py-0.5 ml-2">⌘K</span>
+        </div>
+        <a href="#" class="flex items-center gap-2 rounded-full bg-parchment text-obsidian pl-4 pr-2 py-1.5 group hover:gap-2.5 transition-all duration-300">
+          <span class="font-mono text-[12px] font-medium">GitHub</span>
+          <span class="bg-obsidian rounded-full w-6 h-6 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ece6d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg)"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-[1500px] mx-auto flex">
+
+    <!-- ───────────── SIDEBAR ───────────── -->
+    <aside id="sidebar" class="fixed lg:sticky top-16 z-30 h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r border-parchment/10 bg-obsidian-soft lg:bg-transparent px-6 py-9 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+      <nav class="flex flex-col gap-9 text-[13.5px]">
+        <div>
+          <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Getting Started</div>
+          <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#introduction">Introduction</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#installation">Installation</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#quickstart">Quickstart</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Core Concepts</div>
+          <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#the-loop">The Loop</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#attestations">Attestations</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#witnesses">Witnesses</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">SDK Reference</div>
+          <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#capture">capture()</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#seal">seal()</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#verify">verify()</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-display text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-4">Resources</div>
+          <ul class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4">
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#verifying">Verifying on-chain</a></li>
+            <li><a class="side-link relative text-parchment/65 hover:text-parchment transition-colors font-mono" href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- backdrop for mobile sidebar -->
+    <div id="backdrop" class="fixed inset-0 top-16 z-20 bg-obsidian/70 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 lg:hidden"></div>
+
+    <!-- ───────────── MAIN ───────────── -->
+    <main class="flex-1 min-w-0 px-6 md:px-12 lg:px-16 py-14 lg:py-20">
+      <div class="max-w-[760px] prose-doc">
+
+        <!-- breadcrumb + title -->
+        <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mb-7">
+          <span style="color:#d4af6a">01</span>
+          <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+          <span>Getting Started</span>
+        </div>
+
+        <!-- INTRODUCTION -->
+        <section id="introduction" class="doc-section">
+          <h1 class="font-display font-medium text-parchment text-[10vw] md:text-6xl leading-[1] tracking-[-0.02em]">Introduction</h1>
+          <p class="mt-7 text-lg">Mainspring is an on-chain witness layer for autonomous agents. It meters every decision an agent makes — the intent, the inputs it weighed, the action it took — and seals it to Casper mainnet as a permanent, independently verifiable attestation.</p>
+          <p class="mt-5">Where a log file can be rewritten, a Mainspring attestation cannot. It turns <span class="italic text-parchment">&ldquo;trust me&rdquo;</span> into a receipt anyone — a counterparty, an auditor, a regulator — can verify without your cooperation.</p>
+
+          <div class="mt-9 grid sm:grid-cols-3 gap-4">
+            <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+              <div class="font-display text-2xl text-gold">4 lines</div>
+              <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">to give any agent a witness</div>
+            </div>
+            <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+              <div class="font-display text-2xl text-gold">Immutable</div>
+              <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">sealed to Casper mainnet</div>
+            </div>
+            <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
+              <div class="font-display text-2xl text-gold">Public</div>
+              <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">free to verify, forever</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- INSTALLATION -->
+        <section id="installation" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Installation</h2>
+          <p class="mt-6">Install the SDK from npm. Mainspring ships with first-class TypeScript types and works in Node 18+, Deno, and modern edge runtimes.</p>
+
+          <div class="mt-7" data-code data-lang="bash" data-file="terminal">
+<pre><code><span class="tok-punct">$</span> npm i mainspring</code></pre>
+          </div>
+
+          <p class="mt-6">Then provision a witness key from the dashboard and set it in your environment:</p>
+          <div class="mt-5" data-code data-lang="bash" data-file=".env">
+<pre><code>MAINSPRING_KEY<span class="tok-punct">=</span><span class="tok-str">msk_live_••••••••••••</span>
+MAINSPRING_NETWORK<span class="tok-punct">=</span><span class="tok-str">casper-mainnet</span></code></pre>
+          </div>
+
+          <div class="mt-8 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
+            <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Note</div>
+            <p class="!text-parchment/75 text-[15px]">Sealing on mainnet costs a fractional amount of CSPR per attestation. Use <code class="inline">casper-testnet</code> during development — it's free and behaves identically.</p>
+          </div>
+        </section>
+
+        <!-- QUICKSTART -->
+        <section id="quickstart" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Quickstart</h2>
+          <p class="mt-6">Wrap any decision your agent makes. Mainspring captures it, hashes the rationale, and anchors an attestation — all without blocking your agent's main loop.</p>
+
+          <div class="mt-7" data-code data-lang="ts" data-file="agent.ts">
+<pre><code><span class="tok-key">import</span> { Mainspring } <span class="tok-key">from</span> <span class="tok-str">"mainspring"</span>;
+
+<span class="tok-key">const</span> spring <span class="tok-punct">=</span> <span class="tok-key">new</span> <span class="tok-fn">Mainspring</span>({ key: process.env.MAINSPRING_KEY });
+
+<span class="tok-com">// every decision has its moment — witness it</span>
+<span class="tok-key">const</span> receipt <span class="tok-punct">=</span> <span class="tok-key">await</span> spring.<span class="tok-fn">seal</span>({
+  agent: <span class="tok-str">"atlas-treasury-02"</span>,
+  action: <span class="tok-str">"TRANSFER 12,400 CSPR"</span>,
+  rationale: <span class="tok-str">"Rebalance to 30% stable reserve after weekly inflow."</span>,
+});
+
+console.<span class="tok-fn">log</span>(receipt.id);     <span class="tok-com">// 0x9f3c…4a71e</span>
+console.<span class="tok-fn">log</span>(receipt.block);  <span class="tok-com">// #4,182,907</span></code></pre>
+          </div>
+
+          <p class="mt-6">That's the whole loop. The returned <code class="inline">receipt</code> is a verifiable handle you can hand to anyone — they can confirm it on-chain without trusting you, your logs, or your uptime.</p>
+        </section>
+
+        <!-- core concepts breadcrumb -->
+        <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+          <span style="color:#d4af6a">02</span>
+          <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+          <span>Core Concepts</span>
+        </div>
+
+        <!-- THE LOOP -->
+        <section id="the-loop" class="doc-section">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">The Loop</h2>
+          <p class="mt-6">Every decision runs the same clock. Mainspring is built like a watch — four movements that only mean something when they turn together.</p>
+          <ul class="mt-6 flex flex-col gap-2.5">
+            <li><span class="text-parchment font-mono text-[13px] mr-2">Act</span> — your agent decides and acts.</li>
+            <li><span class="text-parchment font-mono text-[13px] mr-2">Witness</span> — Mainspring meters the decision at the source.</li>
+            <li><span class="text-parchment font-mono text-[13px] mr-2">Anchor</span> — the attestation is sealed to Casper.</li>
+            <li><span class="text-parchment font-mono text-[13px] mr-2">Prove</span> — anyone can replay and verify it.</li>
+          </ul>
+        </section>
+
+        <!-- ATTESTATIONS -->
+        <section id="attestations" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Attestations</h2>
+          <p class="mt-6">An attestation is the sealed record of one decision. The rationale is hashed (never stored in the clear), and the resulting digest is anchored on-chain alongside the agent, action, block and timestamp.</p>
+
+          <div class="mt-7 rounded-2xl border border-parchment/15 bg-ink/60 overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-parchment/15 bg-obsidian-soft">
+              <span class="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Mainnet</span>
+              <span class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase" style="color:#7bbf8a">
+                <span style="width:6px;height:6px;border-radius:50%;background:#7bbf8a;box-shadow:0 0 8px #7bbf8a"></span>Immutable
+              </span>
+            </div>
+            <div class="p-5 md:p-6 font-mono text-xs md:text-[13px]">
+              <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-24 shrink-0">decision_id</span><span class="text-parchment/90 break-all">0x9f3c…4a71e</span></div>
+              <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-24 shrink-0">agent</span><span class="text-parchment/90">atlas-treasury-02</span></div>
+              <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-24 shrink-0">action</span><span class="text-parchment/90">TRANSFER 12,400 CSPR</span></div>
+              <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-24 shrink-0">rationale</span><span class="text-parchment/90">sha256:b8e1…09d2 (sealed)</span></div>
+              <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-24 shrink-0">block</span><span class="text-parchment/90">#4,182,907</span></div>
+              <div class="flex items-baseline gap-4 py-1.5"><span class="text-parchment/40 w-24 shrink-0">sealed_at</span><span class="text-parchment/90">2026-06-05 09:14:22 UTC</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- WITNESSES -->
+        <section id="witnesses" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Witnesses</h2>
+          <p class="mt-6">A witness is the lightweight hook that sits beside your agent. It is non-blocking, batches anchors efficiently, and survives restarts — if your process dies mid-decision, the witness reconciles on next boot so no decision goes unrecorded.</p>
+        </section>
+
+        <!-- SDK breadcrumb -->
+        <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+          <span style="color:#d4af6a">03</span>
+          <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+          <span>SDK Reference</span>
+        </div>
+
+        <!-- CAPTURE -->
+        <section id="capture" class="doc-section">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]"><code class="!bg-transparent !border-0 !text-parchment !px-0" style="font-family:Cinzel,serif">capture()</code></h2>
+          <p class="mt-6">Meter a decision without sealing it yet — useful when you want to enrich or review before anchoring. Returns a pending <code class="inline">Decision</code> you can later <code class="inline">.seal()</code>.</p>
+          <div class="mt-7" data-code data-lang="ts" data-file="capture.ts">
+<pre><code><span class="tok-key">const</span> decision <span class="tok-punct">=</span> spring.<span class="tok-fn">capture</span>({
+  agent: <span class="tok-str">"scout-procure-07"</span>,
+  action: <span class="tok-str">"APPROVE invoice #4471"</span>,
+  inputs: { amount: <span class="tok-num">4471</span>, vendor: <span class="tok-str">"verified"</span> },
+});
+
+<span class="tok-com">// …enrich, review, or gate, then:</span>
+<span class="tok-key">await</span> decision.<span class="tok-fn">seal</span>(<span class="tok-str">"Within budget envelope; SLA met."</span>);</code></pre>
+          </div>
+        </section>
+
+        <!-- SEAL -->
+        <section id="seal" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]"><span style="font-family:Cinzel,serif">seal()</span></h2>
+          <p class="mt-6">Capture and anchor in one call. Resolves once the attestation is written and the block is confirmed. Pass a <code class="inline">rationale</code> string — it is hashed client-side before it ever leaves your process.</p>
+          <div class="mt-7" data-code data-lang="ts" data-file="seal.ts">
+<pre><code><span class="tok-key">const</span> receipt <span class="tok-punct">=</span> <span class="tok-key">await</span> spring.<span class="tok-fn">seal</span>({
+  agent: <span class="tok-str">"vault-keeper-01"</span>,
+  action: <span class="tok-str">"MINT 500 wTLS"</span>,
+  rationale: <span class="tok-str">"Collateral ratio 184% &gt; 150% threshold."</span>,
+});
+
+<span class="tok-key">return</span> receipt.url; <span class="tok-com">// https://cspr.live/deploy/0x…</span></code></pre>
+          </div>
+        </section>
+
+        <!-- VERIFY -->
+        <section id="verify" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]"><span style="font-family:Cinzel,serif">verify()</span></h2>
+          <p class="mt-6">Independently confirm any attestation by id. This reads directly from Casper — it does not call Mainspring's servers, so it works even if Mainspring disappears tomorrow.</p>
+          <div class="mt-7" data-code data-lang="ts" data-file="verify.ts">
+<pre><code><span class="tok-key">const</span> result <span class="tok-punct">=</span> <span class="tok-key">await</span> Mainspring.<span class="tok-fn">verify</span>(<span class="tok-str">"0x9f3c…4a71e"</span>);
+
+<span class="tok-key">if</span> (result.valid) {
+  console.<span class="tok-fn">log</span>(result.sealedAt, result.block);
+}</code></pre>
+          </div>
+        </section>
+
+        <!-- resources breadcrumb -->
+        <div class="flex items-center gap-3 font-mono text-[11px] tracking-[0.3em] uppercase text-parchment/40 mt-24 mb-7">
+          <span style="color:#d4af6a">04</span>
+          <span class="w-8 h-px" style="background:rgba(236,230,214,0.3)"></span>
+          <span>Resources</span>
+        </div>
+
+        <!-- VERIFYING -->
+        <section id="verifying" class="doc-section">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Verifying on-chain</h2>
+          <p class="mt-6">Every receipt resolves to a public deploy on <a href="#" class="inline-link">cspr.live</a>. Hand a counterparty the link, not a promise — they can inspect the sealed digest and timestamp themselves.</p>
+        </section>
+
+        <!-- FAQ -->
+        <section id="faq" class="doc-section mt-20">
+          <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">FAQ</h2>
+          <div class="mt-7 flex flex-col gap-px rounded-2xl overflow-hidden border border-parchment/12 bg-parchment/10">
+            <div class="bg-obsidian px-6 py-5">
+              <div class="font-display text-lg text-parchment">Is my rationale stored on-chain?</div>
+              <p class="mt-2 text-[15px]">No. Only a SHA-256 digest of the rationale is anchored. The plaintext never leaves your process unless you choose to store it yourself.</p>
+            </div>
+            <div class="bg-obsidian px-6 py-5">
+              <div class="font-display text-lg text-parchment">What happens if Mainspring goes offline?</div>
+              <p class="mt-2 text-[15px]">Your attestations live on Casper, not on us. <code class="inline">verify()</code> reads the chain directly, so past records remain provable forever.</p>
+            </div>
+            <div class="bg-obsidian px-6 py-5">
+              <div class="font-display text-lg text-parchment">Does sealing block my agent?</div>
+              <p class="mt-2 text-[15px]">No. Anchoring is asynchronous and batched. <code class="inline">seal()</code> can be awaited when you need the receipt, or fired and forgotten.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- next -->
+        <div class="mt-24 flex flex-col sm:flex-row gap-4">
+          <a href="#quickstart" class="flex-1 rounded-2xl border border-parchment/12 bg-obsidian-soft px-6 py-5 hover:border-gold/40 transition-colors group">
+            <div class="font-mono text-[10px] tracking-[0.25em] uppercase text-parchment/40">Next</div>
+            <div class="font-display text-xl text-parchment mt-1 group-hover:text-gold transition-colors">Build your first witness →</div>
+          </a>
+          <a href="index.html#try" class="flex-1 rounded-2xl border border-parchment/12 bg-obsidian-soft px-6 py-5 hover:border-gold/40 transition-colors group">
+            <div class="font-mono text-[10px] tracking-[0.25em] uppercase text-parchment/40">Try it</div>
+            <div class="font-display text-xl text-parchment mt-1 group-hover:text-gold transition-colors">Seal a decision live →</div>
+          </a>
+        </div>
+
+        <div class="mt-16 pt-8 border-t border-parchment/10 flex items-center justify-between font-mono text-[11px] tracking-wide text-parchment/40">
+          <span>© 2026 Mainspring · Wound tight, kept honest.</span>
+          <a href="index.html" class="hover:text-parchment transition-colors">← Back to site</a>
+        </div>
+      </div>
+    </main>
+
+    <!-- ───────────── ON THIS PAGE ───────────── -->
+    <aside class="hidden xl:block w-60 shrink-0 py-20 pr-8">
+      <div class="sticky top-24">
+        <div class="font-mono text-[11px] tracking-[0.28em] uppercase text-parchment/40 mb-5">On this page</div>
+        <nav id="toc" class="flex flex-col gap-2.5 border-l border-parchment/12 pl-4 text-[13px]">
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#introduction">Introduction</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#installation">Installation</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#quickstart">Quickstart</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#the-loop">The Loop</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#attestations">Attestations</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#capture">capture()</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#seal">seal()</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#verify">verify()</a>
+          <a class="toc-link text-parchment/55 hover:text-parchment transition-colors font-mono" href="#faq">FAQ</a>
+        </nav>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // mobile sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('backdrop');
+    const menuBtn = document.getElementById('menuBtn');
+    function openMenu(open) {
+      sidebar.classList.toggle('-translate-x-full', !open);
+      backdrop.classList.toggle('opacity-0', !open);
+      backdrop.classList.toggle('pointer-events-none', !open);
+    }
+    menuBtn.addEventListener('click', () => openMenu(sidebar.classList.contains('-translate-x-full')));
+    backdrop.addEventListener('click', () => openMenu(false));
+    sidebar.querySelectorAll('a').forEach(a => a.addEventListener('click', () => { if (window.innerWidth < 1024) openMenu(false); }));
+
+    // code block chrome: header (dots + filename) + copy button
+    document.querySelectorAll('[data-code]').forEach(block => {
+      const file = block.getAttribute('data-file') || '';
+      const lang = block.getAttribute('data-lang') || '';
+      const pre = block.querySelector('pre');
+      const codeText = pre.textContent;
+      block.classList.add('rounded-2xl','border','border-parchment/15','overflow-hidden','bg-ink/70');
+      const header = document.createElement('div');
+      header.className = 'flex items-center justify-between px-4 py-2.5 border-b border-parchment/12 bg-obsidian-soft';
+      header.innerHTML =
+        '<div class="flex items-center gap-3">' +
+          '<div class="flex items-center gap-1.5">' +
+            '<span style="width:9px;height:9px;border-radius:50%;background:rgba(236,230,214,0.18)"></span>' +
+            '<span style="width:9px;height:9px;border-radius:50%;background:rgba(236,230,214,0.18)"></span>' +
+            '<span style="width:9px;height:9px;border-radius:50%;background:rgba(212,175,106,0.6)"></span>' +
+          '</div>' +
+          '<span class="font-mono text-[11px] tracking-wide text-parchment/55">' + file + '</span>' +
+        '</div>' +
+        '<button class="copy-btn font-mono text-[10px] tracking-[0.2em] uppercase text-parchment/45 hover:text-gold transition-colors">Copy</button>';
+      block.insertBefore(header, pre);
+      pre.classList.add('px-5','py-5','overflow-x-auto','text-[13px]','leading-[1.7]','text-parchment/90');
+      const btn = header.querySelector('.copy-btn');
+      btn.addEventListener('click', () => {
+        navigator.clipboard.writeText(codeText.trim()).catch(()=>{});
+        btn.textContent = 'Copied ✓';
+        btn.classList.add('text-gold');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('text-gold'); }, 1200);
+      });
+    });
+
+    // scroll-spy for sidebar + TOC
+    const sideLinks = [...document.querySelectorAll('.side-link')];
+    const tocLinks = [...document.querySelectorAll('.toc-link')];
+    const sections = [...document.querySelectorAll('.doc-section')];
+    const byId = id => ({ side: sideLinks.find(a => a.getAttribute('href') === '#'+id), toc: tocLinks.find(a => a.getAttribute('href') === '#'+id) });
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          sideLinks.forEach(a => a.classList.remove('active'));
+          tocLinks.forEach(a => a.classList.remove('active'));
+          const { side, toc } = byId(e.target.id);
+          if (side) side.classList.add('active');
+          if (toc) toc.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+    sections.forEach(s => io.observe(s));
+  </script>
+</body>
+</html>
