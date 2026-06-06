@@ -341,7 +341,7 @@ function Footer() {
   const cols = [
     ["Product", [["The Gap", "#top"], ["Modules", "#top"], ["The Loop", "#top"], ["The Proof", "#top"]]],
     ["Develop", [["Documentation", "#top"], ["SDK reference", "#top"], ["Repository", REPO_URL], ["Changelog", "#top"]]],
-    ["Network", [["Casper Mainnet", "#top"], ["Block explorer", "#top"], ["Status", "#top"], ["Verify a record", "#top"]]],
+    ["Network", [["Casper Testnet", "#top"], ["Block explorer", "#top"], ["Status", "#top"], ["Verify a record", "#top"]]],
   ];
   return (
     <footer className="bg-obsidian px-6 md:px-12 lg:px-20 pt-20 pb-10 border-t border-parchment/10">
@@ -378,7 +378,7 @@ function Footer() {
           <span>© 2026 Mainspring · Wound tight, kept honest.</span>
           <span className="flex items-center gap-2">
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff4d4d", boxShadow: "0 0 8px #ff4d4d" }} />
-            CASPER MAINNET
+            CASPER TESTNET
           </span>
         </div>
       </div>
