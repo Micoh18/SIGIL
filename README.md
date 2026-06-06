@@ -160,6 +160,15 @@ npm run smoke:x402-payment-fetch --prefix backend
 
 The smoke starts local x402 sidecars by default, sets a Grimoire policy matching `X402_RESOURCE_DEMO_URL`/`X402_RESOURCE_AMOUNT`/`X402_PAY_TO`, calls `payment.fetch` with `request_challenge=true`, then verifies `payment.receipt`, audit events, policy spend, and a Casper transaction hash. Set `X402_SMOKE_START_SIDECARS=false` to use already-running sidecars.
 
+For the browser `Try It` button, run the demo API and the frontend:
+
+```bash
+npm run demo:x402-http --prefix backend
+npm run front:dev
+```
+
+The button posts to `http://127.0.0.1:4180/demo/x402/payment-fetch` and renders the returned x402 receipt.
+
 Expected success transcript:
 
 ```text
@@ -182,6 +191,12 @@ casper-client get-transaction \
 ```
 
 The returned transaction must include execution info and no `Failure` or `error_message`. See `docs/casper-x402-runbook.md` for the full `.env`, manual sidecar run, expected outputs, and failure-state table.
+
+Latest verified native CSPR x402 smoke: 2026-06-06 UTC,
+`456ca636d8dd2e86268f8c1905055778753e41d95f411c827f3ecf97d215c4a4`.
+Manual `casper-client get-transaction` verification returned `execution_info`,
+`error_message: null`, no `Failure`, and a `2500000000` mote transfer at block
+height `8086501`.
 
 ## Environment
 

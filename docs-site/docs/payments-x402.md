@@ -3,14 +3,14 @@ title: Payments and x402
 description: Durable payment intents, x402 challenge capture, requirement approval, external signing, paid retry, and verified settlement receipts.
 section: Core Modules
 status: settlement-ready
-last_verified: 2026-06-05
+last_verified: 2026-06-06
 ---
 
 # Payments and x402
 
 The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, validates captured payment requirements, and then enters an explicit settlement-provider boundary. By default that provider is disabled. When real settlement is enabled, the backend delegates signing to an external signer sidecar, retries the resource with `PAYMENT-SIGNATURE`, and marks `settled` only after a verified `PAYMENT-RESPONSE`.
 
-For a reproducible real settlement flow, use the [Casper x402 Runbook](/casper-x402-runbook). The [Local Demo](/local-demo) is intentionally pre-settlement and must not be used as proof of on-chain payment.
+For a reproducible real settlement flow, use the [Casper x402 Runbook](/casper-x402-runbook). The [Local Demo](/local-demo) is intentionally pre-settlement and must not be used as proof of on-chain payment. The latest real testnet smoke passed on 2026-06-06 UTC with transaction hash `456ca636d8dd2e86268f8c1905055778753e41d95f411c827f3ecf97d215c4a4`.
 
 ## Flow States
 

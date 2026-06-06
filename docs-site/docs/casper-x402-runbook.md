@@ -3,7 +3,7 @@ title: Casper x402 Runbook
 description: Reproduce and verify real Casper testnet x402 settlement through payment.fetch, sidecars, and transaction hash verification.
 section: Core Modules
 status: settlement-ready
-last_verified: 2026-06-05
+last_verified: 2026-06-06
 ---
 
 # Casper x402 Runbook
@@ -30,6 +30,22 @@ A passing run proves:
 - Policy spend increases only after settlement.
 - `audit.tail` includes `payment.challenge_received`, `payment.settled`, and
   `policy.spend_recorded`.
+
+## Verified Testnet Run
+
+The real native CSPR x402 smoke passed on Casper testnet on 2026-06-06 UTC.
+
+```text
+payment_id=pay_88263e4a93314ad3b8b1b27247d2ed8b
+policy_id=pol-casper-x402-smoke-1780711240344
+casper_transaction_hash=456ca636d8dd2e86268f8c1905055778753e41d95f411c827f3ecf97d215c4a4
+settlement_status=settled
+policy_spend=0 -> 2500000000
+```
+
+Manual `casper-client get-transaction` verification returned `execution_info`,
+`error_message: null`, and no `Failure`. The transaction executed a native CSPR
+transfer of `2500000000` motes at block height `8086501`.
 
 ## Prerequisites
 
@@ -286,4 +302,3 @@ npm run build --prefix docs-site
 npm test --prefix backend
 npm run build --prefix backend
 ```
-
