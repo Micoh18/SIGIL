@@ -3,7 +3,29 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MAINSPRING — Documentation</title>
+<title>Mr Mainspring — Documentation</title>
+<meta name="description" content="Full technical reference for Mr Mainspring — the MCP server that seals AI agent decisions to Casper mainnet. Tools, schemas, environment reference, and deep dives." />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#15120d" />
+<link rel="canonical" href="https://mrmainspring.xyz/Documentation.html" />
+
+<!-- Open Graph -->
+<meta property="og:type"        content="article" />
+<meta property="og:site_name"   content="Mr Mainspring" />
+<meta property="og:url"         content="https://mrmainspring.xyz/Documentation.html" />
+<meta property="og:title"       content="Mr Mainspring — Documentation" />
+<meta property="og:description" content="Full technical reference: MCP tools, Memory Envelope schema, x402 payment flow, Casper anchoring, storage backends, and environment reference." />
+<meta property="og:image"       content="https://mrmainspring.xyz/assets/og-image.jpg" />
+<meta property="og:image:width"  content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt"   content="Agent Witness — Mr Mainspring documentation" />
+
+<!-- Twitter / X -->
+<meta name="twitter:card"        content="summary_large_image" />
+<meta name="twitter:title"       content="Mr Mainspring — Documentation" />
+<meta name="twitter:description" content="MCP tools, schemas, Casper anchoring, x402 payments, environment reference. Full technical docs." />
+<meta name="twitter:image"       content="https://mrmainspring.xyz/assets/og-image.jpg" />
+
 <link rel="icon" type="image/png" href="assets/favicon.png" />
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -409,18 +431,18 @@ npm run build              <span class="tok-com"># compiles TypeScript → dist/
 
         <div class="mt-7 rounded-2xl border border-parchment/15 bg-ink/60 overflow-hidden">
           <div class="flex items-center justify-between px-5 py-3 border-b border-parchment/15 bg-obsidian-soft">
-            <span class="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Mainnet</span>
+            <span class="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Testnet</span>
             <span class="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase" style="color:#7bbf8a">
               <span style="width:6px;height:6px;border-radius:50%;background:#7bbf8a;box-shadow:0 0 8px #7bbf8a"></span>Immutable
             </span>
           </div>
           <div class="p-5 md:p-6 font-mono text-xs md:text-[13px]">
-            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">agent_id</span><span class="text-parchment/90">atlas-treasury-02</span></div>
-            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">memory_id</span><span class="text-parchment/90 break-all">mem_4f2c8e1a-b3d7-4a9c-…</span></div>
-            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">type</span><span class="text-parchment/90">decision</span></div>
-            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">content_hash</span><span class="text-parchment/90 break-all">9f3c4a71e0b2… (SHA-256, on-chain)</span></div>
-            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">anchor_id</span><span class="text-parchment/90 break-all">c7f8a0e3d… (contract storage key)</span></div>
-            <div class="flex items-baseline gap-4 py-1.5"><span class="text-parchment/40 w-32 shrink-0">created_at</span><span class="text-parchment/90">2026-06-05T09:14:22Z</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">agent_id</span><span class="text-parchment/90">mainspring-witness</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">type</span><span class="text-parchment/90">system_event</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">anchor_tx</span><span class="text-parchment/90 break-all">91fb904e47b6…bc555c</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">network</span><span class="text-parchment/90">Casper testnet</span></div>
+            <div class="flex items-baseline gap-4 py-1.5 border-b border-parchment/[0.06]"><span class="text-parchment/40 w-32 shrink-0">execution_error</span><span class="text-parchment/90" style="color:#9ccf9c">null</span></div>
+            <div class="flex items-baseline gap-4 py-1.5"><span class="text-parchment/40 w-32 shrink-0">sealed_at</span><span class="text-parchment/90">2026-06-06 UTC · <a href="https://testnet.cspr.live/transaction/91fb904e47b600b0a9e4f6571a3412c83187000e9ceab19ba26cc23fabec555c" target="_blank" rel="noopener" class="inline-link">verify ↗</a></span></div>
           </div>
         </div>
       </section>
