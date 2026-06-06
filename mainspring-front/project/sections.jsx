@@ -73,7 +73,7 @@ function Modules() {
     {
       num: "I", part: "The Escapement", title: "Capture",
       body: "A lightweight hook sits beside your agent and meters every decision at the instant it is made — the intent, the inputs it weighed, the action it took.",
-      meta: "SDK · 4 lines",
+      meta: "CLI · 2 commands",
     },
     {
       num: "II", part: "The Barrel", title: "Anchor",

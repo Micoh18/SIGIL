@@ -71,7 +71,7 @@ A passing local demo does not mean:
 
 ## Security Hardening
 
-- Local `GRIMOIRE_MASTER_KEY` management is environment-variable based.
+- Local `GRIMOIRE_MASTER_KEY` management is file/env based: `mainspring setup` generates it into the user config file by default, and `SIGIL_ENV_FILE` can point at a private env file.
 - KMS/HSM integration is not implemented.
 - Period spend is checked against current-period usage before signing and recorded after verified settlement. The local stores do not yet provide an atomic cross-process spend reservation.
 - Signed payloads are not returned through MCP outputs. The backend stores only `signed_payload_hash`.

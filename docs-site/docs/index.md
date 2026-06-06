@@ -53,7 +53,7 @@ The memory-anchor contract is deployed on Casper testnet and real anchor submiss
 | --- | --- | --- |
 | Can the docs and generated LLM files build? | [Quickstart](/quickstart) | `npm.cmd run build --prefix docs-site` completes and regenerates public LLM files. |
 | What should an evaluator run? | [Local Demo](/local-demo) | Secret metadata, policy hash, payment intent state, memory hash, and audit events appear in sequence. |
-| What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores under `SIGIL_DATA_DIR`. |
+| What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores in the user's app data directory by default. |
 | What is not proven yet? | [Current Limitations](/current-limitations) | Local demos do not prove real settlement; memory-anchor finality checks and production key custody remain separate work. |
 
 ## Documentation Map

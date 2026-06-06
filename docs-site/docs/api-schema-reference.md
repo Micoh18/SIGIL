@@ -60,7 +60,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for genuinely verified settlement. The current backend does not emit it.
+`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable`; with `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SIGNER_URL`, and a resource/facilitator response that verifies with a transaction hash, `payment.fetch` can emit `settled`.
 
 ## Payment Denial Reasons
 

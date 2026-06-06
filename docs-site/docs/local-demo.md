@@ -15,8 +15,8 @@ cd backend
 npm run demo:stdio
 ```
 
-The command builds the backend, starts the same MCP stdio entry point exposed by the `mainspring` CLI, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to `.sigil/`.
-The script sets an explicit missing `SIGIL_ENV_FILE`, so it does not pick up real Casper/Supabase/x402 settings from your local `.env`.
+The command builds the backend, starts the same MCP stdio entry point exposed by the `mainspring` CLI, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to the user's normal Mr Mainspring app data directory.
+The script sets an explicit missing `SIGIL_ENV_FILE` plus a temp `SIGIL_DATA_DIR`, so it does not pick up real Casper/Supabase/x402 settings from your user config or local `.env`.
 
 NPM prints normal script headers first. The stable transcript begins with:
 

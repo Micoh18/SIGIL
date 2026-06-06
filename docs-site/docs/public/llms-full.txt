@@ -33,7 +33,7 @@ The memory-anchor contract is deployed on Casper testnet and real anchor submiss
 | --- | --- | --- |
 | Can the docs and generated LLM files build? | [Quickstart](/quickstart) | `npm.cmd run build --prefix docs-site` completes and regenerates public LLM files. |
 | What should an evaluator run? | [Local Demo](/local-demo) | Secret metadata, policy hash, payment intent state, memory hash, and audit events appear in sequence. |
-| What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores under `SIGIL_DATA_DIR`. |
+| What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores in the user's app data directory by default. |
 | What is not proven yet? | [Current Limitations](/current-limitations) | Local demos do not prove real settlement; memory-anchor finality checks and production key custody remain separate work. |
 
 ## Documentation Map
@@ -230,12 +230,12 @@ Mr Mainspring is organized around MCP tools backed by small service modules and 
 
 1. **Interface:** The implemented runtime surface is a stdio MCP server. Agents call named MCP tools; there is no remote HTTP MCP transport yet.
 2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
-3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR` by default. When `SIGIL_STORAGE_BACKEND=supabase`, it writes the same domain records to Supabase JSONB tables through the Supabase REST API.
+3. **State:** The backend persists JSON stores under the user's Mr Mainspring app data directory by default. `SIGIL_DATA_DIR` can override that path, and `SIGIL_STORAGE_BACKEND=supabase` writes the same domain records to Supabase JSONB tables through the Supabase REST API.
 4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
-5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and can persist an unavailable settlement receipt when the settlement provider is disabled. It stops before production Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
+5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and persists an unavailable settlement receipt when the settlement provider is disabled. With real settlement enabled and a signer sidecar configured, it can request a signed payload, retry the paid resource, verify `PAYMENT-RESPONSE`, and persist `settled` only when a transaction hash is present.
 6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
 
-For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification and x402 settlement still require separate external checks.
+For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification remains a separate external check. Real x402 settlement requires the signer/resource/facilitator path documented in the Casper x402 runbook.
 
 ## System Map
 
@@ -264,7 +264,8 @@ Mr Mainspring TypeScript backend
               `-- append-only event view
 
 Store adapter
-        |-- JSON files under SIGIL_DATA_DIR
+        |-- JSON files under the user app data directory
+        |-- SIGIL_DATA_DIR override
         `-- optional Supabase tables with JSONB records
 ```
 
@@ -274,7 +275,7 @@ Store adapter
 | --- | --- | --- |
 | 1 | MCP tool wrapper | Validate the tool input shape and call the relevant service. |
 | 2 | Service module | Apply domain rules such as canonical memory hashing, policy checks, or payment state transitions. |
-| 3 | Store | Persist records under `SIGIL_DATA_DIR` or Supabase and return durable ids. |
+| 3 | Store | Persist records under the user app data directory, a `SIGIL_DATA_DIR` override, or Supabase, and return durable ids. |
 | 4 | Audit | Append a redacted event for later inspection. |
 | 5 | External boundary | Return pending or unavailable metadata unless a real external integration is implemented and verified. |
 
@@ -1585,8 +1586,8 @@ cd backend
 npm run demo:stdio
 ```
 
-The command builds the backend, starts the same MCP stdio entry point exposed by the `mainspring` CLI, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to `.sigil/`.
-The script sets an explicit missing `SIGIL_ENV_FILE`, so it does not pick up real Casper/Supabase/x402 settings from your local `.env`.
+The command builds the backend, starts the same MCP stdio entry point exposed by the `mainspring` CLI, writes demo files under the OS temp directory, validates every response, and exits non-zero on failure. It does not write to the user's normal Mr Mainspring app data directory.
+The script sets an explicit missing `SIGIL_ENV_FILE` plus a temp `SIGIL_DATA_DIR`, so it does not pick up real Casper/Supabase/x402 settings from your user config or local `.env`.
 
 NPM prints normal script headers first. The stable transcript begins with:
 
@@ -1697,7 +1698,7 @@ settlement_unavailable
 settled
 ```
 
-`settled` is reserved for genuinely verified settlement. The current backend does not emit it.
+`settled` is reserved for genuinely verified settlement. The default backend wiring keeps real settlement disabled and persists `settlement_unavailable`; with `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SIGNER_URL`, and a resource/facilitator response that verifies with a transaction hash, `payment.fetch` can emit `settled`.
 
 ## Payment Denial Reasons
 
@@ -1835,7 +1836,7 @@ A passing local demo does not mean:
 
 ## Security Hardening
 
-- Local `GRIMOIRE_MASTER_KEY` management is environment-variable based.
+- Local `GRIMOIRE_MASTER_KEY` management is file/env based: `mainspring setup` generates it into the user config file by default, and `SIGIL_ENV_FILE` can point at a private env file.
 - KMS/HSM integration is not implemented.
 - Period spend is checked against current-period usage before signing and recorded after verified settlement. The local stores do not yet provide an atomic cross-process spend reservation.
 - Signed payloads are not returned through MCP outputs. The backend stores only `signed_payload_hash`.

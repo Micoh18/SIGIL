@@ -247,7 +247,7 @@
 
         <div class="mt-9 grid sm:grid-cols-3 gap-4">
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
-            <div class="font-display text-2xl text-gold">4 lines</div>
+            <div class="font-display text-2xl text-gold">2 commands</div>
             <div class="font-mono text-[11px] tracking-wide text-parchment/50 mt-1.5 leading-relaxed">to give any agent a witness</div>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
@@ -265,7 +265,7 @@
           <ul class="grid sm:grid-cols-2 gap-x-8 gap-y-2">
             <li>Transport: <code class="inline">MCP · stdio</code></li>
             <li>Runtime: <code class="inline">Node.js 20+ / TypeScript</code></li>
-            <li>On-chain: <code class="inline">Casper mainnet / testnet</code></li>
+            <li>On-chain: <code class="inline">Casper testnet</code></li>
             <li>Encryption: <code class="inline">AES-256-GCM</code></li>
             <li>Storage: <code class="inline">File JSON</code> or <code class="inline">Supabase</code></li>
             <li>Hashing: <code class="inline">SHA-256 · canonical JSON</code></li>
@@ -395,7 +395,7 @@ mainspring config</code></pre>
 <line x1="340" y1="72" x2="340" y2="118" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);stroke-width:1.5px"/>
 <rect x="80" y="118" width="520" height="280" rx="14" stroke-width="0.5" style="fill:rgb(68, 68, 65);stroke:rgb(180, 178, 169)"/>
 <text x="340" y="142" text-anchor="middle" dominant-baseline="central" style="fill:rgb(211, 209, 199);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">McpServer</text>
-<text x="340" y="158" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">9 tools · stdio transport</text>
+<text x="340" y="158" text-anchor="middle" dominant-baseline="central" style="fill:rgb(180, 178, 169);font-family:'Space Mono',monospace;font-size:12px">11 tools · stdio transport</text>
 <rect x="104" y="172" width="210" height="68" rx="8" stroke-width="0.5" style="fill:rgb(8, 80, 65);stroke:rgb(93, 202, 165)"/>
 <text x="209" y="199" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159, 225, 203);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Memory</text>
 <text x="209" y="216" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93, 202, 165);font-family:'Space Mono',monospace;font-size:12px">write · read · search · verify</text>
@@ -415,7 +415,7 @@ mainspring config</code></pre>
 <text x="400" y="430" text-anchor="start" style="fill:rgb(194, 192, 182);font-family:'Space Mono',monospace;font-size:12px">casper-client · spawn()</text>
 <line x1="340" y1="398" x2="340" y2="448" marker-end="url(#arrow)" style="fill:none;stroke:rgb(156, 154, 146);stroke-width:1.5px"/>
 <rect x="190" y="448" width="300" height="72" rx="8" stroke-width="0.5" style="fill:rgb(60, 52, 137);stroke:rgb(175, 169, 236)"/>
-<text x="340" y="473" text-anchor="middle" dominant-baseline="central" style="fill:rgb(206, 203, 246);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Casper Mainnet / Testnet</text>
+<text x="340" y="473" text-anchor="middle" dominant-baseline="central" style="fill:rgb(206, 203, 246);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">Casper Testnet</text>
 <text x="340" y="492" text-anchor="middle" dominant-baseline="central" style="fill:rgb(175, 169, 236);font-family:'Space Mono',monospace;font-size:12px">memory-anchor contract · hashes only</text>
             </svg>
           </div>
@@ -431,7 +431,7 @@ mainspring config</code></pre>
         <ul class="mt-6 flex flex-col gap-3">
           <li><span class="text-parchment font-mono text-[13px] mr-2">Act</span> — your agent decides and acts on available data.</li>
           <li><span class="text-parchment font-mono text-[13px] mr-2">Witness</span> — Mainspring meters the decision at the source, hashing the full envelope before it can be altered.</li>
-          <li><span class="text-parchment font-mono text-[13px] mr-2">Anchor</span> — the content hash and anchor id are submitted to Casper via <code class="inline">casper-client</code>, creating an immutable on-chain record.</li>
+          <li><span class="text-parchment font-mono text-[13px] mr-2">Anchor</span> — the content hash and anchor id stay as pending local metadata by default, or are submitted to Casper testnet through <code class="inline">casper-client</code> only when real submission is explicitly enabled.</li>
           <li><span class="text-parchment font-mono text-[13px] mr-2">Prove</span> — anyone can recompute the hash from the stored envelope and verify it against the chain, independently, without trusting Mainspring.</li>
         </ul>
       </section>
@@ -734,17 +734,17 @@ mainspring config</code></pre>
 <text x="265" y="362" text-anchor="middle" dominant-baseline="central" style="fill:rgb(240,153,123);font-family:'Space Mono',monospace;font-size:12px">DisabledX402SettlementProvider</text>
 <rect x="410" y="328" width="170" height="44" rx="8" stroke-width="0.5" style="fill:rgb(8,80,65);stroke:rgb(93,202,165)"/>
 <text x="495" y="346" text-anchor="middle" dominant-baseline="central" style="fill:rgb(159,225,203);font-family:'Space Mono',monospace;font-size:14px;font-weight:500">settled</text>
-<text x="495" y="362" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93,202,165);font-family:'Space Mono',monospace;font-size:12px">coming soon</text>
+<text x="495" y="362" text-anchor="middle" dominant-baseline="central" style="fill:rgb(93,202,165);font-family:'Space Mono',monospace;font-size:12px">verified provider result</text>
 <line x1="370" y1="350" x2="408" y2="350" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px" marker-end="url(#arrow-pay)"/>
 <rect x="80" y="412" width="12" height="12" rx="2" style="fill:rgba(222,220,209,0.15)"/>
 <text x="98" y="422" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">current flow</text>
 <line x1="160" y1="418" x2="192" y2="418" style="stroke:rgba(222,220,209,0.15);stroke-width:0.5px;stroke-dasharray:4px,3px" mask="url(#imagine-text-gaps-pay)"/>
-<text x="198" y="422" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">future state</text>
+<text x="198" y="422" style="fill:rgb(194,192,182);font-family:'Space Mono',monospace;font-size:12px">configured settlement path</text>
             </svg>
           </div>
         </div>
 
-        <p class="mt-7">Not yet implemented: real Casper x402 signed payload, paid retry to the resource, and facilitator settlement verification. The <code class="inline">DisabledX402SettlementProvider</code> always returns <code class="inline">settlement_unavailable</code>. Both <code class="inline">CASPER_ENABLE_REAL_SUBMISSION</code> and <code class="inline">X402_ENABLE_REAL_SETTLEMENT</code> are explicit opt-in gates — they never default to <code class="inline">true</code>.</p>
+        <p class="mt-7">Default installs stop honestly at <code class="inline">settlement_unavailable</code> because the settlement provider is disabled. With <code class="inline">X402_ENABLE_REAL_SETTLEMENT=true</code>, <code class="inline">X402_SIGNER_URL</code>, a funded Casper testnet key, and the signer/resource/facilitator sidecars from the runbook, <code class="inline">payment.fetch</code> retries the paid resource with <code class="inline">PAYMENT-SIGNATURE</code> and persists <code class="inline">settled</code> only after <code class="inline">PAYMENT-RESPONSE</code> verifies with a Casper transaction hash.</p>
 
         <p class="mt-4">Use <code class="inline">payment.receipt</code> to read a payment intent at any stage — it returns the full record including status, denial reason, and challenge requirements.</p>
       </section>
@@ -839,11 +839,10 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
               <thead><tr><th>·</th><th>File (default)</th><th>Supabase</th></tr></thead>
               <tbody>
                 <tr><td class="field">Activate</td><td class="desc"><code class="inline">SIGIL_STORAGE_BACKEND=file</code></td><td class="desc"><code class="inline">SIGIL_STORAGE_BACKEND=supabase</code></td></tr>
-                <tr><td class="field">Memory</td><td class="desc"><code class="inline">.sigil/memory.json</code></td><td class="desc"><code class="inline">sigil_memory_entries</code></td></tr>
-                <tr><td class="field">Secrets</td><td class="desc"><code class="inline">.sigil/grimoire-secrets.json</code></td><td class="desc"><code class="inline">sigil_secrets</code></td></tr>
-                <tr><td class="field">Policies</td><td class="desc"><code class="inline">.sigil/grimoire-policies.json</code></td><td class="desc"><code class="inline">sigil_policies</code></td></tr>
-                <tr><td class="field">Payments</td><td class="desc"><code class="inline">.sigil/payments.json</code></td><td class="desc"><code class="inline">sigil_payment_intents</code></td></tr>
-                <tr><td class="field">Audit</td><td class="desc"><code class="inline">.sigil/audit.json</code></td><td class="desc"><code class="inline">sigil_audit_events</code></td></tr>
+                <tr><td class="field">Memory</td><td class="desc"><code class="inline">&lt;user data&gt;/memory.json</code></td><td class="desc"><code class="inline">sigil_memories</code></td></tr>
+                <tr><td class="field">Grimoire</td><td class="desc"><code class="inline">&lt;user data&gt;/grimoire.json</code></td><td class="desc"><code class="inline">sigil_secrets</code> / <code class="inline">sigil_policies</code></td></tr>
+                <tr><td class="field">Payments</td><td class="desc"><code class="inline">&lt;user data&gt;/payments.json</code></td><td class="desc"><code class="inline">sigil_payment_intents</code> / <code class="inline">sigil_payment_receipts</code></td></tr>
+                <tr><td class="field">Audit</td><td class="desc"><code class="inline">&lt;user data&gt;/audit.json</code></td><td class="desc"><code class="inline">sigil_audit_events</code></td></tr>
                 <tr><td class="field">Setup</td><td class="desc">None — auto-created</td><td class="desc">Apply <code class="inline">backend/supabase/schema.sql</code></td></tr>
                 <tr><td class="field">Best for</td><td class="desc">Development, demos, single-agent</td><td class="desc">Production, multi-agent, persistence</td></tr>
               </tbody>
@@ -963,7 +962,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
           </div>
           <div class="bg-obsidian px-6 py-5">
             <div class="font-display text-lg text-parchment">Is real x402 settlement implemented?</div>
-            <p class="mt-2 text-[15px]">Not yet. The three-stage flow — policy check, HTTP 402 challenge, settlement — is fully wired, but <code class="inline">DisabledX402SettlementProvider</code> always returns <code class="inline">settlement_unavailable</code>. This is intentional and honest; fake receipts are never returned.</p>
+            <p class="mt-2 text-[15px]">Not by default. The local install keeps settlement disabled and returns <code class="inline">settlement_unavailable</code>. The real Casper testnet path is wired through the runbook sidecars and only returns <code class="inline">settled</code> when a verified settlement response includes a Casper transaction hash.</p>
           </div>
         </div>
       </section>

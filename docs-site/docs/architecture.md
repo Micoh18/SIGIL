@@ -14,12 +14,12 @@ Mr Mainspring is organized around MCP tools backed by small service modules and 
 
 1. **Interface:** The implemented runtime surface is a stdio MCP server. Agents call named MCP tools; there is no remote HTTP MCP transport yet.
 2. **Services:** Tool handlers delegate to local TypeScript services for memory, Grimoire, payments, anchoring, and audit. Services own validation, hashing, state transitions, and redaction.
-3. **State:** The backend persists JSON stores under `SIGIL_DATA_DIR` by default. When `SIGIL_STORAGE_BACKEND=supabase`, it writes the same domain records to Supabase JSONB tables through the Supabase REST API.
+3. **State:** The backend persists JSON stores under the user's Mr Mainspring app data directory by default. `SIGIL_DATA_DIR` can override that path, and `SIGIL_STORAGE_BACKEND=supabase` writes the same domain records to Supabase JSONB tables through the Supabase REST API.
 4. **Proof boundary:** Memory bodies and secrets stay local. The backend computes SHA-256 proof material and sends only hash metadata toward the Casper anchor client interface.
-5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and can persist an unavailable settlement receipt when the settlement provider is disabled. It stops before production Grimoire-backed signing, paid retry, facilitator settlement, or Casper settlement proof.
+5. **Payment boundary:** `payment.fetch` approves or denies policy, persists an intent, can capture the first x402 challenge, and persists an unavailable settlement receipt when the settlement provider is disabled. With real settlement enabled and a signer sidecar configured, it can request a signed payload, retry the paid resource, verify `PAYMENT-RESPONSE`, and persist `settled` only when a transaction hash is present.
 6. **Audit:** Each major service emits redacted audit events so a local run can be reconstructed without exposing secret values or signed payment material.
 
-For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification and x402 settlement still require separate external checks.
+For evaluator work, this means a successful default demo proves local MCP semantics and durable state transitions. Casper submission can be enabled with real testnet env, but automatic finality verification remains a separate external check. Real x402 settlement requires the signer/resource/facilitator path documented in the Casper x402 runbook.
 
 ## System Map
 
@@ -48,7 +48,8 @@ Mr Mainspring TypeScript backend
               `-- append-only event view
 
 Store adapter
-        |-- JSON files under SIGIL_DATA_DIR
+        |-- JSON files under the user app data directory
+        |-- SIGIL_DATA_DIR override
         `-- optional Supabase tables with JSONB records
 ```
 
@@ -58,7 +59,7 @@ Store adapter
 | --- | --- | --- |
 | 1 | MCP tool wrapper | Validate the tool input shape and call the relevant service. |
 | 2 | Service module | Apply domain rules such as canonical memory hashing, policy checks, or payment state transitions. |
-| 3 | Store | Persist records under `SIGIL_DATA_DIR` or Supabase and return durable ids. |
+| 3 | Store | Persist records under the user app data directory, a `SIGIL_DATA_DIR` override, or Supabase, and return durable ids. |
 | 4 | Audit | Append a redacted event for later inspection. |
 | 5 | External boundary | Return pending or unavailable metadata unless a real external integration is implemented and verified. |
 
