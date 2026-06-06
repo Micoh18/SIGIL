@@ -212,13 +212,14 @@ function TheLoop() {
 
 function TheProof() {
   const [ref, inView] = useRevealS({ threshold: 0.18 });
+  const TX = "91fb904e47b600b0a9e4f6571a3412c83187000e9ceab19ba26cc23fabec555c";
   const rows = [
-    ["decision_id", "0x9f3c\u20264a71e"],
-    ["agent", "atlas-treasury-02"],
-    ["action", "TRANSFER 12,400 CSPR"],
-    ["rationale", "sha256:b8e1\u202609d2 (sealed)"],
-    ["block", "#4,182,907"],
-    ["sealed_at", "2026-06-05 09:14:22 UTC"],
+    ["anchor_tx",  TX.slice(0,8) + "\u2026" + TX.slice(-6)],
+    ["agent",      "mainspring-witness"],
+    ["action",     "ANCHOR memory hash to Casper testnet"],
+    ["content",    "sha256:" + TX.slice(0,8) + "\u2026" + TX.slice(-8) + " (sealed)"],
+    ["network",    "Casper testnet"],
+    ["sealed_at",  "2026-06-06 UTC"],
   ];
   return (
     <section id="proof" ref={ref} className="bg-obsidian px-6 md:px-12 lg:px-20 py-28 md:py-40">
@@ -257,7 +258,7 @@ function TheProof() {
             <div className={"mt-10 rounded-[2rem] border border-parchment/20 bg-ink/60 overflow-hidden reveal " + (inView ? "is-in" : "")}
               style={{ animationDelay: "0.3s" }}>
               <div className="flex items-center justify-between px-5 py-3 border-b border-parchment/15 bg-obsidian-soft">
-                <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Mainnet</span>
+                <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-parchment/55">Attestation · Casper Testnet</span>
                 <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase" style={{ color: "#7bbf8a" }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#7bbf8a", boxShadow: "0 0 8px #7bbf8a" }} />
                   Immutable
@@ -272,7 +273,10 @@ function TheProof() {
                 ))}
                 <div className="flex items-center gap-3 mt-5 pt-4 border-t border-parchment/15">
                   <span className="font-display text-gold text-lg">✦</span>
-                  <span className="text-parchment/55">Sealed by Mr. Mainspring · verify at <span className="text-gold">cspr.live</span></span>
+                  <a href={"https://testnet.cspr.live/transaction/" + TX} target="_blank" rel="noopener"
+                    className="text-parchment/55 hover:text-parchment transition-colors">
+                    Sealed by Mr. Mainspring · <span className="text-gold underline underline-offset-2">verify on-chain ↗</span>
+                  </a>
                 </div>
               </div>
             </div>
