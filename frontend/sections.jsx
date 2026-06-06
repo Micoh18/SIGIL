@@ -292,7 +292,7 @@ function TheProof() {
 function Repo() {
   const [ref, inView] = useRevealS({ threshold: 0.2 });
   const [copied, setCopied] = useStateS(false);
-  const cmd = "npm install -g mrmainspring; mainspring setup cursor";
+  const cmd = "npx -y mrmainspring setup cursor";
   const copy = () => {
     try { navigator.clipboard.writeText(cmd); } catch (e) {}
     setCopied(true); setTimeout(() => setCopied(false), 900);
@@ -350,7 +350,7 @@ function Repo() {
 const FOOTER_LINKS = {
   "The Gap": "#gap", "Modules": "#modules", "The Loop": "#loop", "The Proof": "#proof",
   "Documentation": "Documentation.html", "SDK reference": "Documentation.html#capture",
-  "Repository": "https://github.com/Micoh18/Mr-Mainspring", "Changelog": "#",
+  "Repository": "https://github.com/Micoh18/Mr-Mainspring", "Changelog": "https://github.com/Micoh18/Mr-Mainspring/blob/main/CHANGELOG.md",
   "Casper Testnet": "https://testnet.cspr.live", "Block explorer": "https://testnet.cspr.live",
   "Status": "#", "Verify a record": "https://testnet.cspr.live",
 };

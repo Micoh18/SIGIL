@@ -293,7 +293,8 @@ mainspring setup claude
 <pre><code><span class="tok-punct">{</span>
   <span class="tok-str">"mcpServers"</span><span class="tok-punct">: {</span>
     <span class="tok-str">"mainspring"</span><span class="tok-punct">: {</span>
-      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"mainspring"</span>
+      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"npx"</span><span class="tok-punct">,</span>
+      <span class="tok-str">"args"</span><span class="tok-punct">:</span> <span class="tok-punct">[</span><span class="tok-str">"-y"</span><span class="tok-punct">,</span> <span class="tok-str">"mrmainspring"</span><span class="tok-punct">]</span>
     <span class="tok-punct">}</span>
   <span class="tok-punct">}</span>
 <span class="tok-punct">}</span></code></pre>
@@ -303,7 +304,7 @@ mainspring setup claude
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 1</div>
             <div class="font-display text-xl text-parchment">Install</div>
-            <p class="!text-parchment/65 text-[14px] mt-2">Node.js 20+ and <code class="inline">npm install -g mrmainspring</code> put the <code class="inline">mainspring</code> command on PATH.</p>
+            <p class="!text-parchment/65 text-[14px] mt-2">Node.js 20+ required. No global install needed — <code class="inline">npx -y mrmainspring setup</code> runs it directly.</p>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 2</div>

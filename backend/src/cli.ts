@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { spawnSync } from "node:child_process";
 import { loadConfig } from "./config.js";
 import { ensureGrimoireMasterKey, loadLocalEnvFile, resolveEnvPath } from "./env-file.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 
 const HELP = `Mr Mainspring MCP server
 
@@ -16,12 +17,14 @@ Usage:
   mainspring config           Print MCP client config JSON
   mainspring setup [client]   Initialize local files and print MCP config
   mainspring doctor           Check the local setup
+  mainspring update           Show how to update to the latest version
 
 MCP client config:
   {
     "mcpServers": {
       "mainspring": {
-        "command": "mainspring"
+        "command": "npx",
+        "args": ["-y", "mrmainspring"]
       }
     }
   }
@@ -78,6 +81,16 @@ export function runCliCommand(args: string[]): boolean {
     return true;
   }
 
+  if (command === "update") {
+    process.stdout.write(
+      "To update Mr Mainspring:\n\n" +
+      "  npm install -g mrmainspring@latest\n\n" +
+      "or if using npx (no install needed):\n\n" +
+      "  npx mrmainspring@latest\n\n"
+    );
+    return true;
+  }
+
   process.stderr.write(`Unknown command: ${command}\n\n${HELP}`);
   process.exitCode = 1;
   return true;
@@ -121,7 +134,8 @@ export function formatMcpConfig(): string {
     {
       mcpServers: {
         mainspring: {
-          command: "mainspring"
+          command: "npx",
+          args: ["-y", "mrmainspring"]
         }
       }
     },
@@ -152,6 +166,14 @@ function formatDoctorReport(env: NodeJS.ProcessEnv = process.env): string {
   lines.push(formatCheck(existsSync(envFile), `Config file: ${envFile}`, "Config file missing; run mainspring init"));
   lines.push(formatCheck(existsSync(paths.dataDir), `Data dir: ${paths.dataDir}`, "Data dir missing; run mainspring init"));
   lines.push(formatCheck(existsSync(paths.logsDir), `Logs dir: ${paths.logsDir}`, "Logs dir missing; run mainspring init"));
+
+  const casperBin = envCopy.CASPER_CLIENT_BIN ?? "casper-client";
+  const casperProbe = spawnSync(casperBin, ["--version"], { stdio: "pipe" });
+  lines.push(formatCheck(
+    !casperProbe.error,
+    `casper-client: ${casperBin}`,
+    `casper-client not found at "${casperBin}" — optional, needed for on-chain anchoring (cargo install casper-client)`
+  ));
 
   try {
     const config = loadConfig(envCopy);
