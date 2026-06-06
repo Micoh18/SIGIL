@@ -84,7 +84,11 @@ async function main(): Promise<void> {
 
   try {
     if (startSidecars) {
-      for (const starter of [startFacilitator, startSigner, startResource]) {
+      const sidecars =
+        config.x402.settlementMode === "casper-cli"
+          ? [startResource]
+          : [startFacilitator, startSigner, startResource];
+      for (const starter of sidecars) {
         const started = await starter(config);
         if (started) {
           startedServers.push(started);
@@ -452,10 +456,13 @@ function parseJsonToolResult<T>(result: ToolCallResult): T {
 function assertRealSettlementConfig(config: ReturnType<typeof loadConfig>): void {
   assert(config.x402.settlementEnabled, "X402_ENABLE_REAL_SETTLEMENT must be true");
   assert(
-    config.x402.settlementMode === "resource-retry",
-    `X402_SETTLEMENT_MODE must be resource-retry for the full paid-resource smoke, got ${config.x402.settlementMode}`
+    config.x402.settlementMode === "resource-retry" ||
+    config.x402.settlementMode === "casper-cli",
+    `X402_SETTLEMENT_MODE must be resource-retry or casper-cli, got ${config.x402.settlementMode}`
   );
-  assert(config.x402.signerUrl, "X402_SIGNER_URL is required");
+  if (config.x402.settlementMode === "resource-retry") {
+    assert(config.x402.signerUrl, "X402_SIGNER_URL is required for resource-retry mode");
+  }
   assert(config.casper.submissionEnabled, "CASPER_ENABLE_REAL_SUBMISSION must be true");
   assert(config.casper.rpcUrl, "CASPER_RPC_URL is required");
   assert(config.casper.accountKeyPath, "CASPER_ACCOUNT_KEY_PATH is required");
