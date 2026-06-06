@@ -333,9 +333,13 @@ mainspring config</code></pre>
       <!-- QUICKSTART -->
       <section id="quickstart" class="doc-section mt-20">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Quickstart</h2>
-        <p class="mt-6">Once the MCP server is connected, your agent can call Mainspring tools directly. The local user path is: write a memory, get a deterministic receipt, then verify the hash. Casper submission stays pending unless you explicitly configure real testnet anchoring.</p>
+        <p class="mt-6">Once the MCP server is connected, your agent has 11 tools across four modules. The path from zero to a verifiable on-chain attestation is three calls.</p>
 
-        <div class="mt-7" data-code data-lang="json" data-file="memory.write — input">
+        <!-- Step 1 -->
+        <h3 class="font-display text-xl text-parchment mt-10 mb-4">Step 1 — Seal a memory</h3>
+        <p>Call <code class="inline">memory.write</code> with an agent ID, a type, and whatever body you want to attest. Mainspring hashes the full envelope immediately and returns a deterministic receipt.</p>
+
+        <div class="mt-5" data-code data-lang="json" data-file="memory.write — input">
 <pre><code><span class="tok-punct">{</span>
   <span class="tok-str">"agent_id"</span><span class="tok-punct">:</span>  <span class="tok-str">"atlas-treasury-02"</span><span class="tok-punct">,</span>
   <span class="tok-str">"type"</span><span class="tok-punct">:</span>     <span class="tok-str">"decision"</span><span class="tok-punct">,</span>
@@ -353,12 +357,57 @@ mainspring config</code></pre>
   <span class="tok-str">"memory_id"</span><span class="tok-punct">:</span>     <span class="tok-str">"mem_4f2c8e1a-..."</span><span class="tok-punct">,</span>
   <span class="tok-str">"content_hash"</span><span class="tok-punct">:</span>  <span class="tok-str">"9f3c4a71e0b2..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of full envelope</span>
   <span class="tok-str">"metadata_hash"</span><span class="tok-punct">:</span> <span class="tok-str">"b8e109d2fa31..."</span><span class="tok-punct">,</span>  <span class="tok-com">// SHA-256 of identity fields</span>
-  <span class="tok-str">"anchor_status"</span><span class="tok-punct">:</span> <span class="tok-str">"pending"</span><span class="tok-punct">,</span>           <span class="tok-com">// local default until Casper is configured</span>
+  <span class="tok-str">"anchor_status"</span><span class="tok-punct">:</span> <span class="tok-str">"pending"</span><span class="tok-punct">,</span>           <span class="tok-com">// submitted to Casper when anchoring is on</span>
   <span class="tok-str">"anchor_id"</span><span class="tok-punct">:</span>    <span class="tok-str">"c7f8a0e3..."</span>
 <span class="tok-punct">}</span></code></pre>
         </div>
 
-        <p class="mt-6">That receipt is a verifiable handle. Hand the <code class="inline">content_hash</code> to any counterparty; they can recompute it independently from the same envelope. With Casper testnet anchoring configured, the same hash-only proof can also be checked against the transaction record.</p>
+        <!-- Step 2 -->
+        <h3 class="font-display text-xl text-parchment mt-10 mb-4">Step 2 — Verify integrity</h3>
+        <p>Call <code class="inline">memory.verify</code> with the <code class="inline">memory_id</code>. Mainspring re-reads the stored envelope, recomputes the SHA-256, and compares against the recorded hash. Any tamper — even a single character — produces a different hash and returns <code class="inline">verified: false</code>.</p>
+
+        <div class="mt-5" data-code data-lang="json" data-file="memory.verify — output">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"verified"</span><span class="tok-punct">:</span>     <span class="tok-key">true</span><span class="tok-punct">,</span>
+  <span class="tok-str">"memory_id"</span><span class="tok-punct">:</span>    <span class="tok-str">"mem_4f2c8e1a-..."</span><span class="tok-punct">,</span>
+  <span class="tok-str">"content_hash"</span><span class="tok-punct">:</span> <span class="tok-str">"9f3c4a71e0b2..."</span><span class="tok-punct">,</span>  <span class="tok-com">// matches stored hash</span>
+  <span class="tok-str">"anchor_tx"</span><span class="tok-punct">:</span>    <span class="tok-str">"hash-d6d45de1..."</span>     <span class="tok-com">// Casper transaction, if anchored</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <!-- Step 3 -->
+        <h3 class="font-display text-xl text-parchment mt-10 mb-4">Step 3 — Check the audit trail</h3>
+        <p>Every tool call that writes state records an event automatically. Call <code class="inline">audit.tail</code> to see exactly what your agent did, when, and with what outcome — without setting anything up.</p>
+
+        <div class="mt-5" data-code data-lang="json" data-file="audit.tail — input">
+<pre><code><span class="tok-punct">{</span> <span class="tok-str">"agent_id"</span><span class="tok-punct">:</span> <span class="tok-str">"atlas-treasury-02"</span><span class="tok-punct">,</span> <span class="tok-str">"limit"</span><span class="tok-punct">:</span> <span class="tok-num">10</span> <span class="tok-punct">}</span></code></pre>
+        </div>
+
+        <!-- Optional paths -->
+        <h3 class="font-display text-xl text-parchment mt-10 mb-3">Optional: Casper on-chain anchoring</h3>
+        <p>Add to <code class="inline">.env</code> and restart:</p>
+        <div class="mt-4" data-code data-lang="bash" data-file=".env">
+<pre><code><span class="tok-key">CASPER_ENABLE_REAL_SUBMISSION</span><span class="tok-punct">=</span><span class="tok-str">true</span>
+<span class="tok-key">CASPER_RPC_URL</span><span class="tok-punct">=</span><span class="tok-str">https://node.testnet.casper.network/rpc</span>
+<span class="tok-key">CASPER_ACCOUNT_KEY_PATH</span><span class="tok-punct">=</span><span class="tok-str">./keys/your-key.pem</span></code></pre>
+        </div>
+        <p class="mt-4">Every <code class="inline">memory.write</code> with <code class="inline">"anchor": true</code> will submit the hash to Casper testnet and return a real transaction hash.</p>
+
+        <h3 class="font-display text-xl text-parchment mt-10 mb-3">Optional: x402 payments</h3>
+        <p>To pay HTTP 402 resources on behalf of agents, first create a policy, then call <code class="inline">payment.fetch</code>:</p>
+        <div class="mt-4" data-code data-lang="json" data-file="grimoire.policy.set — one-time setup">
+<pre><code><span class="tok-punct">{</span>
+  <span class="tok-str">"agent_id"</span><span class="tok-punct">:</span>             <span class="tok-str">"atlas-treasury-02"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"policy_id"</span><span class="tok-punct">:</span>            <span class="tok-str">"pol_weather_api"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"enabled"</span><span class="tok-punct">:</span>              <span class="tok-key">true</span><span class="tok-punct">,</span>
+  <span class="tok-str">"allowed_urls"</span><span class="tok-punct">:</span>          <span class="tok-punct">[</span><span class="tok-str">"https://api.example.com/weather"</span><span class="tok-punct">],</span>
+  <span class="tok-str">"allowed_methods"</span><span class="tok-punct">:</span>       <span class="tok-punct">[</span><span class="tok-str">"GET"</span><span class="tok-punct">],</span>
+  <span class="tok-str">"max_amount_per_call"</span><span class="tok-punct">:</span>   <span class="tok-str">"2500000000"</span><span class="tok-punct">,</span>  <span class="tok-com">// motes</span>
+  <span class="tok-str">"max_amount_per_period"</span><span class="tok-punct">:</span> <span class="tok-str">"25000000000"</span><span class="tok-punct">,</span>
+  <span class="tok-str">"period_seconds"</span><span class="tok-punct">:</span>        <span class="tok-num">86400</span>
+<span class="tok-punct">}</span></code></pre>
+        </div>
+        <p class="mt-4">Real Casper settlement activates with <code class="inline">X402_ENABLE_REAL_SETTLEMENT=true</code> and <code class="inline">X402_SETTLEMENT_MODE=casper-cli</code> — no external signer service required. See the <a href="#payments" class="inline-link">Payments</a> section for the full configuration.</p>
       </section>
 
       <!-- 02 breadcrumb -->
@@ -741,9 +790,22 @@ mainspring config</code></pre>
           </div>
         </div>
 
-        <p class="mt-7">Default installs stop honestly at <code class="inline">settlement_unavailable</code> because the settlement provider is disabled. With <code class="inline">X402_ENABLE_REAL_SETTLEMENT=true</code>, <code class="inline">X402_SIGNER_URL</code>, a funded Casper testnet key, and the signer/resource/facilitator sidecars from the runbook, <code class="inline">payment.fetch</code> retries the paid resource with <code class="inline">PAYMENT-SIGNATURE</code> and persists <code class="inline">settled</code> only after <code class="inline">PAYMENT-RESPONSE</code> verifies with a Casper transaction hash.</p>
+        <p class="mt-7">Default installs stop honestly at <code class="inline">settlement_unavailable</code> because the settlement provider is disabled. To activate real Casper testnet settlement, set these four variables and restart — no external signer service required:</p>
 
-        <p class="mt-4">Use <code class="inline">payment.receipt</code> to read a payment intent at any stage — it returns the full record including status, denial reason, and challenge requirements.</p>
+        <div class="mt-5" data-code data-lang="bash" data-file=".env — real settlement">
+<pre><code><span class="tok-key">X402_ENABLE_REAL_SETTLEMENT</span><span class="tok-punct">=</span><span class="tok-str">true</span>
+<span class="tok-key">X402_SETTLEMENT_MODE</span><span class="tok-punct">=</span><span class="tok-str">casper-cli</span>
+<span class="tok-key">X402_BUYER_ACCOUNT_HASH</span><span class="tok-punct">=</span><span class="tok-str">account-hash-&lt;64 hex chars&gt;</span>  <span class="tok-com"># your payer account hash</span>
+<span class="tok-key">CASPER_ENABLE_REAL_SUBMISSION</span><span class="tok-punct">=</span><span class="tok-str">true</span>                     <span class="tok-com"># also required</span></code></pre>
+        </div>
+
+        <p class="mt-5">Mainspring signs the payment payload directly using <code class="inline">CASPER_ACCOUNT_KEY_PATH</code> (your PEM file) and submits a native CSPR transfer to testnet via <code class="inline">casper-client</code>. The intent advances to <code class="inline">settled</code> only after the transaction executes on-chain. The Casper transaction hash is stored in the receipt and audited.</p>
+
+        <div class="mt-4 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-4">
+          <p class="!text-parchment/75 text-[14px]">Get your account hash with <code class="inline">casper-client account-address --public-key &lt;your-hex-pubkey&gt;</code>. For x402 resources, set <code class="inline">X402_PAY_TO</code> to the merchant's public key hex.</p>
+        </div>
+
+        <p class="mt-5">Use <code class="inline">payment.receipt</code> to read a payment intent at any stage — it returns the full record including status, denial reason, challenge requirements, and the Casper transaction hash when settled.</p>
       </section>
 
       <!-- AUDIT -->
