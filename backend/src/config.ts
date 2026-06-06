@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDefaultMainspringPaths } from "./paths.js";
 
 const CASPER_HASH_PATTERN = /^(hash-)?[a-f0-9]{64}$/i;
 const CASPER_PACKAGE_HASH_PATTERN = /^(hash-|package-)?[a-f0-9]{64}$/i;
@@ -116,10 +117,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
   validateX402Config(x402);
 
   return {
-    dataDir: resolve(optionalEnv(env.SIGIL_DATA_DIR) ?? ".sigil"),
+    dataDir: resolve(optionalEnv(env.SIGIL_DATA_DIR) ?? getDefaultMainspringPaths(env).dataDir),
     grimoireMasterKey: loadMasterKey(env.GRIMOIRE_MASTER_KEY),
     serverName: optionalEnv(env.SIGIL_MCP_NAME) ?? "mr-mainspring",
-    serverVersion: optionalEnv(env.SIGIL_MCP_VERSION) ?? "0.1.0",
+    serverVersion: optionalEnv(env.SIGIL_MCP_VERSION) ?? "0.1.1",
     storage: loadStorageConfig(env),
     casper,
     x402

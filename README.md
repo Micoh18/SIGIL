@@ -50,7 +50,7 @@ For user-facing MCP setup, install the published package and point your MCP-comp
 
 ```bash
 npm install -g mrmainspring
-mainspring --help
+mainspring setup cursor
 ```
 
 Example MCP config:
@@ -59,16 +59,13 @@ Example MCP config:
 {
   "mcpServers": {
     "mainspring": {
-      "command": "mainspring",
-      "env": {
-        "SIGIL_DATA_DIR": "/path/to/data/.sigil"
-      }
+      "command": "mainspring"
     }
   }
 }
 ```
 
-If `GRIMOIRE_MASTER_KEY` is missing, Mainspring generates one automatically for local use. Keep production secrets in a private env file.
+`mainspring setup` creates the local config, data, and logs directories under the user's standard app config folder. If `GRIMOIRE_MASTER_KEY` is missing, Mainspring generates one automatically for local use. Keep production secrets in a private env file.
 
 ## Backend Development
 
@@ -87,7 +84,7 @@ cd backend
 npm run dev
 ```
 
-The backend writes local demo data under `.sigil/` unless `SIGIL_DATA_DIR` is set.
+The backend writes local data under the user's standard app config folder unless `SIGIL_DATA_DIR` is set.
 
 ## x402: Local Simulation vs Real Casper Settlement
 
@@ -272,8 +269,8 @@ cp .env.example .env
 
 Important values:
 
-- `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`.
-- `SIGIL_ENV_FILE`: optional explicit path to a local env file. If unset, the backend checks `.env` in the current/backend/repo root paths.
+- `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to the user's Mr Mainspring app data directory.
+- `SIGIL_ENV_FILE`: optional explicit path to a local env file. If unset, the backend checks the user's Mr Mainspring app config first, then existing local `.env` files for development.
 - `SIGIL_MCP_NAME` and `SIGIL_MCP_VERSION`: stable MCP server identifier values.
 - `SIGIL_STORAGE_BACKEND`: `file` by default. Set `supabase` after applying `backend/supabase/schema.sql`.
 - `PROJECT_URL`: Supabase project URL for optional remote persistence.

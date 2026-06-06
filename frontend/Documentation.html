@@ -281,7 +281,7 @@
         <div class="mt-7" data-code data-lang="bash" data-file="terminal">
 <pre><code><span class="tok-com"># install the MCP server CLI</span>
 npm install -g mrmainspring
-mainspring --help</code></pre>
+mainspring setup cursor</code></pre>
         </div>
 
         <p class="mt-7">Add it to your MCP client configuration (Claude Desktop, Cursor, or any MCP-compatible host):</p>
@@ -290,10 +290,7 @@ mainspring --help</code></pre>
 <pre><code><span class="tok-punct">{</span>
   <span class="tok-str">"mcpServers"</span><span class="tok-punct">: {</span>
     <span class="tok-str">"mainspring"</span><span class="tok-punct">: {</span>
-      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"mainspring"</span><span class="tok-punct">,</span>
-      <span class="tok-str">"env"</span><span class="tok-punct">: {</span>
-        <span class="tok-str">"SIGIL_DATA_DIR"</span><span class="tok-punct">:</span> <span class="tok-str">"/path/to/data/.sigil"</span>
-      <span class="tok-punct">}</span>
+      <span class="tok-str">"command"</span><span class="tok-punct">:</span> <span class="tok-str">"mainspring"</span>
     <span class="tok-punct">}</span>
   <span class="tok-punct">}</span>
 <span class="tok-punct">}</span></code></pre>
@@ -302,10 +299,11 @@ mainspring --help</code></pre>
         <div class="mt-8 rounded-2xl border-l-2 border-gold/60 bg-gold/[0.06] px-6 py-5">
           <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Local env</div>
           <div data-code data-lang="bash" data-file="terminal">
-<pre><code><span class="tok-com"># optional: point Mainspring at a private env file</span>
-SIGIL_ENV_FILE=/absolute/path/to/.env mainspring</code></pre>
+<pre><code><span class="tok-com"># optional advanced setup</span>
+mainspring init
+mainspring doctor</code></pre>
           </div>
-          <p class="!text-parchment/75 text-[14px] mt-3">If <code class="inline">GRIMOIRE_MASTER_KEY</code> is missing, Mainspring creates one automatically for local use. Keep real keys and secrets outside the repository.</p>
+          <p class="!text-parchment/75 text-[14px] mt-3">No environment variables are required for local memory, Grimoire, audit, or payment preflight tools. Mainspring creates a private config, data, and logs directory under the user's app config folder.</p>
         </div>
 
         <p class="mt-7">For Casper anchoring during development, use the testnet — anchors are free and the contract behavior is identical to mainnet.</p>
@@ -892,7 +890,7 @@ CASPER_ENABLE_REAL_SUBMISSION<span class="tok-punct">=</span><span class="tok-st
                 </tr>
               </thead>
               <tbody>
-                <tr><td class="var">SIGIL_DATA_DIR</td><td class="def">.sigil</td><td class="desc">Root directory for file-based storage.</td></tr>
+                <tr><td class="var">SIGIL_DATA_DIR</td><td class="def">(user data)</td><td class="desc">Root directory for file-based storage. Defaults to the user's Mr Mainspring app data directory.</td></tr>
                 <tr><td class="var">SIGIL_STORAGE_BACKEND</td><td class="def">file</td><td class="desc"><code class="inline">file</code> or <code class="inline">supabase</code>.</td></tr>
                 <tr><td class="var">GRIMOIRE_MASTER_KEY</td><td class="def">(auto)</td><td class="desc">Base64-encoded 32-byte AES-256-GCM master key. Generated automatically for local use when omitted.</td></tr>
                 <tr><td class="var">PROJECT_URL</td><td class="def">—</td><td class="desc">Supabase project URL (required when backend=supabase).</td></tr>

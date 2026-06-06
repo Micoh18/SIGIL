@@ -57,7 +57,7 @@ A passing local demo does not mean:
 
 ## Persistence
 
-- Default stores are JSON files under `SIGIL_DATA_DIR`.
+- Default stores are JSON files under the user's Mr Mainspring app data directory. `SIGIL_DATA_DIR` can override that location.
 - Optional Supabase persistence is implemented through REST and `backend/supabase/schema.sql`.
 - Supabase stores current domain records as JSONB with lookup columns. This is not the final normalized production schema.
 - SQLite/Postgres schemas from the product spec are not implemented.

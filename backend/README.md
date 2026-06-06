@@ -8,6 +8,7 @@ boundaries, and x402 settlement-provider wiring.
 
 ```bash
 npm install -g mrmainspring
+mainspring setup cursor
 ```
 
 Run the stdio MCP server:
@@ -25,13 +26,14 @@ npm run mcp:stdio
 
 ## Environment
 
-The server loads `.env` from the current directory, backend directory, or repo
-root. Use `SIGIL_ENV_FILE` to point at a specific env file.
+No environment variables are required for local memory, Grimoire, audit, or
+payment preflight tools. `mainspring setup` creates the local config, data, and
+logs directories under the user's standard app config folder. Use
+`SIGIL_ENV_FILE` to point at a specific env file for advanced setups.
 
 Important package boundaries:
 
-- Keep `.env`, `.sigil/`, local keys, and generated demo data outside the npm
-  package.
+- Keep `.env`, local keys, and generated demo data outside the npm package.
 - Real Casper submission remains gated by `CASPER_ENABLE_REAL_SUBMISSION=true`.
 - Real x402 settlement remains gated by `X402_ENABLE_REAL_SETTLEMENT=true` and
   a configured `X402_SIGNER_URL`.

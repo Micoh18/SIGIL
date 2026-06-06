@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { runCliCommand } from "./cli.js";
 import { loadConfig } from "./config.js";
 import { ensureGrimoireMasterKey, loadLocalEnvFile } from "./env-file.js";
 import { createSigilServer } from "./server.js";
 
 async function main() {
+  if (runCliCommand(process.argv.slice(2))) {
+    return;
+  }
+
   loadLocalEnvFile();
   ensureGrimoireMasterKey();
   const config = loadConfig();

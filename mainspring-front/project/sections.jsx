@@ -289,7 +289,7 @@ function TheProof() {
 function Repo() {
   const [ref, inView] = useRevealS({ threshold: 0.2 });
   const [copied, setCopied] = useStateS(false);
-  const cmd = "npm install -g mrmainspring";
+  const cmd = "npm install -g mrmainspring; mainspring setup cursor";
   const copy = () => {
     try { navigator.clipboard.writeText(cmd); } catch (e) {}
     setCopied(true); setTimeout(() => setCopied(false), 900);
@@ -306,7 +306,7 @@ function Repo() {
         </h2>
         <p className={"font-serif text-parchment/65 text-lg md:text-xl leading-[1.55] max-w-xl mx-auto mt-7 reveal " + (inView ? "is-in" : "")}
           style={{ animationDelay: "0.16s" }}>
-          Four lines to give your agent a witness. Open source, Casper-native, free to verify forever.
+          Two commands to give your agent a witness. Open source, Casper-native, free to verify forever.
         </p>
 
         <div className={"flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 reveal " + (inView ? "is-in" : "")}
@@ -319,9 +319,9 @@ function Repo() {
             </span>
           </a>
           <button onClick={copy}
-            className="flex items-center gap-3 rounded-full border border-parchment/30 px-6 py-3 font-mono text-sm text-parchment/85 hover:border-parchment/60 transition-colors duration-200">
+            className="flex max-w-full items-center gap-3 rounded-full border border-parchment/30 px-6 py-3 font-mono text-xs sm:text-sm text-parchment/85 hover:border-parchment/60 transition-colors duration-200">
             <span className="text-parchment/40">$</span>
-            {cmd}
+            <span className="min-w-0 break-all text-left">{cmd}</span>
             <span className="text-gold ml-1">{copied ? "copied ✓" : "⧉"}</span>
           </button>
         </div>

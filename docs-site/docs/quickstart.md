@@ -28,7 +28,7 @@ Install the published package globally:
 
 ```bash
 npm install -g mrmainspring
-mainspring --help
+mainspring setup cursor
 ```
 
 Add it to your MCP client configuration:
@@ -37,10 +37,7 @@ Add it to your MCP client configuration:
 {
   "mcpServers": {
     "mainspring": {
-      "command": "mainspring",
-      "env": {
-        "SIGIL_DATA_DIR": "/path/to/data/.sigil"
-      }
+      "command": "mainspring"
     }
   }
 }
@@ -48,7 +45,9 @@ Add it to your MCP client configuration:
 
 ## Configure Local Environment
 
-For local development from this repository, copy the root template:
+No environment variables are required for local memory, Grimoire, audit, or payment preflight tools. `mainspring setup` creates a private config file, data directory, and logs directory under the user's standard app config folder.
+
+For local development from this repository, you can still copy the root template:
 
 ```bash
 cp .env.example .env
@@ -60,8 +59,8 @@ Important local defaults:
 
 | Variable | Current Use |
 | --- | --- |
-| `SIGIL_ENV_FILE` | Optional explicit path to a local env file. If unset, the backend checks `.env` in the current/backend/repo root paths. |
-| `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to `.sigil/`. |
+| `SIGIL_ENV_FILE` | Optional explicit path to a local env file. If unset, the backend checks the user's Mr Mainspring app config first, then existing local `.env` files for development. |
+| `SIGIL_DATA_DIR` | JSON-file stores for memory, Grimoire, payments, and audit. Defaults to the user's Mr Mainspring app data directory. |
 | `SIGIL_STORAGE_BACKEND` | `file` by default. Set `supabase` only after applying `backend/supabase/schema.sql`. |
 | `PROJECT_URL` | Supabase project URL for optional remote persistence. |
 | `SECRET_KEY` / `PUBLISHABLE_KEY` | Supabase REST key. Prefer `SECRET_KEY` only in private backend env, never in committed files. |

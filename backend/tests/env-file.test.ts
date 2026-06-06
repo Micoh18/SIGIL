@@ -1,8 +1,9 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadLocalEnvFile } from "../src/env-file.js";
+import { ensureGrimoireMasterKey, loadLocalEnvFile } from "../src/env-file.js";
+import { getDefaultMainspringPaths } from "../src/paths.js";
 
 describe("local env file loader", () => {
   it("loads an explicit env file without overriding existing process values", async () => {
@@ -38,5 +39,30 @@ describe("local env file loader", () => {
     };
 
     expect(loadLocalEnvFile(env)).toBeNull();
+  });
+
+  it("creates a missing explicit env file before writing the generated master key", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mainspring-env-missing-parent-"));
+    const envPath = join(dir, "nested", ".env");
+    const env: NodeJS.ProcessEnv = {
+      SIGIL_ENV_FILE: envPath
+    };
+
+    ensureGrimoireMasterKey(env);
+
+    const raw = await readFile(envPath, "utf8");
+    expect(raw).toMatch(/^GRIMOIRE_MASTER_KEY=[A-Za-z0-9+/=]+\n$/);
+    expect(env.GRIMOIRE_MASTER_KEY).toBeTruthy();
+  });
+
+  it("builds platform default paths", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mainspring-paths-"));
+    const env: NodeJS.ProcessEnv = {
+      XDG_CONFIG_HOME: join(dir, "xdg")
+    };
+    const paths = getDefaultMainspringPaths(env, "linux", dir);
+
+    expect(paths.appDir).toBe(join(dir, "xdg", "mrmainspring"));
+    expect(paths.envFile).toBe(join(paths.appDir, ".env"));
   });
 });

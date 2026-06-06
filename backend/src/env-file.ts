@@ -1,11 +1,12 @@
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDefaultMainspringPaths } from "./paths.js";
 
 export function loadLocalEnvFile(env: NodeJS.ProcessEnv = process.env): string | null {
   const envPath = resolveEnvPath(env);
-  if (!envPath || !existsSync(envPath)) {
+  if (!existsSync(envPath)) {
     return null;
   }
 
@@ -19,16 +20,22 @@ export function loadLocalEnvFile(env: NodeJS.ProcessEnv = process.env): string |
   return envPath;
 }
 
-function resolveEnvPath(env: NodeJS.ProcessEnv): string | null {
+export function resolveEnvPath(env: NodeJS.ProcessEnv = process.env): string {
   if (env.SIGIL_ENV_FILE?.trim()) {
-    return env.SIGIL_ENV_FILE.trim();
+    return resolve(env.SIGIL_ENV_FILE.trim());
   }
 
   const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
   const repoRoot = dirname(backendRoot);
-  const candidates = [join(process.cwd(), ".env"), join(backendRoot, ".env"), join(repoRoot, ".env")];
+  const defaultEnvFile = getDefaultMainspringPaths(env).envFile;
+  const candidates = [
+    defaultEnvFile,
+    join(process.cwd(), ".env"),
+    join(backendRoot, ".env"),
+    join(repoRoot, ".env")
+  ];
 
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates.at(-1) ?? null;
+  return resolve(candidates.find((candidate) => existsSync(candidate)) ?? defaultEnvFile);
 }
 
 function parseEnv(raw: string): Array<[string, string]> {
@@ -55,18 +62,23 @@ function parseEnv(raw: string): Array<[string, string]> {
   return entries;
 }
 
-export function ensureGrimoireMasterKey(env: NodeJS.ProcessEnv = process.env): void {
+export function ensureGrimoireMasterKey(
+  env: NodeJS.ProcessEnv = process.env,
+  options: { announce?: boolean } = {}
+): void {
   if (env.GRIMOIRE_MASTER_KEY) return;
 
   const key = randomBytes(32).toString("base64");
-  const targetPath = resolveEnvPath(env) ?? join(process.cwd(), ".env");
+  const targetPath = resolveEnvPath(env);
 
-  appendFileSync(targetPath, `\nGRIMOIRE_MASTER_KEY=${key}\n`, "utf8");
+  mkdirSync(dirname(targetPath), { recursive: true });
+  const prefix = existsSync(targetPath) && readFileSync(targetPath, "utf8").trim() ? "\n" : "";
+  appendFileSync(targetPath, `${prefix}GRIMOIRE_MASTER_KEY=${key}\n`, "utf8");
   env.GRIMOIRE_MASTER_KEY = key;
 
-  process.stderr.write(
-    `[mr-mainspring] Generated GRIMOIRE_MASTER_KEY → ${targetPath}\n`
-  );
+  if (options.announce !== false) {
+    process.stderr.write(`[mr-mainspring] Generated GRIMOIRE_MASTER_KEY at ${targetPath}\n`);
+  }
 }
 
 function unquote(value: string): string {

@@ -133,7 +133,7 @@ function renderLlmsTxt(pages) {
     "",
     `- Implemented MCP tools: ${implementedTools}.`,
     `- Settlement-ready MCP tools: ${settlementReadyTools}.`,
-    "- Local JSON-file stores are used under SIGIL_DATA_DIR for memory, Grimoire, payments, and audit.",
+    "- Local JSON-file stores are used under the user's Mr Mainspring app data directory by default; SIGIL_DATA_DIR can override it.",
     "- Optional Supabase persistence is available after applying backend/supabase/schema.sql and setting SIGIL_STORAGE_BACKEND=supabase with PROJECT_URL plus SECRET_KEY or PUBLISHABLE_KEY.",
     "- Memory records are canonicalized and verified with SHA-256 hashes.",
     "- Grimoire secrets are encrypted locally and returned as metadata only.",

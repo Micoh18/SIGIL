@@ -1,6 +1,6 @@
 {
   "name": "mrmainspring",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Mr Mainspring MCP backend with memory, Grimoire policies, audit, Casper anchoring, and x402 settlement boundaries.",
   "license": "MIT",
   "type": "module",

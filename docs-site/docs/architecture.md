@@ -64,7 +64,7 @@ Store adapter
 
 ## Durable Stores
 
-The backend defaults to JSON files under `SIGIL_DATA_DIR`:
+The backend defaults to JSON files in the user's Mr Mainspring app data directory. Advanced users can override that location with `SIGIL_DATA_DIR`:
 
 | Store | File | Purpose |
 | --- | --- | --- |
