@@ -2,6 +2,8 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AuditService } from "../src/audit/service.js";
+import { FileAuditStore } from "../src/audit/store.js";
 import { GrimoireService } from "../src/grimoire/service.js";
 import { FileGrimoireStore } from "../src/grimoire/store.js";
 import { PaymentService } from "../src/payments/service.js";
@@ -89,11 +91,14 @@ describe("PaymentService", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.01",
+          amount: "0.01",
           resource: "http://localhost:4021/weather",
+          method: "GET",
           asset: "asset-package-hash",
-          payTo: "casper-payee"
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
         }
       ]
     };
@@ -106,7 +111,7 @@ describe("PaymentService", () => {
         })
       )
     );
-    const { service, dataDir } = await createService({ withChallengeClient: true });
+    const { service, dataDir, grimoire } = await createService({ withChallengeClient: true });
 
     const result = await service.fetch({
       agent_id: "agent-demo-1",
@@ -135,6 +140,9 @@ describe("PaymentService", () => {
     expect(receipt.receipt?.receipt_json).toContain("x402_settlement_disabled");
     expect(rawStore).toContain("\"requirements_json\"");
     expect(rawStore).toContain("asset-package-hash");
+    await expect(grimoire.getPolicy("agent-demo-1", "pol-demo")).resolves.toMatchObject({
+      current_period_spend: "0"
+    });
   });
 
   it("keeps captured challenge requirements durable across service instances", async () => {
@@ -143,11 +151,14 @@ describe("PaymentService", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.01",
+          amount: "0.01",
           resource: "http://localhost:4021/weather",
+          method: "GET",
           asset: "asset-package-hash",
-          payTo: "casper-payee"
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
         }
       ]
     };
@@ -190,11 +201,14 @@ describe("PaymentService", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.02",
+          amount: "0.02",
           resource: "http://localhost:4021/weather",
+          method: "GET",
           asset: "asset-package-hash",
-          payTo: "casper-payee"
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
         }
       ]
     };
@@ -297,9 +311,14 @@ describe("PaymentService", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.01",
-          resource: "http://localhost:4021/weather"
+          amount: "0.01",
+          resource: "http://localhost:4021/weather",
+          method: "GET",
+          asset: "asset-package-hash",
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
         }
       ]
     };
@@ -345,11 +364,14 @@ describe("PaymentService", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.01",
+          amount: "0.01",
           resource: "http://localhost:4021/weather",
+          method: "GET",
           asset: "asset-package-hash",
-          payTo: "casper-payee"
+          payTo: "casper-payee",
+          maxTimeoutSeconds: 60
         }
       ]
     };
@@ -362,7 +384,7 @@ describe("PaymentService", () => {
         })
       )
     );
-    const { service } = await createService({
+    const { service, grimoire, audit } = await createService({
       withChallengeClient: true,
       settlementProvider: {
         async settle() {
@@ -392,6 +414,9 @@ describe("PaymentService", () => {
       throw new Error("Expected payment fetch to be policy-approved");
     }
     const receipt = await service.receipt(result.payment_id);
+    const policy = await grimoire.getPolicy("agent-demo-1", "pol-demo");
+    const auditTail = await audit.tail({ agent_id: "agent-demo-1", limit: 50 });
+    const eventTypes = auditTail.events.map((event) => event.event_type);
 
     expect(result.status).toBe("settled");
     expect(result.settlement).toBe("settled");
@@ -400,6 +425,16 @@ describe("PaymentService", () => {
     expect(receipt.receipt?.settlement_status).toBe("settled");
     expect(receipt.receipt?.casper_transaction_hash).toBe("c".repeat(64));
     expect(receipt.receipt?.receipt_json).toContain("transactionHash");
+    expect(receipt.receipt?.receipt_json).not.toContain("signed_payload");
+    expect(receipt.receipt?.receipt_json).not.toContain("paymentPayload");
+    expect(policy?.current_period_spend).toBe("0.01");
+    expect(eventTypes).toEqual(
+      expect.arrayContaining([
+        "payment.challenge_received",
+        "payment.settled",
+        "policy.spend_recorded"
+      ])
+    );
   });
 
   it("returns a durable payment receipt view even before settlement exists", async () => {
@@ -422,16 +457,31 @@ describe("PaymentService", () => {
 
 async function createService(
   options: { withChallengeClient?: boolean; settlementProvider?: X402SettlementProvider } = {}
-): Promise<{ service: PaymentService; dataDir: string }> {
+): Promise<{
+  service: PaymentService;
+  dataDir: string;
+  grimoire: GrimoireService;
+  audit: AuditService;
+}> {
   const dataDir = await mkdtemp(join(tmpdir(), "sigil-payments-"));
-  const grimoire = new GrimoireService(new FileGrimoireStore(dataDir), Buffer.alloc(32, 1));
+  const audit = new AuditService(new FileAuditStore(dataDir));
+  const grimoire = new GrimoireService(
+    new FileGrimoireStore(dataDir),
+    Buffer.alloc(32, 1),
+    audit
+  );
 
   await grimoire.setPolicy({
     agent_id: "agent-demo-1",
     policy_id: "pol-demo",
     allowed_urls: ["http://localhost:4021/weather"],
     allowed_methods: ["GET"],
-    allowed_asset: { caip2_chain_id: "casper:casper-test" },
+    allowed_asset: {
+      caip2_chain_id: "casper:casper-test",
+      asset_package: "asset-package-hash",
+      pay_to: "casper-payee",
+      scheme: "exact"
+    },
     max_amount_per_call: "0.05",
     max_amount_per_period: "1.00",
     period_seconds: 86400,
@@ -442,7 +492,7 @@ async function createService(
     service: new PaymentService(
       grimoire,
       new FilePaymentStore(dataDir),
-      undefined,
+      audit,
       options.withChallengeClient
         ? new X402ChallengeClient({
             facilitatorUrl: "http://localhost:4022",
@@ -451,6 +501,8 @@ async function createService(
         : undefined,
       options.settlementProvider ?? new DisabledX402SettlementProvider()
     ),
-    dataDir
+    dataDir,
+    grimoire,
+    audit
   };
 }

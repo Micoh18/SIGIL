@@ -89,11 +89,14 @@ describe("security leak guards", () => {
       accepts: [
         {
           scheme: "exact",
-          network: "casper-test",
+          network: "casper:casper-test",
           maxAmountRequired: "0.01",
+          amount: "0.01",
           resource: "http://localhost:4021/weather",
+          method: "GET",
           asset: "asset-package-hash",
           payTo: "casper-payee",
+          maxTimeoutSeconds: 60,
           extra: {
             api_key: secretValue
           }
@@ -321,7 +324,12 @@ async function createPaymentFixture(
     enabled: true,
     allowed_urls: ["http://localhost:4021/weather"],
     allowed_methods: ["GET"],
-    allowed_asset: { caip2_chain_id: "casper:casper-test" },
+    allowed_asset: {
+      caip2_chain_id: "casper:casper-test",
+      asset_package: "asset-package-hash",
+      pay_to: "casper-payee",
+      scheme: "exact"
+    },
     max_amount_per_call: "0.05",
     max_amount_per_period: "1.00",
     period_seconds: 86400,

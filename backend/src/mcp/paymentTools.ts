@@ -19,7 +19,7 @@ export function registerPaymentTools(
     {
       title: "x402 Payment Fetch",
       description:
-        "Create a durable x402 payment record after checking a Grimoire policy. With request_challenge=true, make the first x402 HTTP request, persist and approve 402 requirements, then either persist a disabled/failed settlement receipt or return verified settlement without exposing signed payloads.",
+        "Create a durable x402 payment record after checking a Grimoire policy. With request_challenge=true, make the first x402 HTTP request, persist and approve 402 requirements, then either persist a disabled/failed receipt or, when real settlement is configured, retry the paid resource with PAYMENT-SIGNATURE and return verified settlement without exposing signed payloads.",
       inputSchema: {
         agent_id: nonEmptyStringSchema,
         policy_id: nonEmptyStringSchema,

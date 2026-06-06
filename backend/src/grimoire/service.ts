@@ -120,6 +120,56 @@ export class GrimoireService {
     });
     return policy;
   }
+
+  async recordPolicySpend(
+    agentId: string,
+    policyId: string,
+    amount: string
+  ): Promise<PolicyRecord | null> {
+    assertDecimalAmount("amount", amount);
+
+    const policy = await this.store.getPolicy(agentId, policyId);
+    if (!policy) {
+      await this.audit?.record({
+        agent_id: agentId,
+        event_type: "policy.spend_record_failed",
+        subject_type: "policy",
+        subject_id: policyId,
+        severity: "warn",
+        metadata: { reason: "policy_not_found" }
+      });
+      return null;
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const periodStartedAt = Date.parse(policy.period_started_at);
+    const periodExpired =
+      Number.isNaN(periodStartedAt) ||
+      now.getTime() - periodStartedAt >= policy.period_seconds * 1000;
+    const currentSpend = periodExpired ? "0" : policy.current_period_spend;
+    const updated: PolicyRecord = {
+      ...policy,
+      current_period_spend: addDecimalAmounts(currentSpend, amount),
+      period_started_at: periodExpired ? nowIso : policy.period_started_at,
+      updated_at: nowIso
+    };
+
+    await this.store.savePolicy(updated);
+    await this.audit?.record({
+      agent_id: agentId,
+      event_type: "policy.spend_recorded",
+      subject_type: "policy",
+      subject_id: policyId,
+      metadata: {
+        amount,
+        current_period_spend: updated.current_period_spend,
+        policy_hash: updated.policy_hash
+      }
+    });
+
+    return updated;
+  }
 }
 
 function encrypt(value: string, key: Buffer) {
@@ -155,4 +205,32 @@ function assertDecimalAmount(name: string, value: string): void {
   if (!/^\d+(\.\d+)?$/.test(value)) {
     throw new Error(`${name} must be a non-negative decimal amount`);
   }
+}
+
+function addDecimalAmounts(left: string, right: string): string {
+  const leftParts = parseDecimalAmount(left);
+  const rightParts = parseDecimalAmount(right);
+  const scale = Math.max(leftParts.scale, rightParts.scale);
+  const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
+  const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
+  const sum = (leftValue + rightValue).toString().padStart(scale + 1, "0");
+
+  if (scale === 0) {
+    return sum;
+  }
+
+  const whole = sum.slice(0, -scale);
+  const fraction = sum.slice(-scale).replace(/0+$/, "");
+
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
+function parseDecimalAmount(value: string): { value: bigint; scale: number } {
+  assertDecimalAmount("amount", value);
+
+  const [whole, fraction = ""] = value.split(".");
+  return {
+    value: BigInt(`${whole}${fraction}`),
+    scale: fraction.length
+  };
 }

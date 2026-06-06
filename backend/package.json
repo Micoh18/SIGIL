@@ -6,9 +6,15 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "demo:stdio": "npm run build && tsx scripts/demo-stdio.ts",
+    "demo:x402-sidecars": "tsx scripts/x402-local-sidecars.ts",
+    "demo:x402-sidecars:smoke": "tsx scripts/x402-local-sidecars.ts --smoke",
     "dev": "tsx src/index.ts",
     "mcp:stdio": "node dist/index.js",
-    "test": "vitest run"
+    "smoke:x402-payment-fetch": "tsx scripts/x402-payment-fetch-smoke.ts",
+    "test": "vitest run",
+    "x402:facilitator": "tsx scripts/x402-facilitator-sidecar.ts",
+    "x402:resource": "tsx scripts/x402-local-sidecars.ts",
+    "x402:signer": "tsx scripts/x402-signer-sidecar.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.13.0",

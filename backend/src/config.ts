@@ -27,6 +27,14 @@ export type X402Config = {
   assetPackage: string | null;
   assetName: string | null;
   settlementEnabled: boolean;
+  settlementMode: "resource-retry" | "facilitator" | "casper-cli";
+  signerUrl: string | null;
+  signerAuthToken: string | null;
+  signerTimeoutMs: number;
+  paymentHeaderName: string;
+  casperSettlementPaymentAmountMotes: string;
+  casperConfirmationPollIntervalMs: number;
+  casperConfirmationTimeoutMs: number;
 };
 
 export type StorageConfig =
@@ -77,6 +85,35 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
   };
 
   validateCasperConfig(casper);
+  const x402 = {
+    facilitatorUrl: optionalEnv(env.X402_FACILITATOR_URL) ?? "http://localhost:4022",
+    resourceDemoUrl: optionalEnv(env.X402_RESOURCE_DEMO_URL) ?? "http://localhost:4021/weather",
+    assetPackage: optionalEnv(env.X402_ASSET_PACKAGE),
+    assetName: optionalEnv(env.X402_ASSET_NAME),
+    settlementEnabled: parseBoolean(env.X402_ENABLE_REAL_SETTLEMENT),
+    settlementMode: parseX402SettlementMode(env.X402_SETTLEMENT_MODE),
+    signerUrl: optionalEnv(env.X402_SIGNER_URL),
+    signerAuthToken: optionalEnv(env.X402_SIGNER_AUTH_TOKEN),
+    signerTimeoutMs: parsePositiveInteger(
+      env.X402_SIGNER_TIMEOUT_MS,
+      "X402_SIGNER_TIMEOUT_MS",
+      10_000
+    ),
+    paymentHeaderName: optionalEnv(env.X402_PAYMENT_HEADER_NAME) ?? "PAYMENT-SIGNATURE",
+    casperSettlementPaymentAmountMotes:
+      optionalEnv(env.X402_CASPER_SETTLEMENT_PAYMENT_AMOUNT_MOTES) ?? "7000000000",
+    casperConfirmationPollIntervalMs: parsePositiveInteger(
+      env.X402_CASPER_CONFIRMATION_POLL_INTERVAL_MS,
+      "X402_CASPER_CONFIRMATION_POLL_INTERVAL_MS",
+      2_000
+    ),
+    casperConfirmationTimeoutMs: parsePositiveInteger(
+      env.X402_CASPER_CONFIRMATION_TIMEOUT_MS,
+      "X402_CASPER_CONFIRMATION_TIMEOUT_MS",
+      120_000
+    )
+  };
+  validateX402Config(x402);
 
   return {
     dataDir: resolve(optionalEnv(env.SIGIL_DATA_DIR) ?? ".sigil"),
@@ -85,13 +122,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     serverVersion: optionalEnv(env.SIGIL_MCP_VERSION) ?? "0.1.0",
     storage: loadStorageConfig(env),
     casper,
-    x402: {
-      facilitatorUrl: optionalEnv(env.X402_FACILITATOR_URL) ?? "http://localhost:4022",
-      resourceDemoUrl: optionalEnv(env.X402_RESOURCE_DEMO_URL) ?? "http://localhost:4021/weather",
-      assetPackage: optionalEnv(env.X402_ASSET_PACKAGE),
-      assetName: optionalEnv(env.X402_ASSET_NAME),
-      settlementEnabled: parseBoolean(env.X402_ENABLE_REAL_SETTLEMENT)
-    }
+    x402
   };
 }
 
@@ -197,6 +228,21 @@ function validateCasperConfig(config: CasperConfig): void {
   );
 }
 
+function validateX402Config(config: X402Config): void {
+  assertHttpUrl("X402_FACILITATOR_URL", config.facilitatorUrl);
+  assertHttpUrl("X402_RESOURCE_DEMO_URL", config.resourceDemoUrl);
+
+  if (config.signerUrl) {
+    assertHttpUrl("X402_SIGNER_URL", config.signerUrl);
+  }
+
+  assertNonEmpty("X402_PAYMENT_HEADER_NAME", config.paymentHeaderName);
+  assertUnsignedInteger(
+    "X402_CASPER_SETTLEMENT_PAYMENT_AMOUNT_MOTES",
+    config.casperSettlementPaymentAmountMotes
+  );
+}
+
 function assertNonEmpty(name: string, value: string): void {
   if (value.trim().length === 0) {
     throw new Error(`${name} is required`);
@@ -253,6 +299,37 @@ function parseCasperAnchorSubmissionMode(
   throw new Error(
     "CASPER_ANCHOR_SUBMISSION_MODE must be transaction-package or deploy-contract-hash"
   );
+}
+
+function parseX402SettlementMode(value: string | undefined): X402Config["settlementMode"] {
+  const normalized = optionalEnv(value) ?? "resource-retry";
+
+  if (
+    normalized === "resource-retry" ||
+    normalized === "facilitator" ||
+    normalized === "casper-cli"
+  ) {
+    return normalized;
+  }
+
+  throw new Error("X402_SETTLEMENT_MODE must be resource-retry, facilitator, or casper-cli");
+}
+
+function parsePositiveInteger(
+  value: string | undefined,
+  name: string,
+  defaultValue: number
+): number {
+  const normalized = optionalEnv(value);
+  if (!normalized) {
+    return defaultValue;
+  }
+
+  if (!/^[1-9]\d*$/.test(normalized)) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+
+  return Number(normalized);
 }
 
 function normalizeCasperAccountKeyPath(value: string, clientWslDistro: string | null): string {

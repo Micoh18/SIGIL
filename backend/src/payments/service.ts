@@ -396,6 +396,14 @@ export class PaymentService {
       };
       await this.store.saveIntent(settledIntent);
       await this.persistSettlementReceipt(settledIntent, settlement, challenge.facilitator_url);
+      const settledAmount = amountFromRequirement(selectedRequirement) ?? settledIntent.amount;
+      if (settledAmount) {
+        await this.grimoireService.recordPolicySpend(
+          settledIntent.agent_id,
+          settledIntent.policy_id,
+          settledAmount
+        );
+      }
       await this.audit?.record({
         agent_id: settledIntent.agent_id,
         event_type: "payment.settled",
@@ -617,6 +625,17 @@ function settlementBlockerFor(
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function amountFromRequirement(requirement: JsonObject): string | null {
+  for (const key of ["maxAmountRequired", "amount", "max_amount_required"]) {
+    const value = requirement[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
 }
 
 type PolicyLike = Awaited<ReturnType<GrimoireService["getPolicy"]>> extends infer P
