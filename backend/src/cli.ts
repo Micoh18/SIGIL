@@ -17,7 +17,7 @@ Usage:
   mainspring --version        Show the installed version
   mainspring init             Create local config, data, and logs directories
   mainspring config           Print MCP client config JSON
-  mainspring setup [client]   Initialize local files and print MCP config
+  mainspring setup            Initialize local files and print MCP config
   mainspring doctor           Check the local setup
   mainspring update           Show how to update to the latest version
 

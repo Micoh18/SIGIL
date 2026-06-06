@@ -276,18 +276,14 @@
       <!-- INSTALLATION -->
       <section id="installation" class="doc-section mt-20">
         <h2 class="font-display font-medium text-parchment text-4xl tracking-[-0.01em]">Installation</h2>
-        <p class="mt-6">Mainspring runs as a local MCP server over stdio. The normal user path is the npm package: install the CLI, let it create local config/data/log folders, then point your MCP client at the <code class="inline">mainspring</code> command.</p>
+        <p class="mt-6">Mainspring runs as a local MCP server over stdio. Works with any MCP-compatible client — Claude Desktop, Cursor, Zed, Continue, or any host that supports the Model Context Protocol.</p>
 
         <div class="mt-7" data-code data-lang="bash" data-file="terminal">
-<pre><code><span class="tok-com"># 1. Install the MCP server CLI</span>
-npm install -g mrmainspring
-
-<span class="tok-com"># 2. Create local config and print the MCP snippet</span>
-mainspring setup claude
-<span class="tok-com"># or: mainspring setup cursor</span></code></pre>
+<pre><code><span class="tok-com"># One command — no global install required</span>
+npx -y mrmainspring setup</code></pre>
         </div>
 
-        <p class="mt-7">Paste the printed JSON into your MCP client configuration. The same command works for Claude Desktop, Cursor, or any MCP-compatible host:</p>
+        <p class="mt-7">Paste the printed JSON into your MCP client configuration file:</p>
 
         <div class="mt-5" data-code data-lang="json" data-file="claude_desktop_config.json">
 <pre><code><span class="tok-punct">{</span>
@@ -309,7 +305,7 @@ mainspring setup claude
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 2</div>
             <div class="font-display text-xl text-parchment">Connect</div>
-            <p class="!text-parchment/65 text-[14px] mt-2"><code class="inline">mainspring setup claude</code> or <code class="inline">mainspring setup cursor</code> creates local files and prints the MCP config.</p>
+            <p class="!text-parchment/65 text-[14px] mt-2"><code class="inline">npx -y mrmainspring setup</code> creates local files and prints the MCP config JSON to paste into any client.</p>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 3</div>

@@ -292,7 +292,7 @@ function TheProof() {
 function Repo() {
   const [ref, inView] = useRevealS({ threshold: 0.2 });
   const [copied, setCopied] = useStateS(false);
-  const cmd = "npx -y mrmainspring setup cursor";
+  const cmd = "npx -y mrmainspring setup";
   const copy = () => {
     try { navigator.clipboard.writeText(cmd); } catch (e) {}
     setCopied(true); setTimeout(() => setCopied(false), 900);
