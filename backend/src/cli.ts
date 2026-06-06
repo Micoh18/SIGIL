@@ -2,8 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import * as clack from "@clack/prompts";
 import { loadConfig } from "./config.js";
-import { setupAllClients, formatClientSetupReport } from "./client-setup.js";
+import {
+  detectClients,
+  configureClients,
+  setupAllClients,
+  formatClientSetupReport,
+  type ClientDetection
+} from "./client-setup.js";
 import { ensureGrimoireMasterKey, loadLocalEnvFile, resolveEnvPath } from "./env-file.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
@@ -43,7 +50,7 @@ type InitResult = {
   logsDir: string;
 };
 
-export function runCliCommand(args: string[]): boolean {
+export async function runCliCommand(args: string[]): Promise<boolean> {
   const [command, target] = args;
 
   if (!command || command === "stdio" || command === "server" || command === "mcp") {
@@ -72,27 +79,30 @@ export function runCliCommand(args: string[]): boolean {
   }
 
   if (command === "setup") {
-    const result = initializeLocalSetup();
-    process.stdout.write(formatInitResult(result));
-
-    const clientResults = setupAllClients();
-    const report = formatClientSetupReport(clientResults);
-    if (report) {
-      process.stdout.write(report);
+    if (process.stdin.isTTY) {
+      await runInteractiveSetup();
     } else {
-      process.stdout.write(
-        "\nNo MCP clients detected automatically.\n" +
-        "Add this to your MCP client config (Claude Desktop, Cursor, Windsurf, Zed, VS Code, Continue, or any MCP host):\n\n"
-      );
-      process.stdout.write(`${formatMcpConfig()}\n`);
-      process.stdout.write(
-        "\nConfig file locations:\n" +
-        "  Claude Desktop  ~/Library/Application Support/Claude/claude_desktop_config.json\n" +
-        "  Cursor          ~/.cursor/mcp.json\n" +
-        "  Windsurf        ~/.codeium/windsurf/mcp_config.json\n" +
-        "  Zed             ~/.config/zed/settings.json  (context_servers format)\n" +
-        "  VS Code         ~/.vscode/mcp.json\n\n"
-      );
+      const result = initializeLocalSetup();
+      process.stdout.write(formatInitResult(result));
+      const clientResults = setupAllClients();
+      const report = formatClientSetupReport(clientResults);
+      if (report) {
+        process.stdout.write(report);
+      } else {
+        process.stdout.write(
+          "\nNo MCP clients detected automatically.\n" +
+          "Add this to your MCP client config (Claude Desktop, Cursor, Windsurf, Zed, VS Code, Continue, or any MCP host):\n\n"
+        );
+        process.stdout.write(`${formatMcpConfig()}\n`);
+        process.stdout.write(
+          "\nConfig file locations:\n" +
+          "  Claude Desktop  ~/Library/Application Support/Claude/claude_desktop_config.json\n" +
+          "  Cursor          ~/.cursor/mcp.json\n" +
+          "  Windsurf        ~/.codeium/windsurf/mcp_config.json\n" +
+          "  Zed             ~/.config/zed/settings.json  (context_servers format)\n" +
+          "  VS Code         ~/.vscode/mcp.json\n\n"
+        );
+      }
     }
     return true;
   }
@@ -115,6 +125,113 @@ export function runCliCommand(args: string[]): boolean {
   process.stderr.write(`Unknown command: ${command}\n\n${HELP}`);
   process.exitCode = 1;
   return true;
+}
+
+async function runInteractiveSetup(): Promise<void> {
+  clack.intro("Mr Mainspring — setup");
+
+  const result = initializeLocalSetup();
+  clack.log.success(`Local files ready\n   Config: ${result.envFile}\n   Data:   ${result.dataDir}`);
+
+  const clients = detectClients();
+  const installed = clients.filter(c => c.installed);
+  const notInstalled = clients.filter(c => !c.installed);
+
+  let selected: ClientDetection[];
+
+  if (installed.length === 0) {
+    clack.log.warn("No MCP clients detected on this machine.");
+    clack.log.info(
+      "Add this JSON to your client config manually:\n\n" +
+      formatMcpConfig() + "\n\n" +
+      "  Claude Desktop  ~/Library/Application Support/Claude/claude_desktop_config.json\n" +
+      "  Cursor          ~/.cursor/mcp.json\n" +
+      "  Windsurf        ~/.codeium/windsurf/mcp_config.json\n" +
+      "  Zed             ~/.config/zed/settings.json\n" +
+      "  VS Code         ~/.vscode/mcp.json"
+    );
+    clack.outro("Restart your client after updating the config.");
+    return;
+  }
+
+  const choices = await clack.multiselect<ClientDetection>({
+    message: "Which MCP clients should we configure?",
+    options: [
+      ...installed.map(c => ({
+        value: c,
+        label: c.name,
+        hint: c.configPath,
+        selected: true
+      })),
+      ...notInstalled.map(c => ({
+        value: c,
+        label: c.name,
+        hint: "not found",
+        selected: false
+      }))
+    ],
+    required: false
+  });
+
+  if (clack.isCancel(choices)) {
+    clack.cancel("Setup cancelled.");
+    process.exitCode = 1;
+    return;
+  }
+
+  selected = choices as ClientDetection[];
+
+  if (selected.length === 0) {
+    clack.log.warn("No clients selected — nothing configured.");
+    clack.outro("Run mainspring setup again when ready.");
+    return;
+  }
+
+  const configResults = configureClients(selected.filter(c => c.installed));
+  const written = configResults.filter(r => r.status === "written").map(r => r.name);
+  const alreadySet = configResults.filter(r => r.status === "already-set").map(r => r.name);
+  const errors = configResults.filter(r => r.status === "error");
+
+  if (written.length > 0) clack.log.success(`Configured: ${written.join(", ")}`);
+  if (alreadySet.length > 0) clack.log.info(`Already configured: ${alreadySet.join(", ")}`);
+  for (const e of errors) clack.log.error(`${e.name}: ${e.error}`);
+
+  const wantCasper = await clack.confirm({
+    message: "Enable Casper on-chain anchoring?",
+    initialValue: false
+  });
+
+  if (clack.isCancel(wantCasper)) { clack.cancel("Setup cancelled."); return; }
+
+  if (wantCasper) {
+    clack.log.info(
+      "Add to your .env file:\n\n" +
+      "  CASPER_ENABLE_REAL_SUBMISSION=true\n" +
+      "  CASPER_RPC_URL=https://node.testnet.casper.network/rpc\n" +
+      "  CASPER_ACCOUNT_KEY_PATH=./keys/your-key.pem\n\n" +
+      "Then restart your MCP client."
+    );
+  }
+
+  const wantX402 = await clack.confirm({
+    message: "Enable x402 micropayments?",
+    initialValue: false
+  });
+
+  if (clack.isCancel(wantX402)) { clack.cancel("Setup cancelled."); return; }
+
+  if (wantX402) {
+    clack.log.info(
+      "Add to your .env file:\n\n" +
+      "  X402_ENABLE_REAL_SETTLEMENT=true\n" +
+      "  X402_SETTLEMENT_MODE=casper-cli\n" +
+      "  X402_BUYER_ACCOUNT_HASH=account-hash-<64 hex chars>\n" +
+      "  CASPER_ENABLE_REAL_SUBMISSION=true\n\n" +
+      "Get your account hash: casper-client account-address --public-key <your-pubkey-hex>"
+    );
+  }
+
+  clack.outro("Restart your MCP clients to load the server.");
 }
 
 export function initializeLocalSetup(env: NodeJS.ProcessEnv = process.env): InitResult {

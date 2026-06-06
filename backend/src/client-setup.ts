@@ -9,6 +9,13 @@ export type ClientSetupResult = {
   error?: string;
 };
 
+export type ClientDetection = {
+  name: string;
+  configPath: string;
+  installed: boolean;
+  format: "standard" | "zed" | "continue";
+};
+
 const MAINSPRING_ENTRY = {
   command: "npx",
   args: ["-y", "mrmainspring"]
@@ -96,6 +103,51 @@ function mergeConfig(json: Record<string, unknown>, format: "standard" | "zed" |
       mainspring: MAINSPRING_ENTRY
     }
   };
+}
+
+export function detectClients(env: NodeJS.ProcessEnv = process.env): ClientDetection[] {
+  const plat = process.platform;
+  const seen = new Set<string>();
+  const results: ClientDetection[] = [];
+
+  for (const client of CLIENTS) {
+    if (!client.platforms.includes(plat)) continue;
+    const configPath = expandPath(client.path, env);
+    const key = `${client.name}:${configPath}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({ name: client.name, configPath, installed: isInstalled(configPath), format: client.format });
+  }
+
+  return results;
+}
+
+export function configureClients(
+  selected: ClientDetection[],
+  env: NodeJS.ProcessEnv = process.env
+): ClientSetupResult[] {
+  const results: ClientSetupResult[] = [];
+
+  for (const client of selected) {
+    if (!client.installed) {
+      results.push({ name: client.name, configPath: client.configPath, status: "not-installed" });
+      continue;
+    }
+    try {
+      const json = readJson(client.configPath);
+      if (alreadySet(json, client.format)) {
+        results.push({ name: client.name, configPath: client.configPath, status: "already-set" });
+        continue;
+      }
+      mkdirSync(dirname(client.configPath), { recursive: true });
+      writeFileSync(client.configPath, JSON.stringify(mergeConfig(json, client.format), null, 2) + "\n", "utf8");
+      results.push({ name: client.name, configPath: client.configPath, status: "written" });
+    } catch (e) {
+      results.push({ name: client.name, configPath: client.configPath, status: "error", error: String(e) });
+    }
+  }
+
+  return results;
 }
 
 export function setupAllClients(env: NodeJS.ProcessEnv = process.env): ClientSetupResult[] {

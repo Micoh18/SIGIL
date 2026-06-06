@@ -1,6 +1,6 @@
 {
   "name": "mrmainspring",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Mr Mainspring MCP backend with memory, Grimoire policies, audit, Casper anchoring, and x402 settlement boundaries.",
   "license": "MIT",
   "type": "module",
@@ -47,6 +47,7 @@
     "x402:signer": "tsx scripts/x402-signer-sidecar.ts"
   },
   "dependencies": {
+    "@clack/prompts": "^1.5.1",
     "@modelcontextprotocol/sdk": "^1.13.0",
     "zod": "^3.25.76"
   },

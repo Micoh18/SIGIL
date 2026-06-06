@@ -6,7 +6,7 @@ import { ensureGrimoireMasterKey, loadLocalEnvFile } from "./env-file.js";
 import { createSigilServer } from "./server.js";
 
 async function main() {
-  if (runCliCommand(process.argv.slice(2))) {
+  if (await runCliCommand(process.argv.slice(2))) {
     return;
   }
 
