@@ -10,6 +10,8 @@ last_verified: 2026-06-05
 
 The payment module is intentionally conservative. It creates durable payment intents, can request the first x402 challenge after Grimoire policy approval, validates captured payment requirements, and then enters an explicit settlement-provider boundary. By default that provider is disabled. When real settlement is enabled, the backend delegates signing to an external signer sidecar, retries the resource with `PAYMENT-SIGNATURE`, and marks `settled` only after a verified `PAYMENT-RESPONSE`.
 
+For a reproducible real settlement flow, use the [Casper x402 Runbook](/casper-x402-runbook). The [Local Demo](/local-demo) is intentionally pre-settlement and must not be used as proof of on-chain payment.
+
 ## Flow States
 
 ```text
@@ -22,6 +24,14 @@ settled
 ```
 
 `settled` is reserved for a provider result that genuinely verifies settlement. The default wiring still keeps settlement disabled. Real settlement requires a configured signer sidecar and a resource/facilitator pair that returns a verifiable settlement response with a transaction hash.
+
+## Runnable Paths
+
+| Path | Command | Proves | Does not prove |
+| --- | --- | --- | --- |
+| Local MCP simulation | `npm run demo:stdio --prefix backend` | MCP tool list, memory, Grimoire, policy approval, durable payment intent, receipt lookup, audit trail. | x402 signing, paid retry, facilitator settlement, Casper transaction hash. |
+| Local x402 challenge | `npm run demo:x402-sidecars:smoke --prefix backend` without `X402_SIGNER_URL` | Paid resource returns `402 Payment Required` with x402 requirements. | Signed payment or settlement. |
+| Real Casper x402 settlement | `npm run smoke:x402-payment-fetch --prefix backend` with the runbook env | `payment.fetch` challenge capture, requirement approval, signing, paid retry, facilitator `/verify` + `/settle`, Casper transaction hash, policy spend update, audit events. | Production key custody, external public facilitator support, memory-anchor finality query. |
 
 ## Official x402 Boundary
 
@@ -44,6 +54,7 @@ Mr Mainspring implements the client-side boundary up to verified paid retry:
 challenge capture
 Grimoire policy approval
 captured requirement approval against policy
+current-period spend check
 external signer sidecar request
 retry resource with PAYMENT-SIGNATURE
 verify PAYMENT-RESPONSE
@@ -57,12 +68,13 @@ The exact backend boundary is:
 | Challenge capture | Implemented. The first HTTP request can capture `PAYMENT-REQUIRED`, `X-PAYMENT-REQUIRED`, JSON body requirements, or a raw body fallback. |
 | Policy approval | Implemented before any challenge request. URL, method, and expected amount are checked against the Grimoire policy. |
 | Requirement approval | Implemented after challenge capture and before any future signing. The selected requirement must match amount, resource URL, optional method, network, configured asset, configured payee, and configured scheme. |
+| Period spend gate | Implemented before signing. The selected requirement amount plus current period spend must fit inside `max_amount_per_period`. |
 | Payment payload signing | Implemented through `X402_SIGNER_URL`. The backend never reads a private key; it sends approved requirements to a signer sidecar and persists only the signed payload hash. |
 | Paid resource retry | Implemented in `resource-retry` mode. The backend retries the original resource with a base64 JSON payment payload in `PAYMENT-SIGNATURE`. |
 | `PAYMENT-RESPONSE` verification | Implemented. A paid 2xx response is not enough; the response must include a verifiable settlement object with a transaction hash. |
 | Facilitator `/verify` + `/settle` | Available as `X402_SETTLEMENT_MODE=facilitator` for server-side/facilitator tests. Verify output alone never marks settlement. |
 | Receipt persistence | Implemented for unavailable, failed, and settled provider outcomes. The default receipt is `settlement_unavailable`. |
-| Spend accounting | Implemented only after verified settlement. `current_period_spend` is not updated for challenge capture, failed signing, failed retry, or unavailable settlement. |
+| Spend accounting | Prechecked before signing and recorded after verified settlement. `current_period_spend` is not updated for challenge capture, failed signing, failed retry, or unavailable settlement. |
 
 ## `payment.fetch`
 
@@ -176,6 +188,17 @@ or:
 
 The signed payload itself is never returned through MCP outputs. `payment.receipt` exposes only intent metadata, receipt metadata, and the signed payload hash.
 
+If the selected requirement would exceed the current period budget, settlement stops before the signer sidecar is called:
+
+```json
+{
+  "allowed": true,
+  "status": "settlement_unavailable",
+  "settlement": "unavailable",
+  "settlement_blocker": "policy_period_limit_exceeded"
+}
+```
+
 ## Paid Resource Sidecar
 
 For backend wiring tests, run the paid resource sidecar:
@@ -191,6 +214,8 @@ resource: http://localhost:4021/weather
 ```
 
 The resource returns `402 Payment Required` plus `PAYMENT-REQUIRED` until the backend retries with `PAYMENT-SIGNATURE`. On a paid retry it calls the configured facilitator `/verify`; if verification passes it calls `/settle`; it returns the protected resource body and attaches `PAYMENT-RESPONSE` only after the facilitator returns verified settlement with a Casper transaction hash.
+
+The repo-local resource sidecar keeps an in-process replay store. A duplicate payment payload or nonce already used for a successful response returns `409 payment_replayed` and does not return the protected resource body.
 
 Use this env while testing the local sidecar:
 
@@ -228,6 +253,56 @@ npm run demo:x402-sidecars:smoke --prefix backend
 
 Without `X402_SIGNER_URL`, the smoke checks only the 402 challenge. With `X402_SIGNER_URL`, a configured signer, and a facilitator able to settle, it signs, retries, verifies `PAYMENT-RESPONSE`, and requires a Casper transaction hash.
 
+## Real Casper Settlement Smoke
+
+The full MCP-driven native CSPR smoke is documented in [Casper x402 Runbook](/casper-x402-runbook). The minimum real-settlement gates are:
+
+```env
+CASPER_RPC_URL=https://node.testnet.casper.network/rpc
+CASPER_ACCOUNT_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+CASPER_ENABLE_REAL_SUBMISSION=true
+X402_ENABLE_REAL_SETTLEMENT=true
+X402_SETTLEMENT_MODE=resource-retry
+X402_FACILITATOR_URL=http://127.0.0.1:4022
+X402_RESOURCE_DEMO_URL=http://127.0.0.1:4021/weather
+X402_RESOURCE_AMOUNT=2500000000
+X402_ASSET_ID=casper-native-cspr
+X402_BUYER_ACCOUNT_HASH=account-hash-d0a57c6a95e74463de156cac761e17f0923eafc730ce3ce3a0c747c6598b0500
+X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+X402_PAY_TO=02032878c27882713870adf0e7546a082e991147824e77b710aaa77f47c6d972b041
+X402_SIGNER_URL=http://127.0.0.1:4030/sign
+X402_PAYMENT_HEADER_NAME=PAYMENT-SIGNATURE
+```
+
+Run:
+
+```bash
+npm run smoke:x402-payment-fetch --prefix backend
+```
+
+Expected output includes:
+
+```text
+Mr Mainspring Casper x402 payment.fetch smoke
+resource=http://127.0.0.1:4021/weather
+policy_id=pol-casper-x402-smoke-<timestamp>
+PASS payment.fetch: status=settled settlement=settled payment_id=pay_<hex>
+PASS payment.receipt: settlement_status=settled casper_transaction_hash=<64-hex>
+PASS policy.spend: before=0 after_preflight=0 after_settlement=2500000000
+PASS audit.tail: events=payment.challenge_received,payment.settled,policy.spend_recorded
+RESULT PASS
+```
+
+Then verify the hash on Casper:
+
+```bash
+casper-client get-transaction \
+  --node-address https://node.testnet.casper.network/rpc \
+  <casper_transaction_hash>
+```
+
+The transaction must include execution info and no `Failure` or `error_message`.
+
 ## Casper Facilitator Sidecar
 
 For on-chain Casper settlement, run the facilitator sidecar after configuring `CASPER_RPC_URL`, `CASPER_ACCOUNT_KEY_PATH`, and `CASPER_ENABLE_REAL_SUBMISSION=true`:
@@ -237,6 +312,8 @@ npm run x402:facilitator --prefix backend
 ```
 
 It exposes `POST /verify` and `POST /settle` on `http://127.0.0.1:4022` by default. `/verify` validates the signature, selected requirement hash, amount, payee, asset, network, method, resource, nonce, timeout, and replay state without submitting a Casper transaction. `/settle` repeats validation, consumes the nonce, submits the Casper settlement transaction, waits for execution success, and returns `settled: true` only with the real Casper transaction hash.
+
+The facilitator rejects stale payloads, duplicate payloads, nonce replays, wrong payee, wrong amount, wrong asset, wrong network, and wrong resource before settlement submission.
 
 If the captured requirements do not match the policy, the challenge remains durable but settlement is marked unavailable before any signing/payment action:
 
@@ -283,9 +360,10 @@ When `idempotency_key` is present, Mr Mainspring returns the same persisted inte
 
 - Grimoire-backed signing capability retrieval.
 - Native in-process Casper signed x402 payload creation.
-- A pinned Casper-compatible x402 SDK/facilitator in this repo.
+- A pinned external/public Casper x402 facilitator. The repo-local facilitator is the current native CSPR testnet path.
 - Automatic recovery when a payment settles but the resource body is not delivered.
-- Full period spend pre-checks against already-used period budget.
+- Durable shared replay storage across restarts or multiple sidecar instances.
+- Atomic cross-process policy spend reservations.
 
 ## Manual Credentials and Resources Needed for Real x402
 
@@ -295,6 +373,6 @@ Real settlement still requires all of the following outside repo files:
 - A running x402 resource server that returns real `PAYMENT-REQUIRED` requirements for the protected endpoint.
 - A facilitator URL with working `/verify` and `/settle` endpoints for the selected `(scheme, network)` pair.
 - Casper RPC/network configuration for the target network when using the Casper path.
-- A deployed x402-compatible Casper asset package/token and a funded payee account.
+- A deployed x402-compatible Casper asset package/token if using CEP-18. The current runbook path uses native CSPR and does not require a CEP-18 package hash.
 - A Grimoire policy whose allowlist includes the exact resource URL, method, max amount, CAIP-2 network, asset package, payee, and scheme expected from the resource server.
 - A non-demo `GRIMOIRE_MASTER_KEY` if any signing secret reference is stored locally.

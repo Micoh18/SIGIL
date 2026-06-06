@@ -15,6 +15,7 @@ const pageOrder = [
   "memory.md",
   "grimoire.md",
   "payments-x402.md",
+  "casper-x402-runbook.md",
   "casper-anchoring.md",
   "audit-trail.md",
   "security-model.md",
@@ -137,6 +138,7 @@ function renderLlmsTxt(pages) {
     "- Memory records are canonicalized and verified with SHA-256 hashes.",
     "- Grimoire secrets are encrypted locally and returned as metadata only.",
     "- payment.fetch can policy-check, persist an intent, capture the first HTTP 402 challenge, and when configured call an external signer sidecar before retrying the paid resource with PAYMENT-SIGNATURE.",
+    "- The Casper x402 runbook documents the native CSPR testnet path with signer/resource/facilitator sidecars, payment.fetch smoke output, and transaction hash verification.",
     "",
     "## Verify Locally",
     "",
@@ -163,9 +165,9 @@ function renderLlmsTxt(pages) {
     "",
     "## Critical Current Limits",
     "",
-    "- Real Casper settlement is not implemented until verified.",
+    "- Real Casper x402 settlement is disabled by default and must be verified through the Casper x402 runbook before it is claimed.",
     "- Real x402 settlement requires X402_ENABLE_REAL_SETTLEMENT=true, X402_SIGNER_URL, and a resource/facilitator path that returns a verifiable PAYMENT-RESPONSE.",
-    "- The memory-anchor contract builds locally to Wasm, but testnet deploy/query verification is not complete.",
+    "- The memory-anchor contract is deployed and anchor submission has been smoke-tested, but backend memory-anchor finality/query verification is not complete.",
     "- Supabase persistence is a JSONB bridge, not the final normalized production database schema.",
     "- Remote HTTP MCP transport, production database migrations, and KMS/HSM integrations are not implemented."
   );

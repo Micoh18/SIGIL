@@ -60,6 +60,6 @@ audit.tail
 
 ## Honest Limits
 
-`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` unless later real x402 challenge and signing work is implemented and verified. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because this scripted demo intentionally uses the local pending anchor path, not the configured Casper CLI submission path.
+`payment.fetch` stops at `status: "policy_checked"` with `settlement: "not_started"` because this scripted demo intentionally avoids the real signer/resource/facilitator path. Use [Casper x402 Runbook](/casper-x402-runbook) for real native CSPR settlement. `memory.verify` keeps `casper_transaction_hash: null` and `onchain_content_hash: null` because this scripted demo intentionally uses the local pending anchor path, not the configured Casper CLI submission path.
 
 For the full manual command sequence, use `docs/demo-runbook.md` in the repository root.

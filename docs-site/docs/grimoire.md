@@ -75,4 +75,4 @@ The service canonicalizes policy bodies and stores `policy_hash` so later paymen
 - The expected amount is invalid.
 - The expected amount exceeds `max_amount_per_call`.
 
-Period spend tracking is represented in the policy record, but real settlement spend updates are not implemented because settlement is not implemented.
+Period spend tracking is represented in the policy record. `payment.fetch` updates `current_period_spend` only after verified settlement; challenge capture, failed signing, failed paid retry, and unavailable settlement do not spend policy budget.

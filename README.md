@@ -17,6 +17,7 @@ contracts/memory-anchor/    Casper memory-anchor hash-only contract source
 mainspring-front/           Coworker-provided landing frontend handoff copied into the repo
 docs-site/                  VitePress documentation site and generated LLM docs
 docs/demo-runbook.md        Local MCP demo guide
+docs/casper-x402-runbook.md Real Casper x402 settlement runbook
 backend-spec.md             Legacy backend product/security spec
 .env.example                Local backend environment template
 ```
@@ -69,7 +70,25 @@ npm run dev
 
 The backend writes local demo data under `.sigil/` unless `SIGIL_DATA_DIR` is set.
 
-For local x402 wiring tests, start the paid resource sidecar:
+## x402: Local Simulation vs Real Casper Settlement
+
+The local evaluator demo and the real Casper x402 smoke are intentionally
+separate.
+
+The scripted local MCP demo proves policy checks, durable payment intents,
+receipts, and audit events without paying on-chain:
+
+```bash
+npm run demo:stdio --prefix backend
+```
+
+Expected payment line:
+
+```text
+PASS payment.fetch: allowed=true status=policy_checked next_state=challenge_received settlement=not_started payment_id=<pay_...>
+```
+
+For local paid-resource challenge wiring, start the resource sidecar:
 
 ```bash
 npm run demo:x402-sidecars --prefix backend
@@ -82,6 +101,40 @@ The clearer alias is:
 ```bash
 npm run x402:resource --prefix backend
 ```
+
+Without `X402_SIGNER_URL`, the resource smoke proves only the 402 challenge:
+
+```bash
+npm run demo:x402-sidecars:smoke --prefix backend
+```
+
+Expected:
+
+```text
+PASS x402 paid resource smoke: challenge=402 payment_required=true
+Set X402_SIGNER_URL to run the full paid retry smoke.
+```
+
+For real Casper testnet settlement, configure `.env` with at least:
+
+```env
+CASPER_RPC_URL=https://node.testnet.casper.network/rpc
+CASPER_ACCOUNT_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+CASPER_ENABLE_REAL_SUBMISSION=true
+X402_ENABLE_REAL_SETTLEMENT=true
+X402_SETTLEMENT_MODE=resource-retry
+X402_FACILITATOR_URL=http://127.0.0.1:4022
+X402_RESOURCE_DEMO_URL=http://127.0.0.1:4021/weather
+X402_RESOURCE_AMOUNT=2500000000
+X402_ASSET_ID=casper-native-cspr
+X402_BUYER_ACCOUNT_HASH=account-hash-d0a57c6a95e74463de156cac761e17f0923eafc730ce3ce3a0c747c6598b0500
+X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+X402_PAY_TO=02032878c27882713870adf0e7546a082e991147824e77b710aaa77f47c6d972b041
+X402_SIGNER_URL=http://127.0.0.1:4030/sign
+X402_PAYMENT_HEADER_NAME=PAYMENT-SIGNATURE
+```
+
+Native CSPR uses integer motes. `2500000000` is 2.5 CSPR.
 
 For the real Casper signer sidecar, keep the buyer private key outside this repository and run:
 
@@ -106,6 +159,29 @@ npm run smoke:x402-payment-fetch --prefix backend
 ```
 
 The smoke starts local x402 sidecars by default, sets a Grimoire policy matching `X402_RESOURCE_DEMO_URL`/`X402_RESOURCE_AMOUNT`/`X402_PAY_TO`, calls `payment.fetch` with `request_challenge=true`, then verifies `payment.receipt`, audit events, policy spend, and a Casper transaction hash. Set `X402_SMOKE_START_SIDECARS=false` to use already-running sidecars.
+
+Expected success transcript:
+
+```text
+Mr Mainspring Casper x402 payment.fetch smoke
+resource=http://127.0.0.1:4021/weather
+policy_id=pol-casper-x402-smoke-<timestamp>
+PASS payment.fetch: status=settled settlement=settled payment_id=pay_<hex>
+PASS payment.receipt: settlement_status=settled casper_transaction_hash=<64-hex>
+PASS policy.spend: before=0 after_preflight=0 after_settlement=2500000000
+PASS audit.tail: events=payment.challenge_received,payment.settled,policy.spend_recorded
+RESULT PASS
+```
+
+Verify the transaction hash with Casper:
+
+```bash
+casper-client get-transaction \
+  --node-address https://node.testnet.casper.network/rpc \
+  <casper_transaction_hash>
+```
+
+The returned transaction must include execution info and no `Failure` or `error_message`. See `docs/casper-x402-runbook.md` for the full `.env`, manual sidecar run, expected outputs, and failure-state table.
 
 ## Environment
 
@@ -201,15 +277,16 @@ The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The
 - Spending/access policy enforcement before x402 payment intent creation.
 - Durable payment intent persistence with idempotency keys.
 - Optional first HTTP 402 challenge capture for `payment.fetch`, requirement approval, external signer-sidecar integration, paid resource retry, `PAYMENT-RESPONSE` verification, and disabled/failed/settled receipt persistence.
+- Repo-local Casper x402 signer, paid resource, facilitator, and full `payment.fetch` smoke scripts for native CSPR testnet settlement when the required env and funded key are provided.
 - Audit events for memory, Grimoire, payment policy checks, and verification flows.
 - Casper anchor client interface with a local pending path and an optional real `casper-client put-transaction package` submission path behind `CASPER_ENABLE_REAL_SUBMISSION`.
 - Hash-only Casper memory-anchor contract deployed on testnet.
 
 ## Not Implemented Yet
 
-- Automatic Casper transaction execution verification and on-chain query from the TypeScript backend.
+- Automatic Casper transaction execution verification and on-chain query for memory anchors. The x402 facilitator settlement path does poll `casper-client get-transaction` before accepting a settlement.
 - Native in-process Casper x402 payment signing inside the MCP backend. Real x402 signing must come from the standalone signer sidecar or another external signer until a Casper-compatible SDK/facilitator is pinned and verified.
-- Verified Casper-native x402 facilitator support. Public x402 facilitators currently need a supported `(scheme, network)` pair.
+- Pinned external/public Casper x402 facilitator support. The repo-local facilitator is the verified native CSPR testnet path for this milestone.
 - Production hardening around contract upgrades, key custody, and automatic finality checks.
 - Full relational SQLite/Postgres domain migrations; Supabase currently stores domain records as JSONB with indexed lookup columns.
 - Remote HTTP MCP transport.

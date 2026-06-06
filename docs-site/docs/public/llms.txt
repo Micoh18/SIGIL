@@ -13,6 +13,7 @@ Last verified: 2026-06-05
 - Memory records are canonicalized and verified with SHA-256 hashes.
 - Grimoire secrets are encrypted locally and returned as metadata only.
 - payment.fetch can policy-check, persist an intent, capture the first HTTP 402 challenge, and when configured call an external signer sidecar before retrying the paid resource with PAYMENT-SIGNATURE.
+- The Casper x402 runbook documents the native CSPR testnet path with signer/resource/facilitator sidecars, payment.fetch smoke output, and transaction hash verification.
 
 ## Verify Locally
 
@@ -31,6 +32,7 @@ Last verified: 2026-06-05
 - [Memory](/memory): Mr Mainspring memory envelopes, hashing rules, search, verification, and anchor metadata. Status: implemented.
 - [Grimoire](/grimoire): Encrypted secrets and spending/access policies for Mr Mainspring agents. Status: implemented.
 - [Payments and x402](/payments-x402): Durable payment intents, x402 challenge capture, requirement approval, external signing, paid retry, and verified settlement receipts. Status: settlement-ready.
+- [Casper x402 Runbook](/casper-x402-runbook): Reproduce and verify real Casper testnet x402 settlement through payment.fetch, sidecars, and transaction hash verification. Status: settlement-ready.
 - [Casper Anchoring](/casper-anchoring): Current Casper anchor client boundary and memory-anchor contract readiness. Status: current.
 - [Audit Trail](/audit-trail): Local audit event shape and current events emitted by Mr Mainspring services. Status: implemented.
 - [Security Model](/security-model): Current Mr Mainspring security boundaries for memory, secrets, policies, x402, Casper anchoring, and audit. Status: current.
@@ -45,8 +47,8 @@ Last verified: 2026-06-05
 
 ## Critical Current Limits
 
-- Real Casper settlement is not implemented until verified.
+- Real Casper x402 settlement is disabled by default and must be verified through the Casper x402 runbook before it is claimed.
 - Real x402 settlement requires X402_ENABLE_REAL_SETTLEMENT=true, X402_SIGNER_URL, and a resource/facilitator path that returns a verifiable PAYMENT-RESPONSE.
-- The memory-anchor contract builds locally to Wasm, but testnet deploy/query verification is not complete.
+- The memory-anchor contract is deployed and anchor submission has been smoke-tested, but backend memory-anchor finality/query verification is not complete.
 - Supabase persistence is a JSONB bridge, not the final normalized production database schema.
 - Remote HTTP MCP transport, production database migrations, and KMS/HSM integrations are not implemented.

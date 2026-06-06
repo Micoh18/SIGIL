@@ -20,6 +20,7 @@ Mr Mainspring currently runs as a backend-only MCP server. The repo does not req
 | Docs and LLM artifacts build | `npm.cmd run build --prefix docs-site` |
 | Tool schemas are machine-readable | Open `/api/tool-schemas.json` after preview or read `docs-site/docs/public/api/tool-schemas.json`. |
 | Current limits are explicit | Read [Current Limitations](/current-limitations) and [Payments and x402](/payments-x402). |
+| Real Casper x402 settlement | Follow [Casper x402 Runbook](/casper-x402-runbook) with funded testnet keys and `CASPER_ENABLE_REAL_SUBMISSION=true`. |
 
 ## Install Backend Dependencies
 
@@ -153,7 +154,7 @@ Use an MCP client connected to the stdio command and run:
 6. `audit.tail` to inspect the story.
 
 ::: tip Current x402 behavior
-Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. By default Mr Mainspring stops before settlement. With `X402_ENABLE_REAL_SETTLEMENT=true` and a real `X402_SIGNER_URL`, it can retry the resource with `PAYMENT-SIGNATURE` and persist a settled receipt only when `PAYMENT-RESPONSE` verifies.
+Set `request_challenge: true` on `payment.fetch` to make the initial HTTP request and persist a `402 Payment Required` challenge if one is returned. By default Mr Mainspring stops before settlement. With `X402_ENABLE_REAL_SETTLEMENT=true`, `X402_SIGNER_URL`, `CASPER_ENABLE_REAL_SUBMISSION=true`, a funded key, and the sidecars from [Casper x402 Runbook](/casper-x402-runbook), it retries the resource with `PAYMENT-SIGNATURE` and persists a settled receipt only when `PAYMENT-RESPONSE` verifies with a Casper transaction hash.
 :::
 
 ## Expected Boundary

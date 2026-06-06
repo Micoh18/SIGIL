@@ -44,7 +44,7 @@ Mr Mainspring is a TypeScript MCP backend for local agent demos. It is currently
 - Casper anchor metadata through a replaceable client interface, including a verified testnet submission path when configured.
 
 ::: warning Honest status
-The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled by default and requires a real signer/resource/facilitator path before `settled` can be returned.
+The memory-anchor contract is deployed on Casper testnet and real anchor submission has been smoke-tested. The backend still reports submitted anchors as `pending` until a separate `get-transaction`/on-chain query verifies execution. x402 settlement remains disabled by default; the [Casper x402 Runbook](/casper-x402-runbook) is the real native CSPR path for signer/resource/facilitator settlement and transaction-hash verification.
 :::
 
 ## First 10 Minutes
@@ -54,11 +54,11 @@ The memory-anchor contract is deployed on Casper testnet and real anchor submiss
 | Can the docs and generated LLM files build? | [Quickstart](/quickstart) | `npm.cmd run build --prefix docs-site` completes and regenerates public LLM files. |
 | What should an evaluator run? | [Local Demo](/local-demo) | Secret metadata, policy hash, payment intent state, memory hash, and audit events appear in sequence. |
 | What is the backend boundary? | [Architecture](/architecture) | MCP stdio enters local services backed by JSON stores under `SIGIL_DATA_DIR`. |
-| What is not proven yet? | [Current Limitations](/current-limitations) | Casper finality checks and Casper-native x402 support still require real external verification. |
+| What is not proven yet? | [Current Limitations](/current-limitations) | Local demos do not prove real settlement; memory-anchor finality checks and production key custody remain separate work. |
 
 ## Documentation Map
 
-Start with [Quickstart](/quickstart), then read [Architecture](/architecture) for the five-minute module map. Use [Local Demo](/local-demo) when validating the implementation path end to end. The core backend surfaces are documented in [MCP Tools](/mcp-tools), [Memory](/memory), [Grimoire](/grimoire), [Payments and x402](/payments-x402), [Casper Anchoring](/casper-anchoring), and [Audit Trail](/audit-trail).
+Start with [Quickstart](/quickstart), then read [Architecture](/architecture) for the five-minute module map. Use [Local Demo](/local-demo) when validating the local implementation path end to end, and [Casper x402 Runbook](/casper-x402-runbook) when validating real on-chain x402 settlement. The core backend surfaces are documented in [MCP Tools](/mcp-tools), [Memory](/memory), [Grimoire](/grimoire), [Payments and x402](/payments-x402), [Casper Anchoring](/casper-anchoring), and [Audit Trail](/audit-trail).
 
 ## LLM-Readable Files
 

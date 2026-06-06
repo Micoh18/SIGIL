@@ -16,7 +16,7 @@ Mr Mainspring is built around explicit boundaries: agents can ask for actions, b
 | --- | --- |
 | Secret values | AES-GCM encrypted locally and never returned by MCP tools. |
 | Memory bodies | Stored locally, hashed deterministically, and kept off-chain. |
-| Payment authorization | Settlement provider boundary exists; production signed x402 payloads are not produced or persisted by default. |
+| Payment authorization | External signing only; signed x402 payloads are validated for requirement hash, validity window, and replay before settlement/resource release. |
 | Casper anchoring | Hash metadata only; configured submissions require `casper-client` and never include memory bodies. |
 | Audit events | Redacted local events for debugging and evaluator review. |
 
@@ -27,6 +27,8 @@ Mr Mainspring is built around explicit boundaries: agents can ask for actions, b
 - Do not write memory bodies or secrets on-chain.
 - Anchor hashes only.
 - Persist payment intents before attempting external challenge requests.
+- Check current period spend before requesting a signature for an approved x402 requirement.
+- Store replay keys as hashes of nonce/payer/network material, not raw signed payloads.
 - Use idempotency keys for payment retries.
 
 ## Secret Storage
@@ -43,14 +45,19 @@ policy_disabled
 url_not_allowed
 method_not_allowed
 amount_over_limit
+period_limit_exceeded
 invalid_amount
 ```
 
-The current policy matcher uses exact URL and method allowlists and per-call amount checks. Future settlement work must validate x402 requirements against network, asset package, amount, resource URL, method, and payee before signing.
+The current policy matcher uses exact URL and method allowlists, per-call amount checks, and current-period spend checks. x402 requirement approval validates network, asset, amount, resource URL, method, payee, and scheme before a signer can be called.
 
 ## x402 Boundary
 
-The implemented path captures requirements, validates them against policy, and then reaches a settlement provider boundary. The default provider is disabled and persists `settlement_unavailable` receipt metadata rather than signing payloads or submitting settlement. This avoids false-positive payment claims while the facilitator path is not verified.
+The implemented path captures requirements, validates them against policy, checks the current period spend window, and then reaches a settlement provider boundary. The default provider is disabled and persists `settlement_unavailable` receipt metadata rather than signing payloads or submitting settlement.
+
+When real settlement is enabled, the backend delegates signing to `X402_SIGNER_URL`, validates the returned payload validity window and selected requirement hash, retries the paid resource, and accepts settlement only when `PAYMENT-RESPONSE` verifies against the approved requirement and signed payer. The repo-local paid resource and facilitator sidecars also reject stale payloads, duplicate payloads, nonce replays, wrong payee, wrong amount, wrong asset, wrong network, and wrong resource.
+
+Receipts, MCP outputs, logs, and audit events keep hashes and metadata only. Raw signatures, authorization payloads, private keys, bearer tokens, and command-line secret-key paths are redacted.
 
 ## Casper Boundary
 
@@ -61,8 +68,9 @@ The anchor client validates hash payloads and keeps the unconfigured path local-
 - No remote HTTP MCP transport yet.
 - No production database migrations yet.
 - No KMS/HSM integration yet.
-- No automatic Casper transaction execution verification yet.
-- No real x402 settlement verification yet.
+- Replay storage is in-process for the repo-local resource/facilitator sidecars. A multi-instance deployment needs durable shared replay storage with expiry.
+- Period spend checks include current spend before signing, but the file/Supabase stores do not provide a transactional cross-process reservation yet.
+- The signer sidecar still returns a raw signed payload to the backend by design; protect that HTTP channel with local binding, TLS or a trusted network, and bearer auth.
 
 ## Evaluator Security Checks
 

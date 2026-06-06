@@ -27,6 +27,7 @@ export default defineConfig({
       { text: "Overview", link: "/" },
       { text: "Quickstart", link: "/quickstart" },
       { text: "Local Demo", link: "/local-demo" },
+      { text: "Casper x402 Runbook", link: "/casper-x402-runbook" },
       { text: "MCP Tools", link: "/mcp-tools" },
       {
         text: "Context: local backend",
@@ -63,6 +64,7 @@ export default defineConfig({
           { text: "Memory", link: "/memory" },
           { text: "Grimoire", link: "/grimoire" },
           { text: "Payments and x402", link: "/payments-x402" },
+          { text: "Casper x402 Runbook", link: "/casper-x402-runbook" },
           { text: "Casper Anchoring", link: "/casper-anchoring" },
           { text: "Audit Trail", link: "/audit-trail" }
         ]

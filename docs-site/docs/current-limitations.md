@@ -26,8 +26,9 @@ A passing local demo does not mean:
 - A Casper transaction was submitted by the scripted local demo.
 - A submitted Casper transaction was automatically verified for final execution by the backend.
 - x402 payment authorization was signed unless `X402_ENABLE_REAL_SETTLEMENT=true` and `X402_SIGNER_URL` point to a real signer sidecar.
-- A paid request was replayed successfully unless the real signer/resource/facilitator path is configured and returns a verifiable `PAYMENT-RESPONSE`.
+- Replay protection is durable across restarts or multiple sidecar instances. The repo-local resource and facilitator reject duplicate payloads and nonce replays in-process only.
 - Facilitator settlement was verified unless the selected resource/facilitator pair returns a settlement response with a transaction hash.
+- A real native CSPR settlement happened; use [Casper x402 Runbook](/casper-x402-runbook) and verify the transaction hash separately.
 - Production database, migration, KMS, or remote transport paths exist.
 
 ## Casper
@@ -44,12 +45,15 @@ A passing local demo does not mean:
 - The backend can request and persist an HTTP 402 challenge.
 - The backend can hash free or unexpected non-402 responses.
 - The backend can validate captured payment requirements against policy before the settlement boundary.
+- The backend checks current period spend before requesting a signature for the selected x402 requirement.
 - The backend has a settlement-provider interface for external signing, paid resource retry, facilitator `/verify`, facilitator `/settle`, and receipt persistence.
 - The default production wiring keeps settlement disabled and persists an explicit `settlement_unavailable` receipt.
 - The backend can call an external signer sidecar through `X402_SIGNER_URL`, retry the paid resource with `PAYMENT-SIGNATURE`, and verify `PAYMENT-RESPONSE`.
+- Signed payment payloads are checked for validity windows before resource retry or Casper settlement. The resource/facilitator sidecars reject stale payloads, duplicate payloads, wrong payee, wrong amount, wrong asset, wrong network, and wrong resource.
+- The repo-local signer, resource, facilitator, and `smoke:x402-payment-fetch` scripts can verify native CSPR x402 settlement on Casper testnet when the runbook env and funded key are provided.
 - The backend does not read private keys or create native in-process Casper x402 signatures.
-- The backend does not include a pinned Casper-compatible x402 SDK/facilitator yet.
-- The backend must not claim real Casper x402 settlement until the signer/resource/facilitator path is run and verified for the selected `(scheme, network)` pair.
+- The backend does not include a pinned external/public Casper-compatible x402 facilitator yet.
+- The backend must not claim real Casper x402 settlement from the local demo; only the runbook smoke plus transaction hash verification proves it for the selected `(scheme, network)` pair.
 
 ## Persistence
 
@@ -69,9 +73,10 @@ A passing local demo does not mean:
 
 - Local `GRIMOIRE_MASTER_KEY` management is environment-variable based.
 - KMS/HSM integration is not implemented.
-- Period spend updates are applied after verified settlement only; full pre-checking against already-used period budget still needs to be added.
+- Period spend is checked against current-period usage before signing and recorded after verified settlement. The local stores do not yet provide an atomic cross-process spend reservation.
 - Signed payloads are not returned through MCP outputs. The backend stores only `signed_payload_hash`.
-- Payment requirement redaction is implemented for MCP outputs, but full paid-request replay still needs signed payload redaction rules.
+- Receipts, audit events, and command receipts redact raw signatures, authorization payloads, bearer tokens, private keys, public signing keys, and secret-key paths.
+- Replay storage for the repo-local sidecars is in-process only; production deployments need a durable shared nonce/replay store with expiry.
 
 ## Demo Blockers
 
@@ -79,17 +84,16 @@ To complete the full intended demo, the project still needs:
 
 ```text
 casper-client available to the backend runtime
-funded Casper testnet account for future anchors
+funded Casper testnet account for anchors and x402 native CSPR settlement
 configured deployed memory_anchor contract/package hashes
-deployed CEP-18 x402 token package
-running make-software/casper-x402 facilitator
-external wallet/KMS or encrypted Grimoire reference for the x402 client signing key
+deployed CEP-18 x402 token package only if the selected resource uses CEP-18 instead of native CSPR
+external wallet/KMS or encrypted Grimoire reference for production x402 client signing
 configured X402_SIGNER_URL sidecar that returns signed PaymentPayload JSON
 configured facilitator /verify and /settle endpoints for the selected scheme/network
 Grimoire allowlist for resource URL, method, amount, network, asset package, payee, and scheme
 verified payment settlement path
 real x402 Casper transaction hash capture
-automatic Casper transaction execution verification
+automatic Casper transaction execution verification for memory anchors
 ```
 
 ## Verification Commands
