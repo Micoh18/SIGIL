@@ -58,7 +58,7 @@ export function createSigilServer(config: SigilConfig): McpServer {
   return server;
 }
 
-function createX402SettlementProvider(config: SigilConfig): X402SettlementProvider {
+export function createX402SettlementProvider(config: SigilConfig): X402SettlementProvider {
   if (!config.x402.settlementEnabled) {
     return new DisabledX402SettlementProvider("x402_settlement_disabled");
   }
