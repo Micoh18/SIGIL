@@ -288,7 +288,7 @@ function TheProof() {
 function Repo() {
   const [ref, inView] = useRevealS({ threshold: 0.2 });
   const [copied, setCopied] = useStateS(false);
-  const cmd = "npm i mainspring";
+  const cmd = "npm i @micoh/mainspring";
   const copy = () => {
     try { navigator.clipboard.writeText(cmd); } catch (e) {}
     setCopied(true); setTimeout(() => setCopied(false), 900);
