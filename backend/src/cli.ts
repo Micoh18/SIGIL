@@ -24,7 +24,7 @@ Usage:
   mainspring --help           Show this help
   mainspring --version        Show the installed version
   mainspring init             Create local config, data, and logs directories
-  mainspring config           Print MCP client config JSON
+  mainspring config [client]  Print MCP client config for codex/cursor/claude
   mainspring setup            Initialize local files and print MCP config
   mainspring doctor           Check the local setup
   mainspring update           Show how to update to the latest version
@@ -74,7 +74,7 @@ export async function runCliCommand(args: string[]): Promise<boolean> {
   }
 
   if (command === "config") {
-    process.stdout.write(`${formatMcpConfig()}\n`);
+    process.stdout.write(`${formatMcpConfig(target)}\n`);
     return true;
   }
 
@@ -267,7 +267,18 @@ export function initializeLocalSetup(env: NodeJS.ProcessEnv = process.env): Init
   };
 }
 
-export function formatMcpConfig(): string {
+export function formatMcpConfig(target?: string): string {
+  if (normalizeMcpClientTarget(target) === "codex") {
+    return [
+      "[mcp_servers.mainspring]",
+      'command = "npx"',
+      'args = ["-y", "mrmainspring"]',
+      "startup_timeout_sec = 20",
+      "tool_timeout_sec = 60",
+      "enabled = true"
+    ].join("\n");
+  }
+
   return JSON.stringify(
     {
       mcpServers: {
@@ -330,11 +341,12 @@ function formatCheck(ok: boolean, success: string, failure: string): string {
   return ok ? `[ok] ${success}` : `[warn] ${failure}`;
 }
 
-function formatClientName(target: string | undefined): string {
-  if (!target) return "your";
-  if (target.toLowerCase() === "cursor") return "Cursor";
-  if (target.toLowerCase() === "claude") return "Claude Desktop";
-  return target;
+function normalizeMcpClientTarget(target: string | undefined): "codex" | "cursor" | "claude" | "generic" {
+  const normalized = target?.trim().toLowerCase();
+  if (normalized === "codex") return "codex";
+  if (normalized === "cursor") return "cursor";
+  if (normalized === "claude" || normalized === "claude-desktop" || normalized === "claude_desktop") return "claude";
+  return "generic";
 }
 
 function quoteEnvValue(value: string): string {
