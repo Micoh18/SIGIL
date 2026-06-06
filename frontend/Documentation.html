@@ -283,9 +283,9 @@
 npx -y mrmainspring setup</code></pre>
         </div>
 
-        <p class="mt-7">Paste the printed JSON into your MCP client configuration file:</p>
+        <p class="mt-7">Setup auto-detects Claude Desktop, Cursor, Windsurf, Zed, and Claude Code and writes the config directly — no manual paste needed. If no client is detected, it prints the JSON for manual use:</p>
 
-        <div class="mt-5" data-code data-lang="json" data-file="claude_desktop_config.json">
+        <div class="mt-5" data-code data-lang="json" data-file="fallback — paste into any MCP client">
 <pre><code><span class="tok-punct">{</span>
   <span class="tok-str">"mcpServers"</span><span class="tok-punct">: {</span>
     <span class="tok-str">"mainspring"</span><span class="tok-punct">: {</span>
@@ -299,18 +299,18 @@ npx -y mrmainspring setup</code></pre>
         <div class="mt-8 grid md:grid-cols-3 gap-4">
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 1</div>
-            <div class="font-display text-xl text-parchment">Install</div>
-            <p class="!text-parchment/65 text-[14px] mt-2">Node.js 20+ required. No global install needed — <code class="inline">npx -y mrmainspring setup</code> runs it directly.</p>
+            <div class="font-display text-xl text-parchment">Run</div>
+            <p class="!text-parchment/65 text-[14px] mt-2">Node.js 20+ required. <code class="inline">npx -y mrmainspring setup</code> — no global install, runs directly.</p>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 2</div>
-            <div class="font-display text-xl text-parchment">Connect</div>
-            <p class="!text-parchment/65 text-[14px] mt-2"><code class="inline">npx -y mrmainspring setup</code> creates local files and prints the MCP config JSON to paste into any client.</p>
+            <div class="font-display text-xl text-parchment">Auto-configure</div>
+            <p class="!text-parchment/65 text-[14px] mt-2">Detects and configures Claude Desktop, Cursor, Windsurf, Zed, and Claude Code automatically. Any AI, one command.</p>
           </div>
           <div class="rounded-2xl border border-parchment/12 bg-obsidian-soft p-5">
             <div class="font-mono text-[11px] tracking-[0.25em] uppercase text-gold mb-2">Step 3</div>
             <div class="font-display text-xl text-parchment">Verify</div>
-            <p class="!text-parchment/65 text-[14px] mt-2">Restart the MCP client, then run <code class="inline">mainspring doctor</code> if the server does not appear.</p>
+            <p class="!text-parchment/65 text-[14px] mt-2">Restart your AI client, then run <code class="inline">mainspring doctor</code> to confirm the server is visible.</p>
           </div>
         </div>
 
