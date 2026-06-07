@@ -1,54 +1,89 @@
 # Mr Mainspring
 
-Installable MCP backend for local agent demos. It exposes memory, Grimoire
-policy/secret storage, payment intent tools, audit trail tools, Casper anchoring
-boundaries, and x402 settlement-provider wiring.
+Installable MCP stdio backend for agent memory, Grimoire secrets and policies, audit trails, Casper hash anchoring, and policy-gated x402 payment receipts.
 
 ## Install
 
+No global install is required:
+
 ```bash
-npm install -g mrmainspring
-mainspring setup cursor
+npx -y mrmainspring setup
 ```
 
-Run the stdio MCP server:
+The setup command creates local config, data, logs, a generated `agent_id`, and a `GRIMOIRE_MASTER_KEY` under the user's standard app config folder. It also auto-configures detected MCP clients when possible.
 
-```bash
-mainspring
+Manual MCP config:
+
+```json
+{
+  "mcpServers": {
+    "mainspring": {
+      "command": "npx",
+      "args": ["-y", "mrmainspring"]
+    }
+  }
+}
 ```
 
-For local development from this repository:
+Run the server directly:
 
 ```bash
+npx -y mrmainspring
+```
+
+Check the setup:
+
+```bash
+npx -y mrmainspring doctor
+```
+
+## Tools
+
+- `agent.whoami`
+- `memory.write`
+- `memory.read`
+- `memory.search`
+- `memory.verify`
+- `grimoire.secret.put`
+- `grimoire.secret.list`
+- `grimoire.policy.set`
+- `grimoire.policy.get`
+- `payment.fetch`
+- `payment.receipt`
+- `audit.tail`
+
+## Local Development
+
+```bash
+npm install
+npm test
 npm run build
-npm run mcp:stdio
+npm run demo:stdio
 ```
 
-## Environment
-
-No environment variables are required for local memory, Grimoire, audit, or
-payment preflight tools. `mainspring setup` creates the local config, data, and
-logs directories plus a generated stable `agent_id` under the user's standard app config folder. Use
-`SIGIL_ENV_FILE` to point at a specific env file for advanced setups.
-
-To configure a funded Casper testnet wallet for real anchoring and local x402
-settlement:
+For live TypeScript development:
 
 ```bash
-mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+npm run dev
 ```
 
-This testnet-only flow writes the Casper RPC/account settings and enables both
-`CASPER_ENABLE_REAL_SUBMISSION=true` and `X402_ENABLE_REAL_SETTLEMENT=true`.
+## Casper And x402
 
-Important package boundaries:
+Local memory, Grimoire, audit, and payment preflight tools require no environment variables. Real Casper submission and real x402 settlement are gated until explicitly enabled.
 
-- Keep `.env`, local keys, and generated demo data outside the npm package.
-- Real Casper submission remains gated until `mainspring wallet setup` writes
-  `CASPER_ENABLE_REAL_SUBMISSION=true`.
-- Real x402 settlement remains gated until `mainspring wallet setup` writes
-  `X402_ENABLE_REAL_SETTLEMENT=true`.
-- The signer private key must live outside the repository workspace.
+Configure a funded Casper testnet wallet with a key stored outside the repository:
+
+```bash
+npx -y mrmainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+This writes Casper testnet RPC/account settings and enables:
+
+- `CASPER_ENABLE_REAL_SUBMISSION=true`
+- `X402_ENABLE_REAL_SETTLEMENT=true`
+- `X402_SETTLEMENT_MODE=casper-cli`
+
+For real x402 resource settlement, also provide the resource and payee values required by your paid resource, such as `X402_PAY_TO`, `X402_RESOURCE_AMOUNT`, and `X402_ASSET_ID`.
 
 ## Library Entry
 
@@ -56,5 +91,11 @@ Important package boundaries:
 import { createSigilServer } from "mrmainspring";
 ```
 
-The CLI entry is also exported as `mrmainspring/mcp`, but importing it starts
-the stdio server; use the package bin for normal MCP client configuration.
+The package also exports `mrmainspring/mcp`, but importing that entry starts the stdio server. Use the package binary for normal MCP client configuration.
+
+## Boundaries
+
+- Secrets are encrypted and returned only as metadata.
+- Payment receipts store safe metadata and signed payload hashes, not signed payload bodies.
+- Casper memory anchoring stores hashes only.
+- The backend returns pending or unavailable states unless real Casper or x402 settlement is configured and verified.

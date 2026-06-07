@@ -1,58 +1,54 @@
 # Mr Mainspring
 
-Mr Mainspring combines a copied landing frontend with a local MCP server for agent infrastructure on Casper. The backend gives agents a local tool surface for:
+Mr Mainspring is an MCP server and Casper testnet demo stack for agents that need a durable witness: memory that can be verified, secrets that stay hidden, policy-gated x402 payments, auditable receipts, and optional hash-only on-chain anchoring.
 
-- Verifiable memory: write/read/search/verify memory envelopes, compute deterministic hashes, and keep hash-only Casper anchor metadata.
-- Grimoire controls: store encrypted secrets and enforce scoped spending/access policies without returning raw secret values.
-- x402 payments: create durable payment intents, enforce policy first, capture HTTP 402 challenges, and optionally call a configured signer sidecar to retry with `PAYMENT-SIGNATURE` before accepting a verified `PAYMENT-RESPONSE`.
-- Audit trail: persist local events for memory, Grimoire, payment, and anchor activity.
+It is built for the point where an autonomous agent stops being a chat session and starts making decisions that money, users, or infrastructure depend on.
 
-Some package names, environment variables, schema versions, and storage paths still use `sigil`/`SIGIL` identifiers. Treat those as stable technical identifiers, not the public project name.
+## What It Does
 
-## Repository Layout
+Mr Mainspring turns an agent action into a record that can be checked later:
 
-```text
-backend/                    TypeScript MCP backend
-contracts/memory-anchor/    Casper memory-anchor hash-only contract source
-frontend/                   Static landing page and documentation site
-docs-site/                  VitePress documentation site and generated LLM docs
-docs/demo-runbook.md        Local MCP demo guide
-docs/casper-x402-runbook.md Real Casper x402 settlement runbook
-backend-spec.md             Legacy backend product/security spec
-.env.example                Local backend environment template
-```
+1. The agent gets a stable local identity.
+2. The agent writes memory as canonical JSON and receives deterministic SHA-256 hashes.
+3. Secrets and signer references live in Grimoire, encrypted with AES-256-GCM and returned only as metadata.
+4. Spending and access policies are committed with policy hashes before any payment intent can proceed.
+5. `payment.fetch` can preflight a policy, capture a real HTTP 402 x402 challenge, approve payment requirements against policy, settle through a configured Casper path, and persist only safe receipt metadata.
+6. Audit events record memory, policy, payment, and anchor activity.
+7. Optional Casper anchoring submits hashes only. Memory bodies, secrets, private keys, and signed payment payloads are never written on-chain.
 
-## Run the Frontend
+## Current Build
 
-The static frontend lives under `frontend/`. The runnable page is `frontend/index.html`.
+- Installable npm package: `mrmainspring`
+- Package version in code: `0.3.6`
+- Runtime: Node.js 20+
+- MCP transport: stdio
+- Storage: local JSON files by default, optional Supabase PostgREST tables
+- Chain target: Casper testnet
+- x402 demo asset: native CSPR, represented as integer motes
+- Public site build: static frontend copied to `dist/`, with optional VitePress docs under `/docs`
+- Public demo backend: Render Docker Blueprint running the x402 demo API
 
-```bash
-npm run front:dev
-```
+Some internal package names, schema names, environment variables, and table prefixes still use `sigil` or `SIGIL`. Treat those as stable technical identifiers, not the public product name.
 
-This serves the frontend at `http://127.0.0.1:4177/`.
+## Quick Start
 
-To assemble the deployable public site:
-
-```bash
-npm run front:build
-```
-
-To build the frontend root plus the docs under `/docs`:
-
-```bash
-npm run build
-```
-
-## Install the MCP Server
-
-One command — no global install required. Auto-detects and configures Claude Desktop, Cursor, Windsurf, Zed, Claude Code, Continue, and VS Code:
+No global install is required:
 
 ```bash
 npx -y mrmainspring setup
 ```
 
-Fallback MCP config (if no client is auto-detected):
+`setup` creates local config, data, logs, a stable `agent_id`, and a `GRIMOIRE_MASTER_KEY` in the user's standard app config folder. It also auto-configures detected MCP clients when possible:
+
+- Claude Desktop
+- Claude Code
+- Cursor
+- Windsurf
+- Zed
+- Continue
+- VS Code
+
+If no client can be configured automatically, add this MCP server config manually:
 
 ```json
 {
@@ -65,17 +61,72 @@ Fallback MCP config (if no client is auto-detected):
 }
 ```
 
-`mainspring setup` creates the local config, data, logs, and a stable local `agent_id` under the user's standard app config folder. `GRIMOIRE_MASTER_KEY` is generated automatically on first run.
+Check the local setup:
 
-## Backend Development
+```bash
+npx -y mrmainspring doctor
+```
+
+Start the server directly:
+
+```bash
+npx -y mrmainspring
+```
+
+## Repository Layout
+
+```text
+backend/                    TypeScript MCP backend and npm package
+backend/src/mcp/            MCP tool registrations
+backend/src/memory/         Canonical memory envelopes and hash verification
+backend/src/grimoire/       Secret encryption and policy commitments
+backend/src/payments/       Payment intents, receipts, policy spend tracking
+backend/src/x402/           x402 challenge, signer, facilitator, resource, settlement code
+backend/src/casper/         Casper client discovery and anchor command construction
+backend/supabase/schema.sql Optional Supabase persistence schema
+contracts/memory-anchor/    Casper hash-only memory anchor contract
+frontend/                   Public static site
+api/                        Vercel proxy endpoint for the browser demo
+scripts/                    Public site build and local frontend serve scripts
+render.yaml                 Render Blueprint for the public x402 demo API
+Dockerfile.render           Demo API Docker image with Node and casper-client
+```
+
+## MCP Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `agent.whoami` | Return the generated local default agent identity. |
+| `memory.write` | Store a memory envelope, compute content and metadata hashes, optionally request Casper anchoring. |
+| `memory.read` | Read one stored memory by agent and memory id. |
+| `memory.search` | Search local stored memories with lightweight token matching. |
+| `memory.verify` | Recompute the local memory hash and return anchor metadata. |
+| `grimoire.secret.put` | Encrypt and store a scoped secret or safe signer reference. |
+| `grimoire.secret.list` | Return secret metadata only, never plaintext. |
+| `grimoire.policy.set` | Store an allowlisted spending/access policy with a deterministic policy hash. |
+| `grimoire.policy.get` | Read policy metadata and current local spend. |
+| `payment.fetch` | Create a durable x402 payment intent after policy checks; optionally capture and settle a 402 challenge. |
+| `payment.receipt` | Read a persisted payment intent and safe receipt metadata. |
+| `audit.tail` | Return recent audit events by agent, event type, or all agents. |
+
+## Develop Locally
+
+Install and test the backend:
 
 ```bash
 cd backend
 npm install
 npm test
 npm run build
+```
+
+Run the local MCP stdio demo:
+
+```bash
 npm run demo:stdio
 ```
+
+The demo starts the compiled server through MCP stdio and verifies the complete local loop: tool listing, generated agent identity, memory write/read/search/verify, encrypted Grimoire storage, policy set/get, policy-approved payment preflight, receipt lookup, and audit tail.
 
 For live TypeScript development:
 
@@ -84,310 +135,187 @@ cd backend
 npm run dev
 ```
 
-The backend writes local data under the user's standard app config folder unless `SIGIL_DATA_DIR` is set.
+## Run The Public Site
 
-## x402: Local Simulation vs Real Casper Settlement
-
-The local evaluator demo and the real Casper x402 smoke are intentionally
-separate.
-
-The scripted local MCP demo proves policy checks, durable payment intents,
-receipts, and audit events without paying on-chain:
+Serve the static frontend locally:
 
 ```bash
-npm run demo:stdio --prefix backend
+npm run front:dev
 ```
 
-Expected payment line:
+It serves `frontend/index.html` at `http://127.0.0.1:4177/`.
 
-```text
-PASS payment.fetch: allowed=true status=policy_checked next_state=challenge_received settlement=not_started payment_id=<pay_...>
-```
-
-For local paid-resource challenge wiring, start the resource sidecar:
+Build the frontend only:
 
 ```bash
-npm run demo:x402-sidecars --prefix backend
+npm run front:build
 ```
 
-This exposes `http://localhost:4021/weather`. The first request returns `402 Payment Required` with `PAYMENT-REQUIRED`; paid retries must include `PAYMENT-SIGNATURE`. The resource calls the configured Casper x402 facilitator `/verify` and `/settle`, returns the protected response only after settlement verifies, and attaches `PAYMENT-RESPONSE` only when the facilitator returns a Casper transaction hash.
-
-The clearer alias is:
+Build the frontend plus docs under `/docs`:
 
 ```bash
-npm run x402:resource --prefix backend
+npm run build
 ```
 
-Without `X402_SIGNER_URL`, the resource smoke proves only the 402 challenge:
+The browser demo can call a local backend API when this is running:
+
+```bash
+npm run demo:x402-http --prefix backend
+```
+
+Local browser requests go to `http://127.0.0.1:4180/demo/x402/payment-fetch`. The Vercel endpoint at `/api/demo/x402/payment-fetch` proxies to `MAINSPRING_DEMO_API_URL`, which should point at a public backend service such as the Render Blueprint in this repository.
+
+## x402 And Casper Testnet
+
+The x402 stack has four code paths:
+
+- `X402ChallengeClient` performs the first HTTP request and parses `PAYMENT-REQUIRED`, `X-PAYMENT-REQUIRED`, JSON body, or raw-body 402 requirements.
+- `approveX402Requirements` checks amount, method, resource URL, scheme, network, asset, payee, and timeout against a Grimoire policy.
+- Signing can come from `X402_SIGNER_URL` or, in `casper-cli` mode without a signer URL, from the local Casper key path.
+- Settlement can run as resource retry, facilitator mode, or direct Casper CLI mode.
+
+The local paid resource exposes `GET /weather`. Without a payment header, it returns `402 Payment Required` plus x402 requirements. With a valid `PAYMENT-SIGNATURE`, it verifies and settles through the facilitator, returns the protected JSON body, and attaches `PAYMENT-RESPONSE` only after settlement verifies.
+
+Run the paid-resource challenge smoke:
 
 ```bash
 npm run demo:x402-sidecars:smoke --prefix backend
 ```
 
-Expected:
-
-```text
-PASS x402 paid resource smoke: challenge=402 payment_required=true
-Set X402_SIGNER_URL to run the full paid retry smoke.
-```
-
-For real Casper testnet settlement, configure a testnet wallet once:
+Start the resource server for manual testing:
 
 ```bash
-mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+npm run x402:resource --prefix backend
 ```
 
-This writes the Casper testnet RPC/account settings and enables real Casper
-submission plus real x402 settlement:
-
-```env
-CASPER_NETWORK_NAME=casper-test
-CASPER_CAIP2_CHAIN_ID=casper:casper-test
-CASPER_RPC_URL=https://node.testnet.casper.network/rpc
-CASPER_ACCOUNT_KEY_PATH=<absolute-path-outside-repo>/backend.pem
-CASPER_ENABLE_REAL_SUBMISSION=true
-X402_ENABLE_REAL_SETTLEMENT=true
-X402_SETTLEMENT_MODE=casper-cli
-X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
-```
-
-Native CSPR uses integer motes. `2500000000` is 2.5 CSPR. For the local smoke
-sidecars, also configure the resource/payee values:
-
-```env
-X402_FACILITATOR_URL=http://127.0.0.1:4022
-X402_RESOURCE_DEMO_URL=http://127.0.0.1:4021/weather
-X402_RESOURCE_AMOUNT=2500000000
-X402_ASSET_ID=casper-native-cspr
-X402_BUYER_ACCOUNT_HASH=account-hash-d0a57c6a95e74463de156cac761e17f0923eafc730ce3ce3a0c747c6598b0500
-X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
-X402_PAY_TO=02032878c27882713870adf0e7546a082e991147824e77b710aaa77f47c6d972b041
-X402_SIGNER_URL=http://127.0.0.1:4030/sign
-X402_PAYMENT_HEADER_NAME=PAYMENT-SIGNATURE
-```
-
-For the real Casper signer sidecar, keep the buyer private key outside this repository and run:
+Start the signer and facilitator sidecars:
 
 ```bash
 npm run x402:signer --prefix backend
-```
-
-Set `X402_SIGNER_URL=http://127.0.0.1:4030/sign` for the MCP backend.
-
-For the Casper x402 facilitator sidecar, configure Casper RPC/account settings and run:
-
-```bash
 npm run x402:facilitator --prefix backend
 ```
 
-It exposes `POST /verify` and `POST /settle` on `http://127.0.0.1:4022` by default. `/verify` validates the signed payload and reserves the nonce; `/settle` submits the Casper settlement path and returns `settled: true` only after execution succeeds.
-
-To prove the full MCP-driven flow, run the real-settlement smoke:
+Run the full MCP-driven x402 smoke:
 
 ```bash
 npm run smoke:x402-payment-fetch --prefix backend
 ```
 
-The smoke starts local x402 sidecars by default, sets a Grimoire policy matching `X402_RESOURCE_DEMO_URL`/`X402_RESOURCE_AMOUNT`/`X402_PAY_TO`, calls `payment.fetch` with `request_challenge=true`, then verifies `payment.receipt`, audit events, policy spend, and a Casper transaction hash. Set `X402_SMOKE_START_SIDECARS=false` to use already-running sidecars.
+That smoke asserts policy spend does not change during preflight, then verifies a settled receipt, a Casper transaction hash, a policy spend increment after settlement, and audit events for `payment.challenge_received`, `payment.settled`, and `policy.spend_recorded`.
 
-For the browser `Try It` button, run the demo API and the frontend:
+## Configure A Casper Testnet Wallet
+
+Use a funded Casper testnet private key outside this repository:
+
+```bash
+npx -y mrmainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+The wallet setup flow writes local env values for:
+
+- `CASPER_NETWORK_NAME=casper-test`
+- `CASPER_CAIP2_CHAIN_ID=casper:casper-test`
+- `CASPER_RPC_URL=https://node.testnet.casper.network/rpc`
+- `CASPER_ACCOUNT_KEY_PATH=<your key path>`
+- `CASPER_ENABLE_REAL_SUBMISSION=true`
+- `X402_ENABLE_REAL_SETTLEMENT=true`
+- `X402_SETTLEMENT_MODE=casper-cli`
+- `X402_BUYER_PRIVATE_KEY_PATH=<your key path>`
+- `X402_BUYER_PUBLIC_KEY=<derived public key>`
+- `X402_BUYER_ACCOUNT_HASH=<derived account hash when available>`
+
+For real x402 resource settlement, also provide the payee/resource values required by the demo:
+
+```env
+X402_PAY_TO=<payee public key or account-hash>
+X402_RESOURCE_AMOUNT=2500000000
+X402_ASSET_ID=casper-native-cspr
+```
+
+Native CSPR amounts are integer motes. `2500000000` is 2.5 CSPR.
+
+## Casper Memory Anchoring
+
+`contracts/memory-anchor/` contains the on-chain hash-only contract. Its public entry point, `anchor_memory`, stores:
+
+- `anchor_id`
+- `agent_id_hash`
+- `memory_id_hash`
+- `content_hash`
+- `metadata_hash`
+- `prev_anchor_hash`
+
+It rejects malformed hashes and duplicate anchors. It does not store memory text, secret values, private keys, signed payment payloads, or user data.
+
+Build the contract:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cd contracts/memory-anchor
+cargo build --release --target wasm32-unknown-unknown
+```
+
+Backend anchoring is gated by config. If the Casper contract or real submission is not configured, `memory.write` and `memory.verify` return honest `pending`, `failed`, or `not_requested` states instead of pretending that on-chain verification happened.
+
+## Storage
+
+The default storage backend is local JSON files under the user's Mr Mainspring app data directory, or under `SIGIL_DATA_DIR` when explicitly set.
+
+Set `SIGIL_STORAGE_BACKEND=supabase` only after applying:
+
+```text
+backend/supabase/schema.sql
+```
+
+The Supabase schema stores domain records as JSONB with indexed lookup columns for the access patterns used by the current store interfaces.
+
+## Security Boundaries
+
+Mr Mainspring is intentionally strict about what it proves:
+
+- Real Casper submission is disabled until `CASPER_ENABLE_REAL_SUBMISSION=true`.
+- Real x402 settlement is disabled until `X402_ENABLE_REAL_SETTLEMENT=true`.
+- Private keys must live outside the repository workspace.
+- Grimoire returns secret metadata only.
+- Payment receipts store signed payload hashes and redacted settlement receipts, not signed payload bodies.
+- Memory anchoring stores hashes only.
+- `casper-cli` x402 settlement polls `casper-client get-transaction` before accepting a settled receipt.
+- Memory anchoring can submit a Casper transaction, but automatic post-submit on-chain query for memory anchors is not yet implemented.
+
+The project should return unavailable-settlement and pending-anchor states unless the required external signer, paid resource, facilitator, Casper key, and Casper RPC path are actually configured and verified.
+
+## Deploy The Demo API
+
+The repository includes a Render Blueprint:
+
+```bash
+render.yaml
+Dockerfile.render
+```
+
+The Docker image installs backend dependencies and `casper-client`, then runs:
 
 ```bash
 npm run demo:x402-http --prefix backend
-npm run front:dev
 ```
 
-Locally, the button posts to `http://127.0.0.1:4180/demo/x402/payment-fetch`
-and renders the returned x402 receipt.
+The Render service exposes:
 
-On Vercel, the browser posts to `/api/demo/x402/payment-fetch`. The Vercel
-function proxies that request to the real always-on demo API configured with
-`MAINSPRING_DEMO_API_URL`, for example `https://mainspring-x402-api.example.com`.
-Do not point Vercel at `127.0.0.1`; Vercel can proxy the request, but the Casper
-x402 sidecars and signer must run on a public backend service outside the static
-frontend deployment.
+- `GET /health`
+- `GET /weather`
+- `POST /demo/x402/payment-fetch`
 
-### Render demo API
+Set the Vercel frontend proxy target to the Render origin:
 
-This repository includes `render.yaml` and `Dockerfile.render` for the public
-x402 demo API. Create a Render Blueprint from the repo; it provisions one Docker
-web service named `mainspring-x402-demo-api` and runs:
-
-```bash
-npm run demo:x402-http --prefix backend
-```
-
-The Docker image installs Node dependencies and `casper-client`, then the demo
-server binds to Render's `PORT` on `0.0.0.0`. Render health checks use `/health`.
-
-Before the first deploy, provide the Blueprint variables marked `sync: false`:
-
-```text
-CASPER_RPC_URL=<casper testnet rpc url>
-X402_BUYER_ACCOUNT_HASH=<buyer account-hash-...>
-X402_PAY_TO=<payee public key or account-hash-...>
-```
-
-Upload the buyer/facilitator private key as a Render Secret File named
-`backend.pem`. Render mounts it at `/etc/secrets/backend.pem`, which is already
-wired to both `CASPER_ACCOUNT_KEY_PATH` and `X402_BUYER_PRIVATE_KEY_PATH` in the
-Blueprint.
-
-After Render deploys, set Vercel's `MAINSPRING_DEMO_API_URL` to the Render web
-service origin, for example:
-
-```text
+```env
 MAINSPRING_DEMO_API_URL=https://mainspring-x402-demo-api.onrender.com
 ```
 
-The Render service keeps itself warm by calling `GET /health` every 14 minutes
-when `RENDER_KEEPALIVE_ENABLED=true`. Override the target with
-`RENDER_KEEPALIVE_URL` or the interval with `RENDER_KEEPALIVE_INTERVAL_MS`.
-
-Expected success transcript:
-
-```text
-Mr Mainspring Casper x402 payment.fetch smoke
-resource=http://127.0.0.1:4021/weather
-policy_id=pol-casper-x402-smoke-<timestamp>
-PASS payment.fetch: status=settled settlement=settled payment_id=pay_<hex>
-PASS payment.receipt: settlement_status=settled casper_transaction_hash=<64-hex>
-PASS policy.spend: before=0 after_preflight=0 after_settlement=2500000000
-PASS audit.tail: events=payment.challenge_received,payment.settled,policy.spend_recorded
-RESULT PASS
-```
-
-Verify the transaction hash with Casper:
-
-```bash
-casper-client get-transaction \
-  --node-address https://node.testnet.casper.network/rpc \
-  <casper_transaction_hash>
-```
-
-The returned transaction must include execution info and no `Failure` or `error_message`. See `docs/casper-x402-runbook.md` for the full `.env`, manual sidecar run, expected outputs, and failure-state table.
-
-Latest verified native CSPR x402 smoke: 2026-06-06 UTC,
-`456ca636d8dd2e86268f8c1905055778753e41d95f411c827f3ecf97d215c4a4`.
-Manual `casper-client get-transaction` verification returned `execution_info`,
-`error_message: null`, no `Failure`, and a `2500000000` mote transfer at block
-height `8086501`.
-
-## Environment
-
-Copy the root template and fill real values as they become available:
-
-```bash
-cp .env.example .env
-```
-
-Important values:
-
-- `SIGIL_DATA_DIR`: local JSON-file stores for memory, Grimoire, payments, and audit. Defaults to the user's Mr Mainspring app data directory.
-- `SIGIL_ENV_FILE`: optional explicit path to a local env file. If unset, the backend checks the user's Mr Mainspring app config first, then existing local `.env` files for development.
-- `SIGIL_MCP_NAME` and `SIGIL_MCP_VERSION`: stable MCP server identifier values.
-- `SIGIL_STORAGE_BACKEND`: `file` by default. Set `supabase` after applying `backend/supabase/schema.sql`.
-- `PROJECT_URL`: Supabase project URL for optional remote persistence.
-- `SECRET_KEY` or `PUBLISHABLE_KEY`: key used for Supabase REST calls. Prefer `SECRET_KEY` only in local env/secret manager.
-- `SUPABASE_DB_SCHEMA`: defaults to `public`.
-- `SUPABASE_TABLE_PREFIX`: defaults to `sigil_`.
-- `GRIMOIRE_MASTER_KEY`: base64-encoded 32-byte AES-GCM key. If omitted, Mainspring generates one automatically for local use.
-- `X402_FACILITATOR_URL`: Casper x402 facilitator, expected at `http://localhost:4022` for the demo sidecar.
-- `X402_FACILITATOR_HOST` and `X402_FACILITATOR_PORT`: facilitator sidecar bind address. Defaults to `127.0.0.1:4022`.
-- `X402_RESOURCE_DEMO_URL`: demo paid resource, expected at `http://localhost:4021/weather`.
-- `X402_ASSET_ID`: first real settlement asset identifier. Current testnet value is `casper-native-cspr`.
-- `X402_ASSET_PACKAGE`: CEP-18/x402 token package hash when available.
-- `X402_ASSET_DECIMALS` and `X402_AMOUNT_UNIT`: native CSPR uses `9` decimals and `mote` transaction units.
-- `X402_RESOURCE_AMOUNT` and `X402_RESOURCE_TIMEOUT_SECONDS`: paid resource requirement amount and signature validity window. Native CSPR amounts are integer motes.
-- `X402_BUYER_PUBLIC_KEY` and `X402_BUYER_ACCOUNT_HASH`: non-secret buyer identifiers.
-- `X402_BUYER_PRIVATE_KEY_PATH`: signer-side only. Must point outside this repository; the MCP backend does not read it.
-- `X402_PAYEE_PUBLIC_KEY`, `X402_PAYEE_ACCOUNT_HASH`, and `X402_PAY_TO`: non-secret merchant/payee identifiers. `X402_PAY_TO` should match the protected resource requirement.
-- `X402_ENABLE_REAL_SETTLEMENT`: must be `true` before the backend should wire a real settlement provider. Defaults to disabled.
-- `X402_SETTLEMENT_MODE`: `resource-retry` by default. Use `facilitator` only for server-side facilitator verification/settlement tests.
-- `X402_SIGNER_URL`: external signer sidecar URL. Required for real settlement. The backend sends approved requirements and expects a signed x402 `PaymentPayload`.
-- `X402_SIGNER_HOST` and `X402_SIGNER_PORT`: signer sidecar bind address. Defaults to `127.0.0.1:4030`.
-- `X402_SIGNER_AUTH_TOKEN`: optional bearer token for the signer sidecar.
-- `X402_SIGNER_TIMEOUT_MS`: signer request timeout. Defaults to `10000`.
-- `X402_SIGNER_MAX_VALIDITY_SECONDS`: upper bound for signed payload validity. Defaults to `900`.
-- `X402_PAYMENT_HEADER_NAME`: payment header used for paid resource retry. Defaults to `PAYMENT-SIGNATURE`.
-- `CASPER_NETWORK_NAME`: Casper chain name, defaults to `casper-test`.
-- `CASPER_CAIP2_CHAIN_ID`: defaults to `casper:casper-test`.
-- `CASPER_RPC_URL`: Casper node RPC address required for real anchoring.
-- `CASPER_ACCOUNT_KEY_PATH`: secret key path required for real anchoring.
-- `CASPER_ENABLE_REAL_SUBMISSION`: must be `true` before the backend shells out to `casper-client`.
-- `CASPER_CLIENT_BIN`: Casper CLI executable name or path. Defaults to `casper-client`.
-- `CASPER_CLIENT_WSL_DISTRO`: optional Windows override. By default Mainspring auto-detects a WSL distro that can run `casper-client` when no native Windows binary is available.
-- `CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES`: standard payment amount for anchor calls. Defaults to `3000000000`.
-- `MEMORY_ANCHOR_CONTRACT_HASH`: deployed memory-anchor contract hash.
-- `MEMORY_ANCHOR_PACKAGE_HASH`: deployed memory-anchor package hash.
-
-## Documentation
-
-The public site is configured for Vercel through `vercel.json`:
-
-```text
-installCommand: npm ci --prefix docs-site
-buildCommand: npm run build
-outputDirectory: dist
-```
-
-The copied frontend is deployed at `/`. The docs build is copied under `/docs`.
-
-To open only the docs locally:
-
-```bash
-npm install --prefix docs-site
-npm run build --prefix docs-site
-npm run preview --prefix docs-site
-```
-
-The preview command prints the local URL, normally `http://127.0.0.1:4173/`. The generated LLM-readable entry points are available at `/llms.txt`, `/llms-full.txt`, and `/api/tool-schemas.json` in the docs site.
-
-## Current MCP Tools
-
-- `memory.write`: store a memory envelope, content hash, metadata hash, and optional local Casper anchor metadata.
-- `memory.read`: read one memory by `memory_id` under the local default agent unless `agent_id` is supplied.
-- `memory.search`: search stored memories for an agent in the local store.
-- `memory.verify`: recompute local hashes and report stored anchor metadata.
-- `grimoire.secret.put`: encrypt and store a scoped secret. Plaintext is never returned.
-- `grimoire.secret.list`: list secret metadata only.
-- `grimoire.policy.set`: create or update an allowlisted spending/access policy.
-- `grimoire.policy.get`: read policy metadata and local spend fields.
-- `payment.fetch`: create a durable x402 payment intent after policy checks. Without challenge, it returns `status: policy_checked`, `next_state: challenge_received`, and `settlement: not_started`. With `request_challenge: true`, it makes the first HTTP request, persists any 402 requirements, validates them against policy, and either stops with `settlement_unavailable` or, when real settlement is enabled and a signer sidecar is configured, retries the paid resource with `PAYMENT-SIGNATURE` and persists only verified settlement receipts.
-- `payment.receipt`: read persisted payment intent and receipt metadata.
-- `audit.tail`: tail recent audit events.
-- `agent.whoami`: return the generated local default `agent_id`.
-
-## Real Today
-
-- TypeScript MCP backend with stdio transport.
-- Local generated agent identity in `agent.json`; tools use it by default when `agent_id` is omitted.
-- File-backed JSON stores for memory, Grimoire secrets/policies, payments, and audit.
-- Optional Supabase persistence through PostgREST-compatible tables in `backend/supabase/schema.sql`.
-- Deterministic JSON canonicalization and SHA-256 memory hashing.
-- Encrypted Grimoire secret storage with metadata-only tool responses.
-- Spending/access policy enforcement before x402 payment intent creation.
-- Durable payment intent persistence with idempotency keys.
-- Optional first HTTP 402 challenge capture for `payment.fetch`, requirement approval, external signer-sidecar integration, paid resource retry, `PAYMENT-RESPONSE` verification, and disabled/failed/settled receipt persistence.
-- Repo-local Casper x402 signer, paid resource, facilitator, and full `payment.fetch` smoke scripts for native CSPR testnet settlement when the required env and funded key are provided.
-- Audit events for memory, Grimoire, payment policy checks, and verification flows.
-- Casper anchor client interface with a local pending path and an optional real `casper-client put-transaction package` submission path behind `CASPER_ENABLE_REAL_SUBMISSION`.
-- Hash-only Casper memory-anchor contract deployed on testnet.
-
-## Not Implemented Yet
-
-- Automatic Casper transaction execution verification and on-chain query for memory anchors. The x402 facilitator settlement path does poll `casper-client get-transaction` before accepting a settlement.
-- Native in-process Casper x402 payment signing inside the MCP backend. Real x402 signing must come from the standalone signer sidecar or another external signer until a Casper-compatible SDK/facilitator is pinned and verified.
-- Pinned external/public Casper x402 facilitator support. The repo-local facilitator is the verified native CSPR testnet path for this milestone.
-- Production hardening around contract upgrades, key custody, and automatic finality checks.
-- Full relational SQLite/Postgres domain migrations; Supabase currently stores domain records as JSONB with indexed lookup columns.
-- Remote HTTP MCP transport.
-
-Mr Mainspring should keep returning honest unavailable-settlement and pending-anchor states unless the external x402 signer/resource/facilitator path or Casper anchor verification path is actually configured and verified. It should not fake verified Casper execution, signed payment payloads, or settled receipts.
+Do not point the public Vercel function at `127.0.0.1`; the sidecars and Casper settlement path must run on a reachable backend service.
 
 ## Verification
 
-Requested verification commands:
+Use these commands before publishing changes:
 
 ```bash
 cd backend
@@ -395,39 +323,12 @@ npm test
 npm run build
 
 cd ..
-npm run build --prefix docs-site
+npm run build
 git status --short
 ```
 
-Current tests cover memory canonicalization, storage, search, verification, local anchor metadata, optional Casper CLI submission command construction, Grimoire secret encryption/no plaintext exposure, policy hashing, audit persistence, payment policy allow/deny, durable intent persistence, idempotency, receipt lookup, x402 config loading, HTTP 402 challenge parsing, external signer wiring, paid resource retry, `PAYMENT-RESPONSE` verification, policy spend updates after verified settlement, and disabled/failed/verified settlement boundaries.
+The backend tests cover canonical memory hashing, memory search and verification, file stores, Supabase stores, local agent identity, Grimoire encryption and policy hashing, payment policy allow/deny behavior, durable payment intents and idempotency, x402 challenge parsing, requirement approval, signer validation, paid resource retry, facilitator validation and replay protection, Casper command construction, Casper client discovery, MCP stdio, CLI setup flows, env file handling, audit events, and security leak guards.
 
-## Casper Contract Status
+## License
 
-`contracts/memory-anchor/` contains a minimal hash-only Casper contract source. It builds to Wasm with stable Rust and the `wasm32-unknown-unknown` target using repo Cargo flags that disable unsupported Wasm bulk-memory operations.
-
-Verified testnet deployment:
-
-```text
-deploy_transaction=3b8f624ef1d5960a8cf724811c0c68c51dff8809fa1128f69a2c7077afdcbc09
-MEMORY_ANCHOR_CONTRACT_HASH=hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df
-MEMORY_ANCHOR_PACKAGE_HASH=hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c
-```
-
-Verified backend anchor submission:
-
-```text
-anchor_transaction=91fb904e47b600b0a9e4f6571a3412c83187000e9ceab19ba26cc23fabec555c
-execution_error=null
-```
-
-Never store memory bodies, secrets, signed payment payloads, or private keys on-chain. The on-chain contract should store hashes only.
-
-Manual contract prerequisites:
-
-```bash
-rustup target add wasm32-unknown-unknown
-cargo install cargo-casper
-cargo install casper-client
-cd contracts/memory-anchor
-cargo build --release --target wasm32-unknown-unknown
-```
+The backend npm package is MIT licensed. See `backend/LICENSE`.
