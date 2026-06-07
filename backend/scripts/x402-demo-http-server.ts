@@ -69,7 +69,7 @@ const payment = new PaymentService(
   audit,
   new X402ChallengeClient({
     facilitatorUrl: config.x402.facilitatorUrl,
-    resourceUrl: config.x402.resourceDemoUrl
+    resourceUrl: publicResourceUrl(config)
   }),
   createX402SettlementProvider(config)
 );
@@ -94,9 +94,16 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/health") {
       sendJson(response, 200, {
         ok: true,
-        resource_url: config.x402.resourceDemoUrl,
+        resource_url: publicResourceUrl(config),
+        internal_resource_url: internalResourceUrl(config),
+        payment_fetch_url: `${demoPublicUrl()}/demo/x402/payment-fetch`,
         settlement_mode: config.x402.settlementMode
       });
+      return;
+    }
+
+    if (request.method === "GET" && url.pathname === publicResourcePath(config)) {
+      await proxyPublicPaidResource(request, response, context);
       return;
     }
 
@@ -121,6 +128,7 @@ server.listen(port, host);
 await once(server, "listening");
 const publicDemoUrl = demoPublicUrl();
 console.log(`Mr Mainspring x402 demo API: ${publicDemoUrl}`);
+console.log(`GET ${publicResourceUrl(config)}`);
 console.log(`POST ${publicDemoUrl}/demo/x402/payment-fetch`);
 startRenderKeepalive();
 
@@ -135,6 +143,7 @@ async function runPaymentFetchDemo(context: DemoContext, body: DemoRequestBody) 
   const input = normalizeDemoInput(body);
   const policyId = `pol-front-x402-${Date.now()}`;
   const idempotencyKey = `front-x402-${Date.now()}`;
+  const resourceUrl = publicResourceUrl(context.config);
   const amount = resourceAmount();
   const payTo = resourcePayTo();
   const asset = resourceAsset(context.config);
@@ -143,7 +152,7 @@ async function runPaymentFetchDemo(context: DemoContext, body: DemoRequestBody) 
     agent_id: input.agentId,
     policy_id: policyId,
     enabled: true,
-    allowed_urls: [context.config.x402.resourceDemoUrl],
+    allowed_urls: [resourceUrl],
     allowed_methods: ["GET"],
     allowed_asset: {
       caip2_chain_id: context.config.casper.caip2ChainId,
@@ -164,7 +173,7 @@ async function runPaymentFetchDemo(context: DemoContext, body: DemoRequestBody) 
     agent_id: input.agentId,
     policy_id: policyId,
     method: "GET",
-    url: context.config.x402.resourceDemoUrl,
+    url: resourceUrl,
     expected_amount: amount,
     idempotency_key: `${idempotencyKey}-preflight`,
     request_challenge: false
@@ -177,7 +186,7 @@ async function runPaymentFetchDemo(context: DemoContext, body: DemoRequestBody) 
     agent_id: input.agentId,
     policy_id: policyId,
     method: "GET",
-    url: context.config.x402.resourceDemoUrl,
+    url: resourceUrl,
     expected_amount: amount,
     idempotency_key: idempotencyKey,
     request_challenge: true
@@ -210,7 +219,7 @@ async function runPaymentFetchDemo(context: DemoContext, body: DemoRequestBody) 
       action: input.action,
       rationale_hash: `sha256:${hashLike(input.rationale)}`
     },
-    resource_url: context.config.x402.resourceDemoUrl,
+    resource_url: resourceUrl,
     payment_id: paymentId,
     policy_id: policyId,
     status: fetchResult.status,
@@ -279,7 +288,7 @@ async function startSigner(config: SigilConfig): Promise<StartedServer | null> {
 }
 
 async function startResource(config: SigilConfig): Promise<StartedServer | null> {
-  const resourceUrl = new URL(config.x402.resourceDemoUrl);
+  const resourceUrl = new URL(internalResourceUrl(config));
   const paymentRequirements = {
     x402Version: 2,
     accepts: [
@@ -288,7 +297,7 @@ async function startResource(config: SigilConfig): Promise<StartedServer | null>
         network: config.casper.caip2ChainId,
         maxAmountRequired: resourceAmount(),
         amount: resourceAmount(),
-        resource: config.x402.resourceDemoUrl,
+        resource: publicResourceUrl(config),
         method: "GET",
         asset: resourceAsset(config),
         payTo: resourcePayTo(),
@@ -308,9 +317,40 @@ async function startResource(config: SigilConfig): Promise<StartedServer | null>
     paymentHeaderName: config.x402.paymentHeaderName,
     logger: console
   });
-  return (await listenAtUrl(server, config.x402.resourceDemoUrl, "x402 paid resource"))
+  return (await listenAtUrl(server, internalResourceUrl(config), "x402 paid resource"))
     ? { label: "x402 paid resource", server }
     : null;
+}
+
+async function proxyPublicPaidResource(
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: DemoContext
+): Promise<void> {
+  const headers: Record<string, string> = {};
+  const paymentSignature = request.headers[context.config.x402.paymentHeaderName.toLowerCase()];
+  if (typeof paymentSignature === "string") {
+    headers[context.config.x402.paymentHeaderName] = paymentSignature;
+  }
+
+  const upstream = await fetch(internalResourceUrl(context.config), {
+    method: "GET",
+    headers
+  });
+  response.statusCode = upstream.status;
+  for (const header of [
+    "content-type",
+    "PAYMENT-REQUIRED",
+    "X-PAYMENT-REQUIRED",
+    "PAYMENT-RESPONSE",
+    "X-PAYMENT-RESPONSE"
+  ]) {
+    const value = upstream.headers.get(header);
+    if (value) {
+      response.setHeader(header, value);
+    }
+  }
+  response.end(Buffer.from(await upstream.arrayBuffer()));
 }
 
 async function listenAtUrl(server: Server, url: string, label: string): Promise<boolean> {
@@ -472,6 +512,24 @@ function demoPublicUrl(): string {
   }
 
   return `http://${host}:${port}`;
+}
+
+function internalResourceUrl(config: SigilConfig): string {
+  return optionalEnv(process.env.X402_INTERNAL_RESOURCE_URL) ?? config.x402.resourceDemoUrl;
+}
+
+function publicResourceUrl(config: SigilConfig): string {
+  const configured = optionalEnv(process.env.X402_PUBLIC_RESOURCE_URL);
+  if (configured) {
+    return configured;
+  }
+
+  const internal = new URL(internalResourceUrl(config));
+  return `${demoPublicUrl()}${internal.pathname || "/weather"}`;
+}
+
+function publicResourcePath(config: SigilConfig): string {
+  return new URL(publicResourceUrl(config)).pathname || "/weather";
 }
 
 function startRenderKeepalive(): void {

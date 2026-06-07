@@ -43,6 +43,8 @@ services:
         value: http://127.0.0.1:4022
       - key: X402_RESOURCE_DEMO_URL
         value: http://127.0.0.1:4021/weather
+      - key: X402_PUBLIC_RESOURCE_URL
+        value: https://mainspring-x402-demo-api.onrender.com/weather
       - key: X402_ASSET_ID
         value: casper-native-cspr
       - key: X402_ASSET_NAME
