@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 - 2026-06-07
+- Add `mainspring wallet setup <path-to-casper-testnet-key.pem>` for testnet-only wallet configuration.
+- Enable real Casper submission and x402 settlement defaults during wallet setup.
+- Update docs to avoid unnecessary manual env setup for normal users.
+
 ## 0.3.2 — 2026-06-06
 - Windows: auto-detect `casper-client` inside WSL when no native Windows binary is available.
 - `mainspring doctor` now reports the resolved WSL distro/path and no longer treats a failed WSL process as available.

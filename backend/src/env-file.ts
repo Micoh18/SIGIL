@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -81,6 +81,48 @@ export function ensureGrimoireMasterKey(
   }
 }
 
+export function upsertLocalEnvFileValues(
+  values: Record<string, string>,
+  env: NodeJS.ProcessEnv = process.env
+): string {
+  const targetPath = resolveEnvPath(env);
+  mkdirSync(dirname(targetPath), { recursive: true });
+
+  const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf8") : "";
+  const remaining = new Map(Object.entries(values));
+  const lines = existing.split(/\r?\n/).map((line) => {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (!match || !remaining.has(match[1]!)) {
+      return line;
+    }
+
+    const key = match[1]!;
+    const value = remaining.get(key)!;
+    remaining.delete(key);
+    return `${key}=${quoteEnv(value)}`;
+  });
+
+  if (lines.length > 0 && lines.at(-1) === "") {
+    lines.pop();
+  }
+
+  if (remaining.size > 0 && lines.length > 0 && lines.at(-1)?.trim()) {
+    lines.push("");
+  }
+
+  for (const [key, value] of remaining) {
+    lines.push(`${key}=${quoteEnv(value)}`);
+  }
+
+  writeFileSync(targetPath, `${lines.join("\n")}\n`, "utf8");
+
+  for (const [key, value] of Object.entries(values)) {
+    env[key] = value;
+  }
+
+  return targetPath;
+}
+
 function unquote(value: string): string {
   if (
     (value.startsWith('"') && value.endsWith('"')) ||
@@ -90,4 +132,8 @@ function unquote(value: string): string {
   }
 
   return value;
+}
+
+function quoteEnv(value: string): string {
+  return /^[A-Za-z0-9_./:@-]+$/.test(value) ? value : `"${value.replace(/"/g, "")}"`;
 }

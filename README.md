@@ -131,14 +131,30 @@ PASS x402 paid resource smoke: challenge=402 payment_required=true
 Set X402_SIGNER_URL to run the full paid retry smoke.
 ```
 
-For real Casper testnet settlement, configure `.env` with at least:
+For real Casper testnet settlement, configure a testnet wallet once:
+
+```bash
+mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+This writes the Casper testnet RPC/account settings and enables real Casper
+submission plus real x402 settlement:
 
 ```env
+CASPER_NETWORK_NAME=casper-test
+CASPER_CAIP2_CHAIN_ID=casper:casper-test
 CASPER_RPC_URL=https://node.testnet.casper.network/rpc
 CASPER_ACCOUNT_KEY_PATH=<absolute-path-outside-repo>/backend.pem
 CASPER_ENABLE_REAL_SUBMISSION=true
 X402_ENABLE_REAL_SETTLEMENT=true
-X402_SETTLEMENT_MODE=resource-retry
+X402_SETTLEMENT_MODE=casper-cli
+X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+```
+
+Native CSPR uses integer motes. `2500000000` is 2.5 CSPR. For the local smoke
+sidecars, also configure the resource/payee values:
+
+```env
 X402_FACILITATOR_URL=http://127.0.0.1:4022
 X402_RESOURCE_DEMO_URL=http://127.0.0.1:4021/weather
 X402_RESOURCE_AMOUNT=2500000000
@@ -149,8 +165,6 @@ X402_PAY_TO=02032878c27882713870adf0e7546a082e991147824e77b710aaa77f47c6d972b041
 X402_SIGNER_URL=http://127.0.0.1:4030/sign
 X402_PAYMENT_HEADER_NAME=PAYMENT-SIGNATURE
 ```
-
-Native CSPR uses integer motes. `2500000000` is 2.5 CSPR.
 
 For the real Casper signer sidecar, keep the buyer private key outside this repository and run:
 

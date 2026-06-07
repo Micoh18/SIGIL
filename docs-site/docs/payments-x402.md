@@ -255,14 +255,29 @@ Without `X402_SIGNER_URL`, the smoke checks only the 402 challenge. With `X402_S
 
 ## Real Casper Settlement Smoke
 
-The full MCP-driven native CSPR smoke is documented in [Casper x402 Runbook](/casper-x402-runbook). The minimum real-settlement gates are:
+The full MCP-driven native CSPR smoke is documented in [Casper x402 Runbook](/casper-x402-runbook). First configure a Casper testnet wallet:
+
+```bash
+mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+That command writes the testnet RPC/account values and enables real Casper plus
+real x402:
 
 ```env
+CASPER_NETWORK_NAME=casper-test
+CASPER_CAIP2_CHAIN_ID=casper:casper-test
 CASPER_RPC_URL=https://node.testnet.casper.network/rpc
 CASPER_ACCOUNT_KEY_PATH=<absolute-path-outside-repo>/backend.pem
 CASPER_ENABLE_REAL_SUBMISSION=true
 X402_ENABLE_REAL_SETTLEMENT=true
-X402_SETTLEMENT_MODE=resource-retry
+X402_SETTLEMENT_MODE=casper-cli
+X402_BUYER_PRIVATE_KEY_PATH=<absolute-path-outside-repo>/backend.pem
+```
+
+For the local resource/facilitator smoke, also configure:
+
+```env
 X402_FACILITATOR_URL=http://127.0.0.1:4022
 X402_RESOURCE_DEMO_URL=http://127.0.0.1:4021/weather
 X402_RESOURCE_AMOUNT=2500000000

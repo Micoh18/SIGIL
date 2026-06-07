@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, resolve, join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as clack from "@clack/prompts";
 import { discoverCasperClient } from "./casper/clientDiscovery.js";
@@ -16,8 +17,14 @@ import {
   formatClientSetupReport,
   type ClientDetection
 } from "./client-setup.js";
-import { ensureGrimoireMasterKey, loadLocalEnvFile, resolveEnvPath } from "./env-file.js";
+import {
+  ensureGrimoireMasterKey,
+  loadLocalEnvFile,
+  resolveEnvPath,
+  upsertLocalEnvFileValues
+} from "./env-file.js";
 import { getDefaultMainspringPaths } from "./paths.js";
+import { loadCasperSigningKeyFromFile } from "./x402/signer.js";
 
 const _pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const VERSION: string = JSON.parse(readFileSync(join(_pkgRoot, "package.json"), "utf8")).version;
@@ -31,6 +38,7 @@ Usage:
   mainspring init             Create local config, data, and logs directories
   mainspring config [client]  Print MCP client config for codex/cursor/claude
   mainspring setup            Initialize local files and print MCP config
+  mainspring wallet setup     Configure a Casper testnet wallet
   mainspring doctor           Check the local setup
   mainspring update           Show how to update to the latest version
 
@@ -57,8 +65,19 @@ type InitResult = {
   agentFile: string;
 };
 
+export type WalletSetupResult = {
+  envFile: string;
+  accountKeyPath: string;
+  networkName: "casper-test";
+  caip2ChainId: "casper:casper-test";
+  rpcUrl: string;
+  publicKey: string;
+  keyAlgorithm: "ed25519" | "secp256k1";
+  buyerAccountHash: string | null;
+};
+
 export async function runCliCommand(args: string[]): Promise<boolean> {
-  const [command, target] = args;
+  const [command, target, ...rest] = args;
 
   if (!command || command === "stdio" || command === "server" || command === "mcp") {
     return false;
@@ -111,6 +130,19 @@ export async function runCliCommand(args: string[]): Promise<boolean> {
         );
       }
     }
+    return true;
+  }
+
+  if (command === "wallet") {
+    if (target !== "setup") {
+      process.stderr.write(
+        "Usage: mainspring wallet setup [path-to-casper-private-key.pem]\n"
+      );
+      process.exitCode = 1;
+      return true;
+    }
+
+    await runWalletSetup(rest[0]);
     return true;
   }
 
@@ -218,11 +250,9 @@ async function runInteractiveSetup(): Promise<void> {
 
   if (wantCasper) {
     clack.log.info(
-      "Add to your .env file:\n\n" +
-      "  CASPER_ENABLE_REAL_SUBMISSION=true\n" +
-      "  CASPER_RPC_URL=https://node.testnet.casper.network/rpc\n" +
-      "  CASPER_ACCOUNT_KEY_PATH=./keys/your-key.pem\n\n" +
-      "Then restart your MCP client."
+      "Configure a funded Casper testnet key with:\n\n" +
+      "  mainspring wallet setup <path-to-casper-testnet-key.pem>\n\n" +
+      "This enables real Casper submission on casper-test."
     );
   }
 
@@ -235,16 +265,103 @@ async function runInteractiveSetup(): Promise<void> {
 
   if (wantX402) {
     clack.log.info(
-      "Add to your .env file:\n\n" +
-      "  X402_ENABLE_REAL_SETTLEMENT=true\n" +
-      "  X402_SETTLEMENT_MODE=casper-cli\n" +
-      "  X402_BUYER_ACCOUNT_HASH=account-hash-<64 hex chars>\n" +
-      "  CASPER_ENABLE_REAL_SUBMISSION=true\n\n" +
-      "Get your account hash: casper-client account-address --public-key <your-pubkey-hex>"
+      "Use the same testnet wallet command for local x402 settlement:\n\n" +
+      "  mainspring wallet setup <path-to-casper-testnet-key.pem>\n\n" +
+      "It writes X402_ENABLE_REAL_SETTLEMENT=true and X402_SETTLEMENT_MODE=casper-cli."
     );
   }
 
   clack.outro("Restart your MCP clients to load the server.");
+}
+
+async function runWalletSetup(keyPathArg: string | undefined): Promise<void> {
+  let keyPath = keyPathArg;
+
+  if (!keyPath && process.stdin.isTTY) {
+    const response = await clack.text({
+      message: "Path to your Casper testnet private key PEM",
+      placeholder: "C:\\Users\\you\\keys\\casper-test.pem",
+      validate(value) {
+        return value?.trim() ? undefined : "A PEM key path is required.";
+      }
+    });
+
+    if (clack.isCancel(response)) {
+      clack.cancel("Wallet setup cancelled.");
+      process.exitCode = 1;
+      return;
+    }
+
+    keyPath = response;
+  }
+
+  if (!keyPath?.trim()) {
+    process.stderr.write(
+      "Usage: mainspring wallet setup [path-to-casper-private-key.pem]\n"
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  try {
+    const result = configureTestnetWallet(keyPath);
+    process.stdout.write(formatWalletSetupResult(result));
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  }
+}
+
+export function configureTestnetWallet(
+  keyPath: string,
+  env: NodeJS.ProcessEnv = process.env
+): WalletSetupResult {
+  const setup = initializeLocalSetup(env);
+  const walletEnv = { ...env, SIGIL_ENV_FILE: setup.envFile };
+  loadLocalEnvFile(walletEnv);
+  const normalizedKeyPath = normalizeUserPath(keyPath);
+  if (!existsSync(normalizedKeyPath)) {
+    throw new Error(`Casper key file not found: ${normalizedKeyPath}`);
+  }
+
+  const stat = statSync(normalizedKeyPath);
+  if (!stat.isFile()) {
+    throw new Error(`Casper key path must be a file: ${normalizedKeyPath}`);
+  }
+
+  const signingKey = loadCasperSigningKeyFromFile(normalizedKeyPath);
+  const buyerAccountHash =
+    signingKey.algorithm === "secp256k1"
+      ? deriveCasperAccountHash(signingKey.publicKey, walletEnv)
+      : null;
+
+  const values: Record<string, string> = {
+    CASPER_NETWORK_NAME: "casper-test",
+    CASPER_CAIP2_CHAIN_ID: "casper:casper-test",
+    CASPER_RPC_URL: "https://node.testnet.casper.network/rpc",
+    CASPER_ACCOUNT_KEY_PATH: normalizedKeyPath,
+    CASPER_ENABLE_REAL_SUBMISSION: "true",
+    X402_ENABLE_REAL_SETTLEMENT: "true",
+    X402_SETTLEMENT_MODE: "casper-cli",
+    X402_BUYER_PRIVATE_KEY_PATH: normalizedKeyPath,
+    X402_BUYER_PUBLIC_KEY: signingKey.publicKey
+  };
+
+  if (buyerAccountHash) {
+    values.X402_BUYER_ACCOUNT_HASH = buyerAccountHash;
+  }
+
+  const envFile = upsertLocalEnvFileValues(values, walletEnv);
+  return {
+    envFile,
+    accountKeyPath: normalizedKeyPath,
+    networkName: "casper-test",
+    caip2ChainId: "casper:casper-test",
+    rpcUrl: values.CASPER_RPC_URL,
+    publicKey: signingKey.publicKey,
+    keyAlgorithm: signingKey.algorithm,
+    buyerAccountHash
+  };
 }
 
 export function initializeLocalSetup(env: NodeJS.ProcessEnv = process.env): InitResult {
@@ -281,6 +398,31 @@ export function initializeLocalSetup(env: NodeJS.ProcessEnv = process.env): Init
     agentId: agentIdentity.agent_id,
     agentFile: agentIdentityPath(paths.dataDir)
   };
+}
+
+function formatWalletSetupResult(result: WalletSetupResult): string {
+  const lines = [
+    "Mr Mainspring Casper testnet wallet configured.",
+    `Config: ${result.envFile}`,
+    `Network: ${result.networkName}`,
+    `RPC: ${result.rpcUrl}`,
+    `Key: ${result.accountKeyPath}`,
+    `Public key: ${result.publicKey}`,
+    "Casper real submission: enabled",
+    "x402 real settlement: enabled"
+  ];
+
+  if (result.buyerAccountHash) {
+    lines.push(`x402 buyer account hash: ${result.buyerAccountHash}`);
+  } else if (result.keyAlgorithm === "secp256k1") {
+    lines.push(
+      "Warning: secp256k1 key detected, but X402_BUYER_ACCOUNT_HASH could not be derived automatically."
+    );
+    lines.push("Run: casper-client account-address --public-key <public-key>");
+  }
+
+  lines.push("", "Run `mainspring doctor` to verify the setup.", "");
+  return lines.join("\n");
 }
 
 export function formatMcpConfig(target?: string): string {
@@ -367,6 +509,56 @@ function formatDoctorReport(env: NodeJS.ProcessEnv = process.env): string {
 
 function formatCheck(ok: boolean, success: string, failure: string): string {
   return ok ? `[ok] ${success}` : `[warn] ${failure}`;
+}
+
+function normalizeUserPath(value: string): string {
+  const trimmed = value.trim().replace(/^['"]|['"]$/g, "");
+  return resolve(trimmed);
+}
+
+function deriveCasperAccountHash(
+  publicKey: string,
+  env: NodeJS.ProcessEnv = process.env
+): string | null {
+  const casperClient = discoverCasperClient({
+    clientBin: env.CASPER_CLIENT_BIN,
+    clientWslDistro: env.CASPER_CLIENT_WSL_DISTRO
+  });
+
+  if (!casperClient.found) {
+    return null;
+  }
+
+  const invocation = casperClient.clientWslDistro
+    ? {
+        command: "wsl",
+        args: [
+          "-d",
+          casperClient.clientWslDistro,
+          "--",
+          casperClient.clientBin,
+          "account-address",
+          "--public-key",
+          publicKey
+        ]
+      }
+    : {
+        command: casperClient.clientBin,
+        args: ["account-address", "--public-key", publicKey]
+      };
+
+  const result = spawnSync(invocation.command, invocation.args, {
+    stdio: "pipe",
+    encoding: "utf8"
+  });
+
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const output = `${result.stdout}\n${result.stderr}`;
+  const match = output.match(/(?:account-hash-)?([a-f0-9]{64})/i);
+  return match?.[1] ? `account-hash-${match[1].toLowerCase()}` : null;
 }
 
 function normalizeMcpClientTarget(target: string | undefined): "codex" | "cursor" | "claude" | "generic" {

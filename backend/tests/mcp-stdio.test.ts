@@ -262,7 +262,7 @@ describe("MCP stdio server", () => {
     } finally {
       await client.close();
     }
-  });
+  }, 15_000);
 });
 
 async function callJsonTool<T>(

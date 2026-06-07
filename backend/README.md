@@ -31,12 +31,23 @@ payment preflight tools. `mainspring setup` creates the local config, data, and
 logs directories plus a generated stable `agent_id` under the user's standard app config folder. Use
 `SIGIL_ENV_FILE` to point at a specific env file for advanced setups.
 
+To configure a funded Casper testnet wallet for real anchoring and local x402
+settlement:
+
+```bash
+mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+This testnet-only flow writes the Casper RPC/account settings and enables both
+`CASPER_ENABLE_REAL_SUBMISSION=true` and `X402_ENABLE_REAL_SETTLEMENT=true`.
+
 Important package boundaries:
 
 - Keep `.env`, local keys, and generated demo data outside the npm package.
-- Real Casper submission remains gated by `CASPER_ENABLE_REAL_SUBMISSION=true`.
-- Real x402 settlement remains gated by `X402_ENABLE_REAL_SETTLEMENT=true` and
-  a configured `X402_SIGNER_URL`.
+- Real Casper submission remains gated until `mainspring wallet setup` writes
+  `CASPER_ENABLE_REAL_SUBMISSION=true`.
+- Real x402 settlement remains gated until `mainspring wallet setup` writes
+  `X402_ENABLE_REAL_SETTLEMENT=true`.
 - The signer private key must live outside the repository workspace.
 
 ## Library Entry

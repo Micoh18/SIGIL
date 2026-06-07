@@ -59,6 +59,17 @@ mainspring config
 
 Inside an MCP client, call `agent.whoami` to see the generated local identity. Tools that accept `agent_id` use that identity by default when `agent_id` is omitted.
 
+To enable real Casper testnet submission and real x402 settlement, configure a
+testnet wallet once:
+
+```bash
+mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+The wallet setup flow is testnet-only. It writes Casper testnet RPC/account
+settings, `CASPER_ENABLE_REAL_SUBMISSION=true`,
+`X402_ENABLE_REAL_SETTLEMENT=true`, and `X402_SETTLEMENT_MODE=casper-cli`.
+
 For local development from this repository, you can still copy the root template:
 
 ```bash
@@ -81,15 +92,15 @@ Important local defaults:
 | `GRIMOIRE_MASTER_KEY` | AES-GCM local encryption key. Generated automatically for local use when omitted. |
 | `X402_FACILITATOR_URL` | Configured facilitator URL, defaulting to `http://localhost:4022`. |
 | `X402_RESOURCE_DEMO_URL` | Demo resource URL, defaulting to `http://localhost:4021/weather`. |
-| `X402_ENABLE_REAL_SETTLEMENT` | Enables the real settlement provider only when set to `true`. Defaults to disabled. |
-| `X402_SETTLEMENT_MODE` | `resource-retry` by default. Use `facilitator` only for direct facilitator tests. |
+| `X402_ENABLE_REAL_SETTLEMENT` | Enables the real settlement provider. `mainspring wallet setup` sets this to `true`. |
+| `X402_SETTLEMENT_MODE` | `resource-retry` by default. `mainspring wallet setup` sets `casper-cli` for local testnet signing/settlement. |
 | `X402_SIGNER_URL` | External signer sidecar URL. Required for real paid retry. |
 | `X402_PAYMENT_HEADER_NAME` | Header used for paid retry. Defaults to `PAYMENT-SIGNATURE`. |
 | `CASPER_NETWORK_NAME` | Casper chain name, defaulting to `casper-test`. |
 | `CASPER_CAIP2_CHAIN_ID` | Defaults to `casper:casper-test`. |
 | `CASPER_RPC_URL` | Casper node RPC address required for real anchoring. |
 | `CASPER_ACCOUNT_KEY_PATH` | Secret key path required for real anchoring. |
-| `CASPER_ENABLE_REAL_SUBMISSION` | Must be `true` before the backend shells out to `casper-client`. Defaults to disabled. |
+| `CASPER_ENABLE_REAL_SUBMISSION` | Must be `true` before the backend shells out to `casper-client`. `mainspring wallet setup` sets this to `true`. |
 | `CASPER_CLIENT_BIN` | CLI executable name/path. Defaults to `casper-client`. |
 | `CASPER_CLIENT_WSL_DISTRO` | Optional Windows override. Mainspring auto-detects WSL when no native Windows `casper-client` is available. |
 | `CASPER_GAS_PRICE_TOLERANCE` | Casper transaction gas price tolerance. Defaults to `10`. |

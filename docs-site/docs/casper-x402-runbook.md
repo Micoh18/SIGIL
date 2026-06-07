@@ -114,6 +114,17 @@ X402_SIGNER_TIMEOUT_MS=10000
 X402_SIGNER_MAX_VALIDITY_SECONDS=900
 ```
 
+For a normal installed Mainspring user, the Casper testnet wallet portion is
+configured by:
+
+```bash
+mainspring wallet setup <absolute-path-outside-repo>/backend.pem
+```
+
+That command is testnet-only and writes `CASPER_ENABLE_REAL_SUBMISSION=true`,
+`X402_ENABLE_REAL_SETTLEMENT=true`, and `X402_SETTLEMENT_MODE=casper-cli`.
+Use `resource-retry` only when running this sidecar smoke exactly as documented.
+
 Native CSPR uses integer motes. `2500000000` is 2.5 CSPR.
 
 ## One-Command Smoke
