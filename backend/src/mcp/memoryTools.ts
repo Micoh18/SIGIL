@@ -23,7 +23,7 @@ export function registerMemoryTools(
     {
       title: "Write Memory",
       description:
-        "Store a durable Mr Mainspring agent memory when the user shares a preference, decision, or fact worth remembering. Compute its deterministic content hash. Casper anchoring is optional; only set anchor=true when the user asks for proof, on-chain anchoring, or Casper verification.",
+        "Proactively store a durable Mr Mainspring agent memory when the user shares a project preference, decision, or fact worth remembering. If the user says what to remember for this project, call this tool even when they do not say 'save'. Use type=preference for durable user preferences. Compute its deterministic content hash. Casper anchoring is optional; only set anchor=true when the user asks for proof, on-chain anchoring, or Casper verification.",
       inputSchema: {
         agent_id: agentIdSchema,
         type: memoryTypeSchema,
@@ -94,7 +94,8 @@ export function registerMemoryTools(
     "memory.search",
     {
       title: "Search Memory",
-      description: "Search stored Mr Mainspring memories for an agent.",
+      description:
+        "Search stored Mr Mainspring memories for an agent. Use this when the user asks what was remembered or asks about a prior preference and you do not already have the memory id.",
       inputSchema: {
         agent_id: agentIdSchema,
         query: z.string().default(""),
@@ -112,14 +113,47 @@ export function registerMemoryTools(
     {
       title: "Verify Memory",
       description:
-        "Use when the user asks whether a stored memory can be trusted, verified, intact, or proven. Recompute a local memory hash and report whether it still matches the stored hash.",
+        "Use when the user asks whether a stored memory can be trusted, verified, intact, or proven. Recompute a local memory hash and report whether it still matches the stored hash. If you do not have the memory id, provide a natural-language query and this tool will verify the best matching memory.",
       inputSchema: {
         agent_id: agentIdSchema,
-        memory_id: z.string().min(1)
+        memory_id: z.string().min(1).optional(),
+        query: z.string().min(1).optional()
       }
     },
-    async ({ agent_id, memory_id }) => {
-      const verification = await memoryService.verify(resolveAgentId(agent_id, identity), memory_id);
+    async ({ agent_id, memory_id, query }) => {
+      const resolvedAgentId = resolveAgentId(agent_id, identity);
+
+      if (!memory_id && query) {
+        const search = await memoryService.search(resolvedAgentId, query, 1);
+        const match = search.results[0];
+
+        if (!match) {
+          return jsonResult({
+            valid: false,
+            reason: "memory_not_found",
+            agent_id: resolvedAgentId,
+            query,
+            search_count: 0
+          });
+        }
+
+        const verification = await memoryService.verify(resolvedAgentId, match.memory_id);
+        return jsonResult({
+          ...verification,
+          query,
+          search_count: search.count
+        });
+      }
+
+      if (!memory_id) {
+        return jsonResult({
+          valid: false,
+          reason: "memory_id_or_query_required",
+          agent_id: resolvedAgentId
+        });
+      }
+
+      const verification = await memoryService.verify(resolvedAgentId, memory_id);
       return jsonResult(verification);
     }
   );

@@ -1,5 +1,6 @@
 import { createCipheriv, randomBytes, randomUUID } from "node:crypto";
 import type { AuditService } from "../audit/service.js";
+import { normalizeAllowedMethodsForUrls } from "../action-methods.js";
 import { canonicalizeJson, toJsonObject } from "../memory/canonical.js";
 import { sha256Hex } from "../memory/hash.js";
 import type {
@@ -76,7 +77,7 @@ export class GrimoireService {
       policy_id: input.policy_id,
       enabled: input.enabled ?? true,
       allowed_urls: input.allowed_urls,
-      allowed_methods: input.allowed_methods.map((method) => method.toUpperCase()).sort(),
+      allowed_methods: normalizeAllowedMethodsForUrls(input.allowed_methods, input.allowed_urls),
       allowed_asset: toJsonObject(input.allowed_asset, "allowed_asset"),
       max_amount_per_call: input.max_amount_per_call,
       max_amount_per_period: input.max_amount_per_period,

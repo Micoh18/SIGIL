@@ -32,7 +32,7 @@ export function registerGrimoireTools(
     {
       title: "Store Secret",
       description:
-        "Encrypt and store a scoped Mr Mainspring secret or non-sensitive secret reference. The plaintext is never returned. When the user refers to the wallet configured by `mainspring wallet setup`, prefer a non-sensitive reference value such as `configured-via-mainspring-wallet-setup`; do not ask for or store raw private key contents.",
+        "Encrypt and store a scoped Mr Mainspring secret or non-sensitive secret reference. Use this when the user says to use, configure, register, or remember their configured wallet for payments. The plaintext is never returned. When the user refers to the wallet configured by `mainspring wallet setup`, prefer a non-sensitive reference value such as `configured-via-mainspring-wallet-setup`; do not ask for or store raw private key contents.",
       inputSchema: {
         agent_id: agentIdSchema,
         name: nonEmptyStringSchema,
@@ -61,7 +61,7 @@ export function registerGrimoireTools(
     {
       title: "List Secrets",
       description:
-        "List Mr Mainspring secret metadata for an agent without exposing secret values.",
+        "List Mr Mainspring secret metadata for an agent without exposing secret values. Use this when the user asks which signers or secrets are available, not when they ask to configure a wallet.",
       inputSchema: {
         agent_id: agentIdSchema
       }
@@ -92,7 +92,8 @@ export function registerGrimoireTools(
         allowed_methods: z
           .array(nonEmptyStringSchema)
           .min(1)
-          .describe("HTTP methods allowed by the policy. Use POST for payment/action endpoints."),
+          .default(["POST"])
+          .describe("HTTP methods allowed by the policy. Defaults to POST. Use POST for payment/action endpoints and hosted x402 payment-fetch routes; use GET only for read-only resources."),
         allowed_asset: jsonObjectSchema,
         max_amount_per_call: decimalAmountSchema,
         max_amount_per_period: decimalAmountSchema,

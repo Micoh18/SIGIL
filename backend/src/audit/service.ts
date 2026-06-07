@@ -36,7 +36,7 @@ export class AuditService {
     const limit = Math.max(1, Math.min(input.limit ?? DEFAULT_TAIL_LIMIT, MAX_TAIL_LIMIT));
     const events = (await this.store.list())
       .filter((event) => !input.agent_id || event.agent_id === input.agent_id)
-      .filter((event) => !input.event_type || event.event_type === input.event_type)
+      .filter((event) => !input.event_type || matchesEventType(event.event_type, input.event_type))
       .sort((left, right) => right.created_at.localeCompare(left.created_at))
       .slice(0, limit);
 
@@ -60,6 +60,15 @@ function sanitizeMetadata(metadata: unknown) {
   }
 
   return bounded;
+}
+
+function matchesEventType(eventType: string, filter: string): boolean {
+  const normalized = filter.trim();
+  if (!normalized) {
+    return true;
+  }
+
+  return eventType === normalized || (!normalized.includes(".") && eventType.startsWith(`${normalized}.`));
 }
 
 function redactAndBound<T extends JsonValue>(value: T, depth: number): T {

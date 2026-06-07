@@ -58,5 +58,23 @@ describe("GrimoireService", () => {
     expect(first.policy_hash).toBe(second.policy_hash);
     expect(second.allowed_methods).toEqual(["GET"]);
   });
-});
 
+  it("normalizes GET to POST for hosted payment action endpoints", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "sigil-grimoire-"));
+    const service = new GrimoireService(new FileGrimoireStore(dataDir), Buffer.alloc(32, 1));
+
+    const policy = await service.setPolicy({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-hosted-x402",
+      allowed_urls: ["https://mainspring-x402-demo-api.onrender.com/demo/x402/payment-fetch"],
+      allowed_methods: ["get"],
+      allowed_asset: { caip2_chain_id: "casper:casper-test" },
+      max_amount_per_call: "2.5",
+      max_amount_per_period: "10",
+      period_seconds: 86400,
+      secret_scopes: ["casper:testnet", "payment:sign"]
+    });
+
+    expect(policy.allowed_methods).toEqual(["POST"]);
+  });
+});

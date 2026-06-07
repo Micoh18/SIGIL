@@ -24,11 +24,11 @@ export function registerPaymentTools(
     {
       title: "x402 Payment Fetch",
       description:
-        "Create a durable x402 payment record after checking a Grimoire policy. With request_challenge=true, make the first x402 HTTP request, persist and approve 402 requirements, then either persist a disabled/failed receipt or, when real settlement is configured, retry the paid resource with PAYMENT-SIGNATURE and return verified settlement without exposing signed payloads.",
+        "Create a durable x402 payment record after checking a Grimoire policy. Defaults to POST because purchases and hosted x402 payment-fetch routes are actions; use GET only for read-only paid resources. Use the same idempotency_key when checking retry or duplicate-charge protection. With request_challenge=true, make the first x402 HTTP request, persist and approve 402 requirements, then either persist a disabled/failed receipt or, when real settlement is configured, retry the paid resource with PAYMENT-SIGNATURE and return verified settlement without exposing signed payloads.",
       inputSchema: {
         agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema,
-        method: nonEmptyStringSchema.default("GET"),
+        method: nonEmptyStringSchema.default("POST"),
         url: urlSchema,
         expected_amount: decimalAmountSchema.optional(),
         idempotency_key: nonEmptyStringSchema.optional(),

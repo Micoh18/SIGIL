@@ -29,10 +29,17 @@ describe("AuditService", () => {
     });
 
     const tail = await audit.tail({ agent_id: "agent-demo-1", limit: 1 });
+    const paymentTail = await audit.tail({
+      agent_id: "agent-demo-1",
+      event_type: "payment",
+      limit: 10
+    });
 
     expect(first.id).toMatch(/^aud_/);
     expect(tail.count).toBe(1);
     expect(tail.events[0]?.event_type).toBe("payment.policy_approved");
+    expect(paymentTail.count).toBe(1);
+    expect(paymentTail.events[0]?.event_type).toBe("payment.policy_approved");
     expect(JSON.stringify(tail.events)).not.toContain("super-secret-value");
   });
 

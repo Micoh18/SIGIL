@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { normalizeMethodForUrl } from "../action-methods.js";
 import type { AuditService } from "../audit/service.js";
 import type { GrimoireService } from "../grimoire/service.js";
 import type { JsonObject } from "../memory/types.js";
@@ -43,7 +44,7 @@ export class PaymentService {
   }
 
   async fetch(input: PaymentFetchInput): Promise<PaymentFetchResult> {
-    const method = input.method.toUpperCase();
+    const method = normalizeMethodForUrl(input.method, input.url);
     const idempotencyKey = input.idempotency_key ?? null;
 
     if (idempotencyKey) {

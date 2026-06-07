@@ -102,6 +102,36 @@ describe("PaymentService", () => {
     expect(first.payment_id).toBe(second.payment_id);
   });
 
+  it("treats hosted payment-fetch endpoints as POST even when a client sends GET", async () => {
+    const { service, grimoire } = await createService();
+    const hostedUrl = "https://mainspring-x402-demo-api.onrender.com/demo/x402/payment-fetch";
+
+    await grimoire.setPolicy({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-hosted-x402",
+      allowed_urls: [hostedUrl],
+      allowed_methods: ["POST"],
+      allowed_asset: { caip2_chain_id: "casper:casper-test" },
+      max_amount_per_call: "2.5",
+      max_amount_per_period: "10",
+      period_seconds: 86400,
+      secret_scopes: ["casper:testnet", "payment:sign"]
+    });
+
+    const result = await service.fetch({
+      agent_id: "agent-demo-1",
+      policy_id: "pol-hosted-x402",
+      method: "GET",
+      url: hostedUrl,
+      expected_amount: "2.5",
+      idempotency_key: "hosted-post-normalized"
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.method).toBe("POST");
+    expect(result.status).toBe("policy_checked");
+  });
+
   it("captures and persists a 402 challenge after policy approval", async () => {
     const requirements = {
       x402Version: 1,

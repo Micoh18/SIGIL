@@ -18,7 +18,11 @@ export function registerAuditTools(
         "Return recent Mr Mainspring audit events for memory, Grimoire, payment, and anchor activity.",
       inputSchema: {
         agent_id: z.string().min(1).optional(),
-        event_type: z.string().min(1).optional(),
+        event_type: z
+          .string()
+          .min(1)
+          .optional()
+          .describe("Exact event type such as payment.settled, or category prefix such as payment."),
         all_agents: z.boolean().optional(),
         limit: z.number().int().min(1).max(200).optional()
       }

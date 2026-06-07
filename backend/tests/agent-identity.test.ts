@@ -55,6 +55,33 @@ describe("local agent identity", () => {
     expect(search.count).toBe(1);
     expect(search.results[0]?.memory_id).toBe(write.memory_id);
   });
+
+  it("verifies a remembered preference by query when the memory id is not provided", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "mainspring-agent-memory-query-"));
+    const identity = ensureLocalAgentIdentity(dataDir);
+    const memory = new MemoryService(new FileMemoryStore(dataDir));
+    const tools = captureTools((server) =>
+      registerMemoryTools(server, memory, { defaultAgentId: identity.agent_id })
+    );
+
+    const write = await callJsonTool<{ memory_id: string }>(tools.get("memory.write"), {
+      type: "preference",
+      body: {
+        preference: "Use plain English and only make claims that can be proven."
+      }
+    });
+    const verify = await callJsonTool<{
+      valid: boolean;
+      memory_id: string;
+      search_count: number;
+    }>(tools.get("memory.verify"), {
+      query: "plain English proven claims"
+    });
+
+    expect(verify.valid).toBe(true);
+    expect(verify.memory_id).toBe(write.memory_id);
+    expect(verify.search_count).toBe(1);
+  });
 });
 
 function captureTools(register: (server: McpServer) => void): Map<string, CapturedTool> {

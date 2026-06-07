@@ -3,6 +3,7 @@ export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export type JsonObject = { [key: string]: JsonValue };
 
 export const memoryTypes = [
+  "preference",
   "observation",
   "decision",
   "payment",
