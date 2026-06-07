@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4 - 2026-06-07
+- Accept plain text memory body/source inputs and store them as note objects.
+- Improve memory search for natural-language recall prompts.
+- Improve MCP tool descriptions for memory verification, wallet signer references, and POST payment actions.
+- Add natural-language live testnet demo prompts.
+
 ## 0.3.3 - 2026-06-07
 - Add `mainspring wallet setup <path-to-casper-testnet-key.pem>` for testnet-only wallet configuration.
 - Enable real Casper submission and x402 settlement defaults during wallet setup.

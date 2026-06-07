@@ -32,12 +32,14 @@ export function registerGrimoireTools(
     {
       title: "Store Secret",
       description:
-        "Encrypt and store a scoped Mr Mainspring secret. The plaintext is never returned.",
+        "Encrypt and store a scoped Mr Mainspring secret or non-sensitive secret reference. The plaintext is never returned. When the user refers to the wallet configured by `mainspring wallet setup`, prefer a non-sensitive reference value such as `configured-via-mainspring-wallet-setup`; do not ask for or store raw private key contents.",
       inputSchema: {
         agent_id: agentIdSchema,
         name: nonEmptyStringSchema,
         type: secretTypeSchema,
-        value: nonEmptyStringSchema,
+        value: nonEmptyStringSchema.describe(
+          "Secret value or reference. For an already configured Casper wallet, use a non-sensitive reference instead of a PEM path or private key when possible."
+        ),
         scopes: z.array(nonEmptyStringSchema).min(1)
       }
     },
@@ -80,13 +82,17 @@ export function registerGrimoireTools(
     "grimoire.policy.set",
     {
       title: "Set Policy",
-      description: "Create or update a Mr Mainspring spending/access policy commitment.",
+      description:
+        "Create or update a Mr Mainspring spending/access policy commitment. Use POST for action or payment endpoints, including hosted x402 payment-fetch routes; use GET for read-only resources.",
       inputSchema: {
         agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema,
         enabled: z.boolean().optional(),
         allowed_urls: z.array(urlSchema).min(1),
-        allowed_methods: z.array(nonEmptyStringSchema).min(1),
+        allowed_methods: z
+          .array(nonEmptyStringSchema)
+          .min(1)
+          .describe("HTTP methods allowed by the policy. Use POST for payment/action endpoints."),
         allowed_asset: jsonObjectSchema,
         max_amount_per_call: decimalAmountSchema,
         max_amount_per_period: decimalAmountSchema,

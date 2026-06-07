@@ -81,7 +81,7 @@ describe("MCP stdio server", () => {
       }>(client, "memory.write", {
         agent_id: agentId,
         type: "observation",
-        source: { kind: "mcp-stdio-test" },
+        source: "mcp stdio test source",
         body: { note: "MCP stdio smoke test" },
         anchor: true
       });
@@ -92,7 +92,7 @@ describe("MCP stdio server", () => {
 
       const readResult = await callJsonTool<{
         found: boolean;
-        memory: { memory_id: string; body: { note: string } };
+        memory: { memory_id: string; body: { note: string }; source: { note: string } };
       }>(client, "memory.read", {
         agent_id: agentId,
         memory_id: writeResult.memory_id
@@ -101,6 +101,7 @@ describe("MCP stdio server", () => {
       expect(readResult.found).toBe(true);
       expect(readResult.memory.memory_id).toBe(writeResult.memory_id);
       expect(readResult.memory.body.note).toBe("MCP stdio smoke test");
+      expect(readResult.memory.source.note).toBe("mcp stdio test source");
 
       const searchResult = await callJsonTool<{
         count: number;

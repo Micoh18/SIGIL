@@ -10,6 +10,7 @@ import {
 import { canonicalizeJson, toJsonObject } from "./canonical.js";
 import { sha256Hex } from "./hash.js";
 import type {
+  JsonObject,
   MemoryEnvelope,
   MemorySearchResult,
   MemoryStore,
@@ -19,6 +20,42 @@ import type {
 } from "./types.js";
 
 const MEMORY_SCHEMA_VERSION = "sigil.memory.v1";
+const SEARCH_STOPWORDS = new Set([
+  "a",
+  "about",
+  "again",
+  "an",
+  "and",
+  "anything",
+  "are",
+  "as",
+  "before",
+  "did",
+  "do",
+  "for",
+  "from",
+  "have",
+  "i",
+  "in",
+  "is",
+  "it",
+  "me",
+  "my",
+  "of",
+  "or",
+  "project",
+  "remember",
+  "said",
+  "should",
+  "that",
+  "the",
+  "this",
+  "to",
+  "was",
+  "what",
+  "with",
+  "you"
+]);
 
 export class MemoryService {
   constructor(
@@ -30,8 +67,8 @@ export class MemoryService {
   async write(input: WriteMemoryInput): Promise<StoredMemoryEntry> {
     const memoryId = input.memory_id ?? createMemoryId();
     const createdAt = new Date().toISOString();
-    const source = toJsonObject(input.source ?? {}, "source");
-    const body = toJsonObject(input.body, "body");
+    const source = toMemoryObject(input.source ?? {}, "source");
+    const body = toMemoryObject(input.body, "body");
 
     const envelope: MemoryEnvelope = {
       schema_version: MEMORY_SCHEMA_VERSION,
@@ -104,16 +141,16 @@ export class MemoryService {
   }
 
   async search(agentId: string, query: string, limit = 10): Promise<MemorySearchResult> {
-    const normalizedQuery = query.trim().toLowerCase();
+    const queryTokens = tokenizeSearchText(query);
     const entries = await this.store.list(agentId);
 
     const results = entries
       .filter((entry) => {
-        if (normalizedQuery.length === 0) {
+        if (queryTokens.length === 0) {
           return true;
         }
 
-        return buildSearchText(entry).includes(normalizedQuery);
+        return matchesSearch(entry, queryTokens);
       })
       .slice(0, Math.max(1, Math.min(limit, 50)))
       .map(toSummary);
@@ -174,6 +211,14 @@ function createMemoryId(): string {
   return `mem_${randomUUID().replaceAll("-", "")}`;
 }
 
+function toMemoryObject(value: unknown, path: string): JsonObject {
+  if (typeof value === "string") {
+    return { note: value };
+  }
+
+  return toJsonObject(value, path);
+}
+
 function buildSearchText(entry: StoredMemoryEntry): string {
   return [
     entry.memory_id,
@@ -184,6 +229,42 @@ function buildSearchText(entry: StoredMemoryEntry): string {
   ]
     .join(" ")
     .toLowerCase();
+}
+
+function matchesSearch(entry: StoredMemoryEntry, queryTokens: string[]): boolean {
+  const entryTokens = new Set(tokenizeSearchText(buildSearchText(entry)));
+
+  return queryTokens.every((queryToken) => entryTokens.has(queryToken));
+}
+
+function tokenizeSearchText(value: string): string[] {
+  return [
+    ...new Set(
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .split(/\s+/)
+        .filter((token) => token.length > 1 && !SEARCH_STOPWORDS.has(token))
+        .map(normalizeSearchToken)
+        .filter((token) => token.length > 1 && !SEARCH_STOPWORDS.has(token))
+    )
+  ];
+}
+
+function normalizeSearchToken(token: string): string {
+  if (token.endsWith("ing") && token.length > 5) {
+    return token.slice(0, -3);
+  }
+
+  if (token.endsWith("ed") && token.length > 4) {
+    return token.slice(0, -2);
+  }
+
+  if (token.endsWith("s") && token.length > 3) {
+    return token.slice(0, -1);
+  }
+
+  return token;
 }
 
 function toSummary(entry: StoredMemoryEntry): MemorySummary {

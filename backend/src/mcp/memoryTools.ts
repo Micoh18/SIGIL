@@ -9,6 +9,7 @@ import { memoryTypes } from "../memory/types.js";
 const memoryTypeSchema = z.enum(memoryTypes);
 
 const jsonBodySchema = z.record(z.string(), z.unknown());
+const jsonBodyOrTextSchema = z.union([jsonBodySchema, z.string().trim().min(1)]);
 
 export function registerMemoryTools(
   server: McpServer,
@@ -22,13 +23,24 @@ export function registerMemoryTools(
     {
       title: "Write Memory",
       description:
-        "Store a Mr Mainspring agent memory and compute its deterministic content hash.",
+        "Store a durable Mr Mainspring agent memory when the user shares a preference, decision, or fact worth remembering. Compute its deterministic content hash. Casper anchoring is optional; only set anchor=true when the user asks for proof, on-chain anchoring, or Casper verification.",
       inputSchema: {
         agent_id: agentIdSchema,
         type: memoryTypeSchema,
-        body: jsonBodySchema,
-        source: jsonBodySchema.optional(),
-        anchor: z.boolean().optional(),
+        body: jsonBodyOrTextSchema.describe(
+          "Memory content. Prefer a JSON object; a plain text note is accepted and stored as { note }."
+        ),
+        source: jsonBodyOrTextSchema
+          .optional()
+          .describe(
+            "Where the memory came from. Prefer a JSON object; a plain text source note is accepted and stored as { note }."
+          ),
+        anchor: z
+          .boolean()
+          .optional()
+          .describe(
+            "Request Casper/on-chain proof. Omit or false for normal durable memory unless the user explicitly asks for proof or anchoring."
+          ),
         memory_id: z.string().min(1).optional(),
         prev_anchor_hash: z.string().min(1).nullable().optional()
       }
@@ -99,7 +111,8 @@ export function registerMemoryTools(
     "memory.verify",
     {
       title: "Verify Memory",
-      description: "Recompute a local memory hash and report whether it still matches the stored hash.",
+      description:
+        "Use when the user asks whether a stored memory can be trusted, verified, intact, or proven. Recompute a local memory hash and report whether it still matches the stored hash.",
       inputSchema: {
         agent_id: agentIdSchema,
         memory_id: z.string().min(1)

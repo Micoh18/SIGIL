@@ -37,5 +37,32 @@ describe("MemoryService", () => {
     expect(verification.valid).toBe(true);
     expect(verification.anchor_status).toBe("pending");
   });
-});
 
+  it("accepts text notes and finds memories with natural-language token search", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "sigil-memory-"));
+    const service = new MemoryService(new FileMemoryStore(dataDir));
+
+    const written = await service.write({
+      agent_id: "agent-demo-1",
+      type: "decision",
+      source: "User stated a durable live-demo communication preference.",
+      body: {
+        preference:
+          "Use plain English, avoid tool jargon, and make evidence-backed claims only."
+      }
+    });
+
+    const read = await service.read("agent-demo-1", written.memory_id);
+    const search = await service.search(
+      "agent-demo-1",
+      "Have I said anything before about avoiding tool jargon?"
+    );
+
+    expect(read?.source).toEqual({
+      note: "User stated a durable live-demo communication preference."
+    });
+    expect(written.anchor_status).toBe("not_requested");
+    expect(search.count).toBe(1);
+    expect(search.results[0]?.memory_id).toBe(written.memory_id);
+  });
+});
