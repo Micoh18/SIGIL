@@ -83,7 +83,7 @@ export function registerGrimoireTools(
     {
       title: "Set Policy",
       description:
-        "Create or update a Mr Mainspring spending/access policy commitment. Use POST for action or payment endpoints, including hosted x402 payment-fetch routes; use GET for read-only resources.",
+        "Create or update a Mr Mainspring spending/access policy commitment. Use GET for x402 paid resources that return 402 PAYMENT-REQUIRED. Use POST only when the target is explicitly a POST action or wrapper endpoint.",
       inputSchema: {
         agent_id: agentIdSchema,
         policy_id: nonEmptyStringSchema,
@@ -92,8 +92,8 @@ export function registerGrimoireTools(
         allowed_methods: z
           .array(nonEmptyStringSchema)
           .min(1)
-          .default(["POST"])
-          .describe("HTTP methods allowed by the policy. Defaults to POST. Use POST for payment/action endpoints and hosted x402 payment-fetch routes; use GET only for read-only resources."),
+          .default(["GET"])
+          .describe("HTTP methods allowed by the policy. Defaults to GET for x402 paid resources. Use POST only for explicit POST action or wrapper endpoints."),
         allowed_asset: jsonObjectSchema,
         max_amount_per_call: decimalAmountSchema,
         max_amount_per_period: decimalAmountSchema,
