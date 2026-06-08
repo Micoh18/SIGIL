@@ -56,6 +56,9 @@ export function registerMemoryTools(
         content_hash: memory.content_hash,
         metadata_hash: memory.metadata_hash,
         anchor_status: memory.anchor_status,
+        anchor_reason: memory.anchor_reason,
+        anchor_id: memory.anchor_id,
+        casper_transaction_hash: memory.casper_transaction_hash,
         created_at: memory.created_at
       });
     }

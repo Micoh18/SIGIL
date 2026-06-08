@@ -2,6 +2,8 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { AuditService } from "../src/audit/service.js";
+import { FileAuditStore } from "../src/audit/store.js";
 import {
   buildCasperAnchorCommand,
   ConfiguredCasperAnchorClient,
@@ -402,6 +404,7 @@ describe("Casper anchor foundation", () => {
     expect(submission?.agent_id_hash).toMatch(hex64);
     expect(submission?.memory_id_hash).toMatch(hex64);
     expect(written.anchor_status).toBe("pending");
+    expect(written.anchor_reason).toBe("casper_contract_not_configured");
     expect(written.anchor_id).toMatch(hex64);
     expect(written.casper_transaction_hash).toBeNull();
   });
@@ -420,10 +423,89 @@ describe("Casper anchor foundation", () => {
     const rawStore = await readFile(join(dataDir, "memory.json"), "utf8");
 
     expect(written.anchor_status).toBe("pending");
+    expect(written.anchor_reason).toBe("casper_client_not_configured");
     expect(written.anchor_id).toMatch(hex64);
     expect(written.casper_transaction_hash).toBeNull();
     expect(written.onchain_content_hash).toBeNull();
     expect(rawStore).toContain(written.anchor_id ?? "");
+  });
+
+  it("records explicit audit events for pending and submitted anchor attempts", async () => {
+    const pendingDataDir = await mkdtemp(join(tmpdir(), "sigil-anchor-audit-pending-"));
+    const pendingAudit = new AuditService(new FileAuditStore(pendingDataDir));
+    const pendingMemory = new MemoryService(
+      new FileMemoryStore(pendingDataDir),
+      pendingAudit,
+      new MockCasperAnchorClient()
+    );
+
+    const pending = await pendingMemory.write({
+      agent_id: "agent-demo-1",
+      type: "observation",
+      body: { note: "audit pending anchor" },
+      anchor: true
+    });
+    const pendingEvents = (await pendingAudit.tail({ agent_id: "agent-demo-1", limit: 10 })).events;
+
+    expect(pending.anchor_status).toBe("pending");
+    expect(pending.anchor_reason).toBe("casper_contract_not_configured");
+    expect(pendingEvents.map((event) => event.event_type)).toContain("memory.anchor_pending");
+    expect(pendingEvents.find((event) => event.event_type === "memory.anchor_pending")?.metadata)
+      .toMatchObject({
+        anchor_status: "pending",
+        anchor_reason: "casper_contract_not_configured",
+        casper_transaction_hash: null
+      });
+
+    const submittedDataDir = await mkdtemp(join(tmpdir(), "sigil-anchor-audit-submitted-"));
+    const submittedAudit = new AuditService(new FileAuditStore(submittedDataDir));
+    const transactionHash = "f".repeat(64);
+    const submittedClient = new ConfiguredCasperAnchorClient(
+      {
+        networkName: "casper-test",
+        caip2ChainId: "casper:casper-test",
+        rpcUrl: "https://node.test/rpc",
+        accountKeyPath: "./keys/backend.pem",
+        memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
+        memoryAnchorPackageHash: `hash-${"2".repeat(64)}`,
+        submissionEnabled: true,
+        clientBin: "casper-client",
+        clientWslDistro: null,
+        anchorSubmissionMode: "transaction-package",
+        gasPriceTolerance: "10",
+        pricingMode: "classic",
+        anchorPaymentAmountMotes: "3000000000"
+      },
+      async () => ({
+        exitCode: 0,
+        stdout: JSON.stringify({ transaction_hash: transactionHash }),
+        stderr: ""
+      })
+    );
+    const submittedMemory = new MemoryService(
+      new FileMemoryStore(submittedDataDir),
+      submittedAudit,
+      submittedClient
+    );
+
+    const submitted = await submittedMemory.write({
+      agent_id: "agent-demo-1",
+      type: "observation",
+      body: { note: "audit submitted anchor" },
+      anchor: true
+    });
+    const submittedEvents = (await submittedAudit.tail({ agent_id: "agent-demo-1", limit: 10 })).events;
+
+    expect(submitted.anchor_status).toBe("pending");
+    expect(submitted.anchor_reason).toBeNull();
+    expect(submitted.casper_transaction_hash).toBe(transactionHash);
+    expect(submittedEvents.map((event) => event.event_type)).toContain("memory.anchor_submitted");
+    expect(submittedEvents.find((event) => event.event_type === "memory.anchor_submitted")?.metadata)
+      .toMatchObject({
+        anchor_status: "pending",
+        anchor_reason: null,
+        casper_transaction_hash: transactionHash
+      });
   });
 
   it("does not place memory body, secrets, or raw ids in the Casper anchor payload", async () => {

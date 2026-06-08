@@ -63,7 +63,16 @@ function normalizeStore(parsed: unknown): MemoryStoreFile {
 
   return {
     schema_version: "sigil.memory-store.v1",
-    memories: Array.isArray(data.memories) ? (data.memories as StoredMemoryEntry[]) : []
+    memories: Array.isArray(data.memories)
+      ? (data.memories as StoredMemoryEntry[]).map(normalizeMemoryEntry)
+      : []
+  };
+}
+
+function normalizeMemoryEntry(entry: StoredMemoryEntry): StoredMemoryEntry {
+  return {
+    ...entry,
+    anchor_reason: entry.anchor_reason ?? null
   };
 }
 

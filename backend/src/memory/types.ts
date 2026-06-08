@@ -31,6 +31,7 @@ export type StoredMemoryEntry = MemoryEnvelope & {
   content_hash: string;
   metadata_hash: string;
   anchor_status: AnchorStatus;
+  anchor_reason: string | null;
   anchor_id: string | null;
   casper_transaction_hash: string | null;
   onchain_content_hash: string | null;

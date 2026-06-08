@@ -146,6 +146,7 @@ function memoryEntry(index: number): StoredMemoryEntry {
     content_hash: `content_hash_${index}`,
     metadata_hash: `metadata_hash_${index}`,
     anchor_status: "not_requested",
+    anchor_reason: null,
     anchor_id: null,
     casper_transaction_hash: null,
     onchain_content_hash: null,

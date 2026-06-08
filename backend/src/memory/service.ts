@@ -114,6 +114,7 @@ export class MemoryService {
       content_hash: contentHash,
       metadata_hash: metadataHash,
       anchor_status: anchorResult?.status ?? (input.anchor ? "pending" : "not_requested"),
+      anchor_reason: anchorResult?.reason ?? null,
       anchor_id: anchorResult?.anchor_id ?? anchorSubmission?.anchor_id ?? null,
       casper_transaction_hash: anchorResult?.casper_transaction_hash ?? null,
       onchain_content_hash: anchorResult?.onchain_content_hash ?? null,
@@ -133,6 +134,22 @@ export class MemoryService {
         anchor_status: entry.anchor_status
       }
     });
+    if (anchorResult) {
+      await this.audit?.record({
+        agent_id: entry.agent_id,
+        event_type: anchorEventType(anchorResult),
+        subject_type: "memory",
+        subject_id: entry.memory_id,
+        severity: anchorResult.status === "failed" ? "warn" : "info",
+        metadata: {
+          anchor_status: anchorResult.status,
+          anchor_reason: anchorResult.reason ?? null,
+          anchor_id: anchorResult.anchor_id,
+          casper_transaction_hash: anchorResult.casper_transaction_hash,
+          onchain_content_hash: anchorResult.onchain_content_hash
+        }
+      });
+    }
     return entry;
   }
 
@@ -202,9 +219,24 @@ export class MemoryService {
       stored_content_hash: entry.content_hash,
       onchain_content_hash: entry.onchain_content_hash ?? null,
       anchor_id: entry.anchor_id ?? null,
+      anchor_reason: entry.anchor_reason ?? null,
       casper_transaction_hash: entry.casper_transaction_hash ?? null
     };
   }
+}
+
+function anchorEventType(result: AnchorSubmissionResult): string {
+  if (result.status === "anchored") {
+    return "memory.anchor_confirmed";
+  }
+
+  if (result.status === "failed") {
+    return "memory.anchor_failed";
+  }
+
+  return result.casper_transaction_hash
+    ? "memory.anchor_submitted"
+    : "memory.anchor_pending";
 }
 
 function createMemoryId(): string {

@@ -219,6 +219,7 @@ function memoryEntry(index: number): StoredMemoryEntry {
     content_hash: "a".repeat(64),
     metadata_hash: "b".repeat(64),
     anchor_status: "not_requested",
+    anchor_reason: null,
     anchor_id: null,
     casper_transaction_hash: null,
     onchain_content_hash: null,
