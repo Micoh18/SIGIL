@@ -54,6 +54,12 @@ describe("CLI MCP config formatting", () => {
     expect(raw).toContain("CASPER_CAIP2_CHAIN_ID=casper:casper-test");
     expect(raw).toContain("CASPER_RPC_URL=https://node.testnet.casper.network/rpc");
     expect(raw).toContain("CASPER_ENABLE_REAL_SUBMISSION=true");
+    expect(raw).toContain(
+      "MEMORY_ANCHOR_CONTRACT_HASH=hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df"
+    );
+    expect(raw).toContain(
+      "MEMORY_ANCHOR_PACKAGE_HASH=hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c"
+    );
     expect(raw).toContain("X402_ENABLE_REAL_SETTLEMENT=true");
     expect(raw).toContain("X402_SETTLEMENT_MODE=casper-cli");
     const loadedEnv: NodeJS.ProcessEnv = { SIGIL_ENV_FILE: envPath };

@@ -28,6 +28,10 @@ import { loadCasperSigningKeyFromFile } from "./x402/signer.js";
 
 const _pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const VERSION: string = JSON.parse(readFileSync(join(_pkgRoot, "package.json"), "utf8")).version;
+const CASPER_TESTNET_MEMORY_ANCHOR_CONTRACT_HASH =
+  "hash-9a10301e16f0871c57cf584810848d9eb859ba2c8c168fdf1cd7bdef99cb32df";
+const CASPER_TESTNET_MEMORY_ANCHOR_PACKAGE_HASH =
+  "hash-162da01355500a4ec1e715cfab6e5f3f12ee8cc57b3d23c444f377ad4014c98c";
 
 const HELP = `Mr Mainspring MCP server
 
@@ -351,6 +355,8 @@ export function configureTestnetWallet(
     CASPER_RPC_URL: "https://node.testnet.casper.network/rpc",
     CASPER_ACCOUNT_KEY_PATH: normalizedKeyPath,
     CASPER_ENABLE_REAL_SUBMISSION: "true",
+    MEMORY_ANCHOR_CONTRACT_HASH: CASPER_TESTNET_MEMORY_ANCHOR_CONTRACT_HASH,
+    MEMORY_ANCHOR_PACKAGE_HASH: CASPER_TESTNET_MEMORY_ANCHOR_PACKAGE_HASH,
     X402_ENABLE_REAL_SETTLEMENT: "true",
     X402_SETTLEMENT_MODE: "casper-cli",
     X402_BUYER_PRIVATE_KEY_PATH: normalizedKeyPath,
@@ -508,6 +514,11 @@ function formatDoctorReport(env: NodeJS.ProcessEnv = process.env): string {
     const config = loadConfig(envCopy);
     lines.push(`[ok] Storage backend: ${config.storage.backend}`);
     lines.push(`[ok] Casper real submission: ${config.casper.submissionEnabled ? "enabled" : "disabled"}`);
+    lines.push(formatCheck(
+      Boolean(config.casper.memoryAnchorContractHash),
+      `Casper memory anchor contract: ${config.casper.memoryAnchorContractHash}`,
+      "Casper memory anchor contract not configured; run mainspring wallet setup <path-to-casper-private-key.pem>"
+    ));
     lines.push(`[ok] x402 real settlement: ${config.x402.settlementEnabled ? "enabled" : "disabled"}`);
   } catch (error) {
     lines.push(`[error] ${error instanceof Error ? error.message : String(error)}`);
