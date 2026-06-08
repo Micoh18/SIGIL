@@ -3,6 +3,11 @@ import type { AuditService } from "../audit/service.js";
 import type { GrimoireService } from "../grimoire/service.js";
 import type { JsonObject } from "../memory/types.js";
 import type { X402ChallengeRequest, X402ChallengeResult } from "../x402/client.js";
+import {
+  addDecimalParts,
+  compareDecimal,
+  normalizePaymentAmountForComparison
+} from "../x402/normalization.js";
 import { approveX402Requirements } from "../x402/readiness.js";
 import { redactX402Value } from "../x402/redaction.js";
 import type {
@@ -22,11 +27,6 @@ import type {
 
 type X402ChallengeRequester = {
   requestChallenge(input: X402ChallengeRequest): Promise<X402ChallengeResult>;
-};
-
-type DecimalAmount = {
-  value: bigint;
-  scale: number;
 };
 
 export class PaymentService {
@@ -491,9 +491,10 @@ export class PaymentService {
       return { allowed: false, reason: "policy_period_amount_invalid" };
     }
 
-    const amountParts = parseDecimalAmount(amount);
-    const maxPeriod = parseDecimalAmount(policy.max_amount_per_period);
-    const currentSpend = parseDecimalAmount(currentPeriodSpend(policy));
+    const context = { policy: policy.allowed_asset };
+    const amountParts = normalizePaymentAmountForComparison(amount, context);
+    const maxPeriod = normalizePaymentAmountForComparison(policy.max_amount_per_period, context);
+    const currentSpend = normalizePaymentAmountForComparison(currentPeriodSpend(policy), context);
     if (!amountParts || !maxPeriod || !currentSpend) {
       return { allowed: false, reason: "policy_period_amount_invalid" };
     }
@@ -707,10 +708,11 @@ function validatePolicy(
     return "policy_disabled";
   }
 
+  const context = { policy: policy.allowed_asset };
   const expectedAmount = input.expected_amount
-    ? parseDecimalAmount(input.expected_amount)
+    ? normalizePaymentAmountForComparison(input.expected_amount, context)
     : null;
-  const maxPerCall = parseDecimalAmount(policy.max_amount_per_call);
+  const maxPerCall = normalizePaymentAmountForComparison(policy.max_amount_per_call, context);
 
   if (input.expected_amount !== undefined && !expectedAmount) {
     return "invalid_amount";
@@ -733,8 +735,8 @@ function validatePolicy(
   }
 
   if (expectedAmount) {
-    const maxPeriod = parseDecimalAmount(policy.max_amount_per_period);
-    const currentSpend = parseDecimalAmount(currentPeriodSpend(policy));
+    const maxPeriod = normalizePaymentAmountForComparison(policy.max_amount_per_period, context);
+    const currentSpend = normalizePaymentAmountForComparison(currentPeriodSpend(policy), context);
     if (!maxPeriod || !currentSpend) {
       return "invalid_amount";
     }
@@ -757,41 +759,6 @@ function createPaymentReceiptId(): string {
 
 function hashReceipt(receiptJson: string): string {
   return createHash("sha256").update(receiptJson).digest("hex");
-}
-
-function compareDecimal(leftParts: DecimalAmount, rightParts: DecimalAmount): number {
-  const scale = Math.max(leftParts.scale, rightParts.scale);
-  const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
-  const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
-
-  if (leftValue === rightValue) {
-    return 0;
-  }
-
-  return leftValue > rightValue ? 1 : -1;
-}
-
-function addDecimalParts(leftParts: DecimalAmount, rightParts: DecimalAmount): DecimalAmount {
-  const scale = Math.max(leftParts.scale, rightParts.scale);
-  const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
-  const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
-
-  return {
-    value: leftValue + rightValue,
-    scale
-  };
-}
-
-function parseDecimalAmount(value: string): DecimalAmount | null {
-  if (!/^\d+(\.\d+)?$/.test(value)) {
-    return null;
-  }
-
-  const [whole, fraction = ""] = value.split(".");
-  return {
-    value: BigInt(`${whole}${fraction}`),
-    scale: fraction.length
-  };
 }
 
 function currentPeriodSpend(policy: PolicyLike, now: Date = new Date()): string {

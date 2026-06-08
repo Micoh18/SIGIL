@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { sha256Hex } from "../memory/hash.js";
+import { mapCasperClientSecretKeyArgs } from "./paths.js";
 
 const HEX_64_PATTERN = /^[a-f0-9]{64}$/;
 const CASPER_HASH_PATTERN = /^(hash-)?[a-f0-9]{64}$/i;
@@ -520,7 +521,13 @@ function wrapCasperCommand(
 
   return {
     command: "wsl",
-    args: ["-d", config.clientWslDistro, "--", config.clientBin, ...args]
+    args: [
+      "-d",
+      config.clientWslDistro,
+      "--",
+      config.clientBin,
+      ...mapCasperClientSecretKeyArgs(args, config.clientWslDistro)
+    ]
   };
 }
 

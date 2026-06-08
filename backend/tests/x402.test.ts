@@ -182,6 +182,39 @@ describe("x402 foundation", () => {
     }
   });
 
+  it("accepts human CSPR policy amounts and Casper network aliases for native x402 requirements", () => {
+    const policy = createPolicy({
+      allowed_asset: {
+        caip2_chain_id: "casper:testnet",
+        asset: "casper-native-cspr",
+        pay_to: `02${"2".repeat(66)}`,
+        scheme: "exact"
+      },
+      max_amount_per_call: "2.5",
+      max_amount_per_period: "10"
+    });
+
+    const approval = approveX402Requirements({
+      requirements: {
+        x402Version: 1,
+        accepts: [
+          {
+            ...validCasperRequirement("a".repeat(64)),
+            network: "casper:casper-test",
+            amount: "2500000000",
+            maxAmountRequired: "2500000000"
+          }
+        ]
+      },
+      policy,
+      method: "GET",
+      url: "http://localhost:4021/weather",
+      expectedAmount: "2.5"
+    });
+
+    expect(approval.approved).toBe(true);
+  });
+
   it("rejects requirement resource, amount, asset, and payee mismatches", () => {
     const policy = createPolicy({
       allowed_asset: {
@@ -529,6 +562,29 @@ describe("x402 foundation", () => {
       ])
     );
     expect(invocation.args).not.toContain("--transfer-id");
+  });
+
+  it("converts only the Casper CLI secret key path for WSL settlement commands", () => {
+    const invocation = buildCasperX402SettlementCommand(
+      {
+        ...casperCliConfig(),
+        accountKeyPath: "D:\\project\\keys\\facilitator.pem",
+        clientWslDistro: "Ubuntu"
+      },
+      casperSettlementPayment()
+    );
+
+    expect(invocation.command).toBe("wsl");
+    expect(invocation.args.slice(0, 5)).toEqual([
+      "-d",
+      "Ubuntu",
+      "--",
+      "casper-client",
+      "put-transaction"
+    ]);
+    expect(invocation.args).toEqual(
+      expect.arrayContaining(["--secret-key", "/mnt/d/project/keys/facilitator.pem"])
+    );
   });
 
   it("submits Casper settlement and waits for successful execution before settling", async () => {

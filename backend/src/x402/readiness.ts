@@ -3,6 +3,13 @@ import { sha256Hex } from "../memory/hash.js";
 import type { JsonObject } from "../memory/types.js";
 import type { PolicyRecord } from "../grimoire/types.js";
 import { redactX402Value } from "./redaction.js";
+import {
+  compareDecimal,
+  networkMatches,
+  normalizePaymentAmountForComparison,
+  parseDecimalAmount,
+  type DecimalAmount
+} from "./normalization.js";
 
 export type X402RequirementApprovalInput = {
   requirements: unknown;
@@ -138,8 +145,7 @@ export function approveX402Requirements(
     return rejected("requirements_accepts_empty");
   }
 
-  const policyMax = parseDecimalAmount(input.policy.max_amount_per_call);
-  if (!policyMax) {
+  if (!parseDecimalAmount(input.policy.max_amount_per_call)) {
     return rejected("invalid_policy_amount");
   }
 
@@ -162,8 +168,9 @@ export function approveX402Requirements(
       candidate,
       index,
       policy: input.policy,
-      policyMax,
+      policyMax: input.policy.max_amount_per_call,
       expectedAmount,
+      expectedAmountRaw: input.expectedAmount,
       method: input.method.toUpperCase(),
       url: input.url
     });
@@ -323,7 +330,7 @@ export function verifyX402SettlementResponse(
   if (!network) {
     return notSettled("settlement_network_missing", receiptJson);
   }
-  if (expectedNetwork && !matchesAny(network, [expectedNetwork])) {
+  if (expectedNetwork && !networkMatches(network, expectedNetwork)) {
     return notSettled("settlement_network_mismatch", receiptJson);
   }
 
@@ -407,8 +414,9 @@ type RequirementCandidateInput = {
   candidate: Record<string, unknown>;
   index: number;
   policy: PolicyRecord;
-  policyMax: DecimalAmount;
+  policyMax: string;
   expectedAmount: DecimalAmount | null;
+  expectedAmountRaw: string | null;
   method: string;
   url: string;
 };
@@ -426,16 +434,30 @@ function validateRequirementCandidate(
     return "amount_missing";
   }
 
-  const candidateAmount = parseDecimalAmount(amount);
+  const comparisonContext = {
+    policy: input.policy.allowed_asset,
+    requirement: input.candidate
+  };
+  const candidateAmount = normalizePaymentAmountForComparison(amount, comparisonContext);
   if (!candidateAmount) {
     return "amount_invalid";
   }
 
-  if (input.expectedAmount && compareDecimal(candidateAmount, input.expectedAmount) !== 0) {
+  const expectedAmount = input.expectedAmountRaw
+    ? normalizePaymentAmountForComparison(input.expectedAmountRaw, comparisonContext)
+    : null;
+  if (input.expectedAmount && !expectedAmount) {
+    return "expected_amount_mismatch";
+  }
+  if (expectedAmount && compareDecimal(candidateAmount, expectedAmount) !== 0) {
     return "expected_amount_mismatch";
   }
 
-  if (!input.expectedAmount && compareDecimal(candidateAmount, input.policyMax) > 0) {
+  const policyMax = normalizePaymentAmountForComparison(input.policyMax, comparisonContext);
+  if (!policyMax) {
+    return "amount_over_limit";
+  }
+  if (!expectedAmount && compareDecimal(candidateAmount, policyMax) > 0) {
     return "amount_over_limit";
   }
 
@@ -491,7 +513,7 @@ function validateRequirementCandidate(
   }
   if (
     policyNetworks.length > 0 &&
-    !policyNetworks.some((policyNetwork) => matchesAny(requirementNetwork ?? "", [policyNetwork]))
+    !policyNetworks.some((policyNetwork) => networkMatches(requirementNetwork ?? "", policyNetwork))
   ) {
     return "network_mismatch";
   }
@@ -613,35 +635,6 @@ function policyStrings(value: JsonObject, keys: string[]): string[] {
 function matchesAny(value: string, accepted: string[]): boolean {
   const normalized = value.toLowerCase();
   return accepted.some((item) => item.toLowerCase() === normalized);
-}
-
-type DecimalAmount = {
-  value: bigint;
-  scale: number;
-};
-
-function compareDecimal(leftParts: DecimalAmount, rightParts: DecimalAmount): number {
-  const scale = Math.max(leftParts.scale, rightParts.scale);
-  const leftValue = leftParts.value * 10n ** BigInt(scale - leftParts.scale);
-  const rightValue = rightParts.value * 10n ** BigInt(scale - rightParts.scale);
-
-  if (leftValue === rightValue) {
-    return 0;
-  }
-
-  return leftValue > rightValue ? 1 : -1;
-}
-
-function parseDecimalAmount(value: string): DecimalAmount | null {
-  if (!/^\d+(\.\d+)?$/.test(value)) {
-    return null;
-  }
-
-  const [whole, fraction = ""] = value.split(".");
-  return {
-    value: BigInt(`${whole}${fraction}`),
-    scale: fraction.length
-  };
 }
 
 function validTimeoutSeconds(value: unknown): boolean {

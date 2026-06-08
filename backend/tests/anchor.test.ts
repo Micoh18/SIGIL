@@ -246,7 +246,7 @@ describe("Casper anchor foundation", () => {
         networkName: "casper-test",
         caip2ChainId: "casper:casper-test",
         rpcUrl: "https://node.test/rpc",
-        accountKeyPath: "/mnt/d/project/keys/backend.pem",
+        accountKeyPath: "D:\\project\\keys\\backend.pem",
         memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
         memoryAnchorPackageHash: `package-${"2".repeat(64)}`,
         submissionEnabled: true,

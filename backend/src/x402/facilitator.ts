@@ -16,6 +16,7 @@ import {
   type X402SettlementInput,
   type X402SettlementOutcome
 } from "./settlement.js";
+import { networkMatches } from "./normalization.js";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const HASH_HEX_PATTERN = /^[a-f0-9]{64}$/i;
@@ -1179,19 +1180,6 @@ function validCasperPublicKey(value: string): boolean {
 
 function matchesNormalized(left: string, right: string): boolean {
   return left.toLowerCase() === right.toLowerCase();
-}
-
-function networkMatches(left: string, right: string): boolean {
-  const normalizedLeft = left.toLowerCase();
-  const normalizedRight = right.toLowerCase();
-
-  if (normalizedLeft === normalizedRight) {
-    return true;
-  }
-
-  const leftSuffix = normalizedLeft.split(":").at(-1);
-  const rightSuffix = normalizedRight.split(":").at(-1);
-  return Boolean(leftSuffix && rightSuffix && leftSuffix === rightSuffix);
 }
 
 function mod(value: bigint, by: bigint): bigint {

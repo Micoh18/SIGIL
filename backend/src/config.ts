@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { dirname, isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { discoverCasperClient } from "./casper/clientDiscovery.js";
 import { getDefaultMainspringPaths } from "./paths.js";
 
@@ -77,10 +76,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     networkName: optionalEnv(env.CASPER_NETWORK_NAME) ?? "casper-test",
     caip2ChainId: optionalEnv(env.CASPER_CAIP2_CHAIN_ID) ?? "casper:casper-test",
     rpcUrl: optionalEnv(env.CASPER_RPC_URL),
-    accountKeyPath: normalizeCasperAccountKeyPath(
-      optionalEnv(env.CASPER_ACCOUNT_KEY_PATH) ?? "./keys/backend.pem",
-      casperClient.clientWslDistro
-    ),
+    accountKeyPath: optionalEnv(env.CASPER_ACCOUNT_KEY_PATH) ?? "./keys/backend.pem",
     memoryAnchorContractHash: optionalEnv(env.MEMORY_ANCHOR_CONTRACT_HASH),
     memoryAnchorPackageHash: optionalEnv(env.MEMORY_ANCHOR_PACKAGE_HASH),
     submissionEnabled: parseBoolean(env.CASPER_ENABLE_REAL_SUBMISSION),
@@ -348,35 +344,6 @@ function parsePositiveInteger(
   }
 
   return Number(normalized);
-}
-
-function normalizeCasperAccountKeyPath(value: string, clientWslDistro: string | null): string {
-  if (!clientWslDistro) {
-    return value;
-  }
-
-  if (value.startsWith("/")) {
-    return value;
-  }
-
-  const absolutePath = isAbsolute(value) ? value : resolve(repoRoot(), value);
-
-  return toWslPath(absolutePath);
-}
-
-function repoRoot(): string {
-  const backendRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-
-  return dirname(backendRoot);
-}
-
-function toWslPath(value: string): string {
-  const match = value.match(/^([A-Za-z]):[\\/](.*)$/);
-  if (!match) {
-    return value.replaceAll("\\", "/");
-  }
-
-  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replaceAll("\\", "/")}`;
 }
 
 function optionalEnv(value: string | undefined): string | null {

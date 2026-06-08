@@ -5,9 +5,11 @@ import {
   type CasperCommandResult,
   type CasperCommandRunner
 } from "../casper/anchorClient.js";
+import { mapCasperClientSecretKeyArgs } from "../casper/paths.js";
 import { canonicalizeJson, toJsonObject, toJsonValue } from "../memory/canonical.js";
 import type { JsonObject } from "../memory/types.js";
 import { sha256Hex } from "../memory/hash.js";
+import { networkMatches } from "./normalization.js";
 import { redactX402Value } from "./redaction.js";
 import { validateX402PaymentPayload, verifyX402SettlementResponse } from "./readiness.js";
 import {
@@ -1244,7 +1246,13 @@ function wrapCasperX402Command(
 
   return {
     command: "wsl",
-    args: ["-d", config.clientWslDistro, "--", config.clientBin, ...args]
+    args: [
+      "-d",
+      config.clientWslDistro,
+      "--",
+      config.clientBin,
+      ...mapCasperClientSecretKeyArgs(args, config.clientWslDistro)
+    ]
   };
 }
 
@@ -1515,19 +1523,6 @@ function unixSecondsString(value: string | null): string | null {
 
 function isUnsignedIntegerString(value: string): boolean {
   return /^(0|[1-9]\d*)$/.test(value);
-}
-
-function networkMatches(left: string, right: string): boolean {
-  const normalizedLeft = left.toLowerCase();
-  const normalizedRight = right.toLowerCase();
-
-  if (normalizedLeft === normalizedRight) {
-    return true;
-  }
-
-  const leftSuffix = normalizedLeft.split(":").at(-1);
-  const rightSuffix = normalizedRight.split(":").at(-1);
-  return Boolean(leftSuffix && rightSuffix && leftSuffix === rightSuffix);
 }
 
 function delay(ms: number): Promise<void> {
