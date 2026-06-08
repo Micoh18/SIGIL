@@ -20,6 +20,8 @@ export type CasperConfig = {
   gasPriceTolerance: string;
   pricingMode: string;
   anchorPaymentAmountMotes: string;
+  confirmationPollIntervalMs: number;
+  confirmationTimeoutMs: number;
 };
 
 export type X402Config = {
@@ -88,7 +90,17 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SigilConfig {
     gasPriceTolerance: optionalEnv(env.CASPER_GAS_PRICE_TOLERANCE) ?? "10",
     pricingMode: optionalEnv(env.CASPER_PRICING_MODE) ?? "classic",
     anchorPaymentAmountMotes:
-      optionalEnv(env.CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES) ?? "3000000000"
+      optionalEnv(env.CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES) ?? "3000000000",
+    confirmationPollIntervalMs: parsePositiveInteger(
+      env.CASPER_ANCHOR_CONFIRMATION_POLL_INTERVAL_MS,
+      "CASPER_ANCHOR_CONFIRMATION_POLL_INTERVAL_MS",
+      2_000
+    ),
+    confirmationTimeoutMs: parsePositiveInteger(
+      env.CASPER_ANCHOR_CONFIRMATION_TIMEOUT_MS,
+      "CASPER_ANCHOR_CONFIRMATION_TIMEOUT_MS",
+      45_000
+    )
   };
 
   validateCasperConfig(casper);

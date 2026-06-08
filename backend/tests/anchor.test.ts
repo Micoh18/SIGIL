@@ -75,6 +75,18 @@ describe("Casper anchor foundation", () => {
     const calls: { command: string; args: readonly string[] }[] = [];
     const runner: CasperCommandRunner = async (command, args) => {
       calls.push({ command, args });
+      if (args[0] === "get-transaction") {
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({
+            jsonrpc: "2.0",
+            result: {
+              execution_info: [{ error_message: null }]
+            }
+          }),
+          stderr: ""
+        };
+      }
 
       return {
         exitCode: 0,
@@ -112,11 +124,11 @@ describe("Casper anchor foundation", () => {
     expect(configured.mode).toBe("configured");
     expect(configured).toBeInstanceOf(ConfiguredCasperAnchorClient);
     expect(configured).not.toBeInstanceOf(MockCasperAnchorClient);
-    expect(configuredResult.status).toBe("pending");
+    expect(configuredResult.status).toBe("anchored");
     expect(configuredResult.reason).toBeUndefined();
     expect(configuredResult.casper_transaction_hash).toBe(transactionHash);
-    expect(configuredResult.onchain_content_hash).toBeNull();
-    expect(calls).toHaveLength(1);
+    expect(configuredResult.onchain_content_hash).toBe(submission.content_hash);
+    expect(calls).toHaveLength(2);
     expect(calls[0]?.command).toBe(configuredConfig.clientWslDistro ? "wsl" : configuredConfig.clientBin);
     expect(calls[0]?.args).toEqual(
       expect.arrayContaining([
@@ -200,7 +212,9 @@ describe("Casper anchor foundation", () => {
         anchorSubmissionMode: "transaction-package",
         gasPriceTolerance: "10",
         pricingMode: "classic",
-        anchorPaymentAmountMotes: "3000000000"
+        anchorPaymentAmountMotes: "3000000000",
+        confirmationPollIntervalMs: 1,
+        confirmationTimeoutMs: 1
       },
       submission
     );
@@ -257,7 +271,9 @@ describe("Casper anchor foundation", () => {
         anchorSubmissionMode: "transaction-package",
         gasPriceTolerance: "10",
         pricingMode: "classic",
-        anchorPaymentAmountMotes: "3000000000"
+        anchorPaymentAmountMotes: "3000000000",
+        confirmationPollIntervalMs: 1,
+        confirmationTimeoutMs: 1
       },
       submission
     );
@@ -326,7 +342,9 @@ describe("Casper anchor foundation", () => {
       anchorSubmissionMode: "transaction-package" as const,
       gasPriceTolerance: "10",
       pricingMode: "classic",
-      anchorPaymentAmountMotes: "3000000000"
+      anchorPaymentAmountMotes: "3000000000",
+      confirmationPollIntervalMs: 1,
+      confirmationTimeoutMs: 1
     };
     const failedClient = new ConfiguredCasperAnchorClient(baseConfig, async () => ({
       exitCode: 1,
@@ -474,7 +492,9 @@ describe("Casper anchor foundation", () => {
         anchorSubmissionMode: "transaction-package",
         gasPriceTolerance: "10",
         pricingMode: "classic",
-        anchorPaymentAmountMotes: "3000000000"
+        anchorPaymentAmountMotes: "3000000000",
+        confirmationPollIntervalMs: 1,
+        confirmationTimeoutMs: 1
       },
       async () => ({
         exitCode: 0,
@@ -497,15 +517,73 @@ describe("Casper anchor foundation", () => {
     const submittedEvents = (await submittedAudit.tail({ agent_id: "agent-demo-1", limit: 10 })).events;
 
     expect(submitted.anchor_status).toBe("pending");
-    expect(submitted.anchor_reason).toBeNull();
+    expect(submitted.anchor_reason).toBe("casper_transaction_execution_unavailable");
     expect(submitted.casper_transaction_hash).toBe(transactionHash);
     expect(submittedEvents.map((event) => event.event_type)).toContain("memory.anchor_submitted");
     expect(submittedEvents.find((event) => event.event_type === "memory.anchor_submitted")?.metadata)
       .toMatchObject({
         anchor_status: "pending",
-        anchor_reason: null,
+        anchor_reason: "casper_transaction_execution_unavailable",
         casper_transaction_hash: transactionHash
       });
+  });
+
+  it("marks anchored memory when Casper get-transaction reports successful execution", async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), "sigil-anchor-confirmed-"));
+    const audit = new AuditService(new FileAuditStore(dataDir));
+    const transactionHash = "e".repeat(64);
+    const calls: { command: string; args: readonly string[] }[] = [];
+    const anchorClient = new ConfiguredCasperAnchorClient(
+      {
+        networkName: "casper-test",
+        caip2ChainId: "casper:casper-test",
+        rpcUrl: "https://node.test/rpc",
+        accountKeyPath: "./keys/backend.pem",
+        memoryAnchorContractHash: `hash-${"1".repeat(64)}`,
+        memoryAnchorPackageHash: `hash-${"2".repeat(64)}`,
+        submissionEnabled: true,
+        clientBin: "casper-client",
+        clientWslDistro: null,
+        anchorSubmissionMode: "transaction-package",
+        gasPriceTolerance: "10",
+        pricingMode: "classic",
+        anchorPaymentAmountMotes: "3000000000",
+        confirmationPollIntervalMs: 1,
+        confirmationTimeoutMs: 1
+      },
+      async (command, args) => {
+        calls.push({ command, args });
+        if (args[0] === "get-transaction") {
+          return {
+            exitCode: 0,
+            stdout: JSON.stringify({ result: { execution_info: [{ error_message: null }] } }),
+            stderr: ""
+          };
+        }
+
+        return {
+          exitCode: 0,
+          stdout: JSON.stringify({ result: { transaction_hash: transactionHash } }),
+          stderr: ""
+        };
+      }
+    );
+    const memory = new MemoryService(new FileMemoryStore(dataDir), audit, anchorClient);
+
+    const written = await memory.write({
+      agent_id: "agent-demo-1",
+      type: "observation",
+      body: { note: "confirm anchor" },
+      anchor: true
+    });
+    const events = (await audit.tail({ agent_id: "agent-demo-1", limit: 10 })).events;
+
+    expect(written.anchor_status).toBe("anchored");
+    expect(written.anchor_reason).toBeNull();
+    expect(written.casper_transaction_hash).toBe(transactionHash);
+    expect(written.onchain_content_hash).toBe(written.content_hash);
+    expect(calls.map((call) => call.args[0])).toEqual(["put-transaction", "get-transaction"]);
+    expect(events.map((event) => event.event_type)).toContain("memory.anchor_confirmed");
   });
 
   it("does not place memory body, secrets, or raw ids in the Casper anchor payload", async () => {

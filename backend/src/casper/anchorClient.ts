@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 import { sha256Hex } from "../memory/hash.js";
 import { mapCasperClientSecretKeyArgs } from "./paths.js";
 
@@ -37,7 +38,10 @@ export type AnchorSubmissionReason =
   | "casper_client_not_configured"
   | "casper_transaction_submission_disabled"
   | "casper_transaction_submission_failed"
-  | "casper_transaction_hash_missing";
+  | "casper_transaction_hash_missing"
+  | "casper_transaction_lookup_failed"
+  | "casper_transaction_execution_unavailable"
+  | "casper_transaction_execution_failed";
 
 export type AnchorSubmissionResult = {
   status: "pending" | "anchored" | "failed";
@@ -66,6 +70,8 @@ export type CasperAnchorClientConfig = {
   gasPriceTolerance?: string;
   pricingMode?: string;
   anchorPaymentAmountMotes?: string;
+  confirmationPollIntervalMs?: number;
+  confirmationTimeoutMs?: number;
 };
 
 export type ValidatedCasperAnchorConfig = {
@@ -82,6 +88,8 @@ export type ValidatedCasperAnchorConfig = {
   gasPriceTolerance: string;
   pricingMode: string;
   anchorPaymentAmountMotes: string;
+  confirmationPollIntervalMs: number;
+  confirmationTimeoutMs: number;
 };
 
 export type CasperCommandResult = {
@@ -156,7 +164,36 @@ export class ConfiguredCasperAnchorClient implements CasperAnchorClient {
       return createFailedAnchorResult(submission, "casper_transaction_hash_missing");
     }
 
-    return createSubmittedAnchorResult(submission, transactionHash);
+    const execution = await waitForCasperTransactionExecution(
+      this.config,
+      transactionHash,
+      this.commandRunner
+    );
+    if (execution.status === "lookup_failed") {
+      return createFailedAnchorResult(
+        submission,
+        "casper_transaction_lookup_failed",
+        transactionHash
+      );
+    }
+
+    if (execution.status === "not_executed") {
+      return createPendingAnchorResult(
+        submission,
+        "casper_transaction_execution_unavailable",
+        transactionHash
+      );
+    }
+
+    if (execution.status === "failed") {
+      return createFailedAnchorResult(
+        submission,
+        "casper_transaction_execution_failed",
+        transactionHash
+      );
+    }
+
+    return createAnchoredAnchorResult(submission, transactionHash);
   }
 }
 
@@ -234,7 +271,9 @@ export function validateCasperAnchorConfig(
     anchorPaymentAmountMotes: requireNonEmpty(
       config.anchorPaymentAmountMotes ?? "3000000000",
       "CASPER_ANCHOR_PAYMENT_AMOUNT_MOTES"
-    )
+    ),
+    confirmationPollIntervalMs: config.confirmationPollIntervalMs ?? 2_000,
+    confirmationTimeoutMs: config.confirmationTimeoutMs ?? 45_000
   };
 }
 
@@ -260,14 +299,18 @@ export function createAnchorSubmission(input: AnchorMemoryRequest): AnchorSubmis
 
 export function createPendingAnchorResult(
   submission: AnchorSubmission,
-  reason: AnchorSubmissionReason
+  reason: AnchorSubmissionReason,
+  casperTransactionHash: string | null = null
 ): AnchorSubmissionResult {
   assertValidAnchorSubmission(submission);
+  if (casperTransactionHash !== null) {
+    assertHex64("casper_transaction_hash", casperTransactionHash);
+  }
 
   return {
     status: "pending",
     anchor_id: submission.anchor_id,
-    casper_transaction_hash: null,
+    casper_transaction_hash: casperTransactionHash,
     onchain_content_hash: null,
     reason
   };
@@ -275,14 +318,18 @@ export function createPendingAnchorResult(
 
 export function createFailedAnchorResult(
   submission: AnchorSubmission,
-  reason: AnchorSubmissionReason
+  reason: AnchorSubmissionReason,
+  casperTransactionHash: string | null = null
 ): AnchorSubmissionResult {
   assertValidAnchorSubmission(submission);
+  if (casperTransactionHash !== null) {
+    assertHex64("casper_transaction_hash", casperTransactionHash);
+  }
 
   return {
     status: "failed",
     anchor_id: submission.anchor_id,
-    casper_transaction_hash: null,
+    casper_transaction_hash: casperTransactionHash,
     onchain_content_hash: null,
     reason
   };
@@ -389,6 +436,20 @@ export function buildCasperAnchorCommand(
       config.accountKeyPath,
       ...sessionArgs
     ]);
+}
+
+export function buildCasperGetTransactionCommand(
+  config: ValidatedCasperAnchorConfig,
+  transactionHash: string
+): CasperCommandInvocation {
+  assertHex64("casper_transaction_hash", transactionHash);
+
+  return wrapCasperCommand(config, [
+    "get-transaction",
+    "--node-address",
+    config.rpcUrl,
+    transactionHash
+  ]);
 }
 
 export function extractCasperTransactionHash(result: CasperCommandResult): string | null {
@@ -635,4 +696,134 @@ function findLabelledHash(output: string): string | null {
   );
 
   return match?.[1]?.toLowerCase() ?? null;
+}
+
+type CasperTransactionExecutionStatus =
+  | {
+      status: "success";
+    }
+  | {
+      status: "failed";
+    }
+  | {
+      status: "not_executed";
+    }
+  | {
+      status: "lookup_failed";
+    };
+
+async function waitForCasperTransactionExecution(
+  config: ValidatedCasperAnchorConfig,
+  transactionHash: string,
+  commandRunner: CasperCommandRunner
+): Promise<CasperTransactionExecutionStatus> {
+  const deadline = Date.now() + config.confirmationTimeoutMs;
+  let latest: CasperTransactionExecutionStatus = { status: "not_executed" };
+
+  while (Date.now() <= deadline) {
+    const invocation = buildCasperGetTransactionCommand(config, transactionHash);
+    let result: CasperCommandResult;
+    try {
+      result = await commandRunner(invocation.command, invocation.args);
+    } catch {
+      return { status: "lookup_failed" };
+    }
+
+    if (result.exitCode !== 0) {
+      return { status: "lookup_failed" };
+    }
+
+    latest = verifyCasperTransactionExecution(result);
+    if (latest.status !== "not_executed") {
+      return latest;
+    }
+
+    if (Date.now() >= deadline) {
+      break;
+    }
+
+    await delay(Math.min(config.confirmationPollIntervalMs, Math.max(0, deadline - Date.now())));
+  }
+
+  return latest;
+}
+
+export function verifyCasperTransactionExecution(
+  result: CasperCommandResult
+): CasperTransactionExecutionStatus {
+  const parsed = parseCasperClientJson(result.stdout) ?? parseCasperClientJson(result.stderr);
+  const receipt = parsed ?? { raw: [result.stdout, result.stderr].filter(Boolean).join("\n") };
+  const executionInfo = findExecutionInfo(receipt);
+
+  if (!executionInfo) {
+    return { status: "not_executed" };
+  }
+
+  return findExecutionErrorMessage(executionInfo)
+    ? { status: "failed" }
+    : { status: "success" };
+}
+
+function findExecutionInfo(value: unknown): unknown | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["execution_info", "execution_results"]) {
+    const executionInfo = record[key];
+    if (Array.isArray(executionInfo)) {
+      if (executionInfo.length > 0) {
+        return executionInfo;
+      }
+      continue;
+    }
+
+    if (executionInfo && typeof executionInfo === "object") {
+      return executionInfo;
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const executionInfo = findExecutionInfo(nested);
+    if (executionInfo) {
+      return executionInfo;
+    }
+  }
+
+  return null;
+}
+
+function findExecutionErrorMessage(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const error = findExecutionErrorMessage(item);
+      if (error) {
+        return error;
+      }
+    }
+
+    return null;
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["error_message", "errorMessage", "error"]) {
+    const error = record[key];
+    if (typeof error === "string" && error.trim()) {
+      return error;
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    const error = findExecutionErrorMessage(nested);
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
 }

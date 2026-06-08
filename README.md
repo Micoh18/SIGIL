@@ -280,7 +280,7 @@ Mr Mainspring is intentionally strict about what it proves:
 - Payment receipts store signed payload hashes and redacted settlement receipts, not signed payload bodies.
 - Memory anchoring stores hashes only.
 - `casper-cli` x402 settlement polls `casper-client get-transaction` before accepting a settled receipt.
-- Memory anchoring can submit a Casper transaction, but automatic post-submit on-chain query for memory anchors is not yet implemented.
+- Memory anchoring submits a Casper transaction and polls `casper-client get-transaction` before marking the local anchor as confirmed.
 
 The project should return unavailable-settlement and pending-anchor states unless the required external signer, paid resource, facilitator, Casper key, and Casper RPC path are actually configured and verified.
 
