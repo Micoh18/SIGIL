@@ -143,3 +143,28 @@ export function registerGrimoireTools(
     }
   );
 }
+
+export const grimoireToolMetadata = {
+  list: [
+    {
+      name: "grimoire.secret.put",
+      title: "Store Secret",
+      description: "Encrypt and store a scoped secret or secret reference for future signed policy checks."
+    },
+    {
+      name: "grimoire.secret.list",
+      title: "List Secrets",
+      description: "List secret metadata for an agent without exposing secret values."
+    },
+    {
+      name: "grimoire.policy.set",
+      title: "Set Policy",
+      description: "Create or update an x402 spending/access policy with spend limits."
+    },
+    {
+      name: "grimoire.policy.get",
+      title: "Get Policy",
+      description: "Read one policy plus current local spend metadata."
+    }
+  ] as const
+};

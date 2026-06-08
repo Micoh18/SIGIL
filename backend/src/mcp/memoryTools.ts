@@ -158,3 +158,29 @@ export function registerMemoryTools(
     }
   );
 }
+
+export const memoryToolMetadata = {
+  list: [
+    {
+      name: "memory.write",
+      title: "Write Memory",
+      description:
+        "Store durable agent memories (preference, decision, fact, etc.) with deterministic hashing and optional anchoring metadata."
+    },
+    {
+      name: "memory.read",
+      title: "Read Memory",
+      description: "Read one stored memory by memory_id."
+    },
+    {
+      name: "memory.search",
+      title: "Search Memory",
+      description: "Search memories for the current agent."
+    },
+    {
+      name: "memory.verify",
+      title: "Verify Memory",
+      description: "Recompute integrity and report whether a memory still matches its recorded hash."
+    }
+  ] as const
+};

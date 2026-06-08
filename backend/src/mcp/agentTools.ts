@@ -2,6 +2,16 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { AgentIdentity } from "../agent/identity.js";
 import { jsonResult } from "./jsonResult.js";
 
+export const agentToolMetadata = {
+  list: [
+    {
+      name: "agent.whoami",
+      title: "Current Agent Identity",
+      description: "Return the local default Mr Mainspring agent identity for this installation."
+    }
+  ] as const
+};
+
 export function registerAgentTools(server: McpServer, identity: AgentIdentity): void {
   server.registerTool(
     "agent.whoami",

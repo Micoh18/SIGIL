@@ -58,3 +58,18 @@ export function registerPaymentTools(
   );
 }
 
+export const paymentToolMetadata = {
+  list: [
+    {
+      name: "payment.fetch",
+      title: "x402 Payment Fetch",
+      description: "Create or continue a payment flow for a protected resource, enforcing policy first."
+    },
+    {
+      name: "payment.receipt",
+      title: "Read Payment Receipt",
+      description: "Return persisted payment intent and receipt metadata without exposing signed artifacts."
+    }
+  ] as const
+};
+

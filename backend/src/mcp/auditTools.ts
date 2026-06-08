@@ -5,6 +5,16 @@ import { resolveAgentId } from "../agent/identity.js";
 import type { AuditService } from "../audit/service.js";
 import { jsonResult } from "./jsonResult.js";
 
+export const auditToolMetadata = {
+  list: [
+    {
+      name: "audit.tail",
+      title: "Tail Audit Events",
+      description: "Return recent audit events for memory, Grimoire, payment, and anchor activity."
+    }
+  ] as const
+};
+
 export function registerAuditTools(
   server: McpServer,
   auditService: AuditService,

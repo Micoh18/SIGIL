@@ -4,11 +4,12 @@ import { AuditService } from "./audit/service.js";
 import { createCasperAnchorClient } from "./casper/anchorClient.js";
 import type { SigilConfig } from "./config.js";
 import { GrimoireService } from "./grimoire/service.js";
-import { registerAgentTools } from "./mcp/agentTools.js";
-import { registerAuditTools } from "./mcp/auditTools.js";
-import { registerGrimoireTools } from "./mcp/grimoireTools.js";
-import { registerMemoryTools } from "./mcp/memoryTools.js";
-import { registerPaymentTools } from "./mcp/paymentTools.js";
+import { agentToolMetadata, registerAgentTools } from "./mcp/agentTools.js";
+import { auditToolMetadata, registerAuditTools } from "./mcp/auditTools.js";
+import { grimoireToolMetadata, registerGrimoireTools } from "./mcp/grimoireTools.js";
+import { memoryToolMetadata, registerMemoryTools } from "./mcp/memoryTools.js";
+import { paymentToolMetadata, registerPaymentTools } from "./mcp/paymentTools.js";
+import { jsonResult } from "./mcp/jsonResult.js";
 import { MemoryService } from "./memory/service.js";
 import { PaymentService } from "./payments/service.js";
 import { createBackendStores } from "./storage/store-factory.js";
@@ -60,6 +61,36 @@ export function createSigilServer(config: SigilConfig): McpServer {
   registerGrimoireTools(server, grimoireService, agentContext);
   registerPaymentTools(server, paymentService, agentContext);
   registerAuditTools(server, auditService, agentContext);
+
+  const toolCatalog = [
+    ...agentToolMetadata.list,
+    ...memoryToolMetadata.list,
+    ...grimoireToolMetadata.list,
+    ...paymentToolMetadata.list,
+    ...auditToolMetadata.list
+  ] as const;
+
+  server.registerTool(
+    "mainspring.tools",
+    {
+      title: "Tool Catalog",
+      description:
+        "List all available Mr Mainspring MCP tools with short names and usage guidance for agents and clients that cannot auto-discover the full tool surface from UI settings.",
+      inputSchema: {}
+    },
+    async () =>
+      jsonResult({
+        server: config.serverName,
+        version: config.serverVersion,
+        count: toolCatalog.length,
+        tools: toolCatalog.map((item) => ({
+          name: item.name,
+          title: item.title,
+          description: item.description,
+          when_to_call: item.description
+        }))
+      })
+  );
 
   return server;
 }

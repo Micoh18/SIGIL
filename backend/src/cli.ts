@@ -57,6 +57,14 @@ and x402 env vars. No env vars are required for local memory, Grimoire, audit,
 or payment preflight tools.
 `;
 
+const AGENT_DISCOVERY_HINT = [
+  "For MCP agents:",
+  "1) Call tool: mainspring.tools",
+  "2) Cache the returned list of tools",
+  "3) Use those exact names for all subsequent tool calls",
+  ""
+].join("\n");
+
 type InitResult = {
   envFile: string;
   dataDir: string;
@@ -129,6 +137,7 @@ export async function runCliCommand(args: string[]): Promise<boolean> {
           "  VS Code         ~/.vscode/mcp.json\n\n"
         );
       }
+      process.stdout.write(`${AGENT_DISCOVERY_HINT}\n`);
     }
     return true;
   }
@@ -271,6 +280,7 @@ async function runInteractiveSetup(): Promise<void> {
     );
   }
 
+  clack.log.info(AGENT_DISCOVERY_HINT);
   clack.outro("Restart your MCP clients to load the server.");
 }
 
